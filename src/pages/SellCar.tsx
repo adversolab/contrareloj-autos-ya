@@ -1,5 +1,6 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
@@ -23,10 +24,35 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
+import { toast } from 'sonner';
+import { 
+  getCurrentUser,
+  signIn
+} from '@/services/authService';
+import { 
+  saveVehicleBasicInfo, 
+  updateVehicleBasicInfo,
+  saveVehicleFeatures,
+  uploadVehiclePhoto,
+  saveAuctionInfo,
+  activateAuction,
+  VehicleBasicInfo,
+  VehicleFeature,
+  AuctionInfo,
+} from '@/services/vehicleService';
+import { supabase } from '@/integrations/supabase/client';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 
 const SellCar = () => {
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
-  const [carInfo, setCarInfo] = useState({
+  const [vehicleId, setVehicleId] = useState<string | null>(null);
+  const [auctionId, setAuctionId] = useState<string | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [loginForm, setLoginForm] = useState({ email: '', password: '' });
+  const [carInfo, setCarInfo] = useState<VehicleBasicInfo>({
     brand: '',
     model: '',
     year: '',
@@ -35,6 +61,66 @@ const SellCar = () => {
     transmission: '',
     description: '',
   });
+  
+  const [features, setFeatures] = useState<{[key: string]: string[]}>({
+    exterior: [],
+    interior: [],
+    seguridad: [],
+    confort: []
+  });
+
+  const [uploadedPhotos, setUploadedPhotos] = useState<{id: number, file: File | null, preview: string | null, isMain: boolean}[]>(
+    Array.from({ length: 6 }, (_, i) => ({ 
+      id: i, 
+      file: null, 
+      preview: null,
+      isMain: i === 0
+    }))
+  );
+
+  const [additionalDetails, setAdditionalDetails] = useState('');
+  
+  const [auctionInfo, setAuctionInfo] = useState<AuctionInfo>({
+    reservePrice: 0,
+    startPrice: 0,
+    durationDays: 7,
+    minIncrement: 100000,
+    services: []
+  });
+
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
+
+  // Verificar autenticación al cargar
+  useEffect(() => {
+    const checkAuth = async () => {
+      const user = await getCurrentUser();
+      setIsLoggedIn(!!user);
+      setIsCheckingAuth(false);
+    };
+
+    checkAuth();
+  }, []);
+
+  // Manejar subida de imágenes
+  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      
+      reader.onloadend = () => {
+        setUploadedPhotos(prev => 
+          prev.map(photo => 
+            photo.id === index 
+              ? { ...photo, file, preview: reader.result as string } 
+              : photo
+          )
+        );
+      };
+      
+      reader.readAsDataURL(file);
+    }
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -51,6 +137,204 @@ const SellCar = () => {
     }));
   };
 
+  const handleFeatureChange = (category: string, feature: string, checked: boolean) => {
+    setFeatures(prev => {
+      if (checked) {
+        return {
+          ...prev,
+          [category]: [...prev[category], feature]
+        };
+      } else {
+        return {
+          ...prev,
+          [category]: prev[category].filter(f => f !== feature)
+        };
+      }
+    });
+  };
+
+  const handleServiceChange = (service: string, checked: boolean) => {
+    setAuctionInfo(prev => {
+      if (checked) {
+        return {
+          ...prev,
+          services: [...prev.services, service]
+        };
+      } else {
+        return {
+          ...prev,
+          services: prev.services.filter(s => s !== service)
+        };
+      }
+    });
+  };
+
+  const handleAuctionInfoChange = (name: string, value: string | number) => {
+    setAuctionInfo(prev => ({
+      ...prev,
+      [name]: typeof value === 'string' ? parseFloat(value) : value
+    }));
+  };
+
+  const handleLoginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setLoginForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleLogin = async () => {
+    const { email, password } = loginForm;
+    
+    if (!email || !password) {
+      toast.error("Por favor completa todos los campos");
+      return;
+    }
+    
+    const { user, error } = await signIn(email, password);
+    
+    if (user) {
+      setIsLoggedIn(true);
+      setIsAuthDialogOpen(false);
+    }
+  };
+
+  const saveStep1 = async () => {
+    if (!isLoggedIn) {
+      setIsAuthDialogOpen(true);
+      return;
+    }
+
+    // Validar campos obligatorios
+    if (!carInfo.brand || !carInfo.model || !carInfo.year || !carInfo.kilometers || !carInfo.fuel || !carInfo.transmission) {
+      toast.error("Por favor completa todos los campos obligatorios");
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      if (vehicleId) {
+        // Actualizar vehículo existente
+        await updateVehicleBasicInfo(vehicleId, carInfo);
+      } else {
+        // Crear nuevo vehículo
+        const { vehicle, error } = await saveVehicleBasicInfo(carInfo);
+        if (vehicle && !error) {
+          setVehicleId(vehicle.id);
+        } else {
+          throw new Error(error?.message || "Error al guardar la información");
+        }
+      }
+      
+      // Ir al siguiente paso
+      nextStep();
+    } catch (error) {
+      toast.error("Ocurrió un error al guardar la información");
+      console.error(error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const saveStep2 = async () => {
+    if (!vehicleId) {
+      toast.error("No se ha creado el vehículo correctamente");
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      // Subir fotos
+      for (const photo of uploadedPhotos) {
+        if (photo.file) {
+          await uploadVehiclePhoto(vehicleId, {
+            file: photo.file,
+            isMain: photo.isMain,
+            position: photo.id
+          });
+        }
+      }
+
+      // Guardar características
+      const allFeatures: VehicleFeature[] = [];
+      Object.entries(features).forEach(([category, selectedFeatures]) => {
+        selectedFeatures.forEach(feature => {
+          allFeatures.push({ category, feature });
+        });
+      });
+
+      await saveVehicleFeatures(vehicleId, allFeatures);
+
+      // Ir al siguiente paso
+      nextStep();
+    } catch (error) {
+      toast.error("Ocurrió un error al guardar las fotos y características");
+      console.error(error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const saveStep3 = async () => {
+    if (!vehicleId) {
+      toast.error("No se ha creado el vehículo correctamente");
+      return;
+    }
+
+    // Validar campos
+    if (auctionInfo.reservePrice <= 0 || auctionInfo.startPrice <= 0) {
+      toast.error("Por favor ingresa precios válidos");
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      const { auction, error } = await saveAuctionInfo(vehicleId, auctionInfo);
+      
+      if (auction && !error) {
+        setAuctionId(auction.id);
+        nextStep();
+      } else {
+        throw new Error(error?.message || "Error al guardar la información de la subasta");
+      }
+    } catch (error) {
+      toast.error("Ocurrió un error al guardar la información de la subasta");
+      console.error(error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const finishProcess = async () => {
+    if (!auctionId) {
+      toast.error("No se ha creado la subasta correctamente");
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      // Simular procesamiento de pago
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Activar la subasta
+      await activateAuction(auctionId);
+      
+      toast.success("¡Felicidades! Tu vehículo ha sido publicado correctamente");
+      // Redireccionar a la página del detalle de la subasta
+      navigate(`/subasta/${auctionId}`);
+    } catch (error) {
+      toast.error("Ocurrió un error al procesar el pago");
+      console.error(error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const nextStep = () => {
     setStep(prev => prev + 1);
     window.scrollTo(0, 0);
@@ -60,6 +344,46 @@ const SellCar = () => {
     setStep(prev => prev - 1);
     window.scrollTo(0, 0);
   };
+
+  // Redirigir a inicio de sesión si no está logueado
+  if (!isCheckingAuth && !isLoggedIn && !isAuthDialogOpen) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-grow container mx-auto px-4 py-8">
+          <Card className="max-w-md mx-auto">
+            <CardHeader>
+              <CardTitle>Iniciar sesión requerido</CardTitle>
+              <CardDescription>
+                Debes iniciar sesión para publicar un vehículo
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <p>Por favor inicia sesión para continuar con la publicación de tu vehículo.</p>
+                <div className="flex justify-end">
+                  <Button 
+                    onClick={() => setIsAuthDialogOpen(true)}
+                    className="bg-contrareloj hover:bg-contrareloj-dark text-white"
+                  >
+                    Iniciar sesión
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </main>
+        <Footer />
+        <AuthDialog 
+          isOpen={isAuthDialogOpen} 
+          onOpenChange={setIsAuthDialogOpen}
+          loginForm={loginForm}
+          onLoginChange={handleLoginChange}
+          onLogin={handleLogin}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -117,7 +441,7 @@ const SellCar = () => {
               </CardHeader>
               
               <CardContent>
-                <form className="space-y-6">
+                <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); saveStep1(); }}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-medium mb-2">Marca*</label>
@@ -236,10 +560,11 @@ const SellCar = () => {
                   
                   <div className="flex justify-end">
                     <Button 
+                      type="submit"
                       className="bg-contrareloj hover:bg-contrareloj-dark text-white"
-                      onClick={nextStep}
+                      disabled={isProcessing}
                     >
-                      Continuar
+                      {isProcessing ? "Guardando..." : "Continuar"}
                     </Button>
                   </div>
                 </form>
@@ -266,19 +591,51 @@ const SellCar = () => {
                     </p>
                     
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      {Array.from({ length: 6 }).map((_, index) => (
+                      {uploadedPhotos.map((photo) => (
                         <div 
-                          key={index} 
-                          className="border-2 border-dashed border-gray-300 rounded-lg aspect-video flex flex-col items-center justify-center p-4 bg-gray-50 hover:bg-gray-100 cursor-pointer"
+                          key={photo.id} 
+                          className="border-2 border-dashed border-gray-300 rounded-lg aspect-video flex flex-col items-center justify-center p-4 bg-gray-50 relative overflow-hidden"
                         >
-                          <span className="text-4xl text-gray-300 mb-2">+</span>
-                          <span className="text-sm text-gray-500">
-                            {index === 0 ? 'Foto principal*' : 
-                             index === 1 ? 'Lateral' :
-                             index === 2 ? 'Interior' : 
-                             index === 3 ? 'Maletero' : 
-                             index === 4 ? 'Motor' : 'Otra'}
-                          </span>
+                          {photo.preview ? (
+                            <>
+                              <img 
+                                src={photo.preview} 
+                                alt="Preview" 
+                                className="absolute inset-0 w-full h-full object-cover"
+                              />
+                              <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                                <label className="cursor-pointer bg-white text-black px-3 py-1 rounded-md text-sm">
+                                  Cambiar
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={(e) => handleImageUpload(e, photo.id)}
+                                  />
+                                </label>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-4xl text-gray-300 mb-2">+</span>
+                              <span className="text-sm text-gray-500 mb-2">
+                                {photo.id === 0 ? 'Foto principal*' : 
+                                 photo.id === 1 ? 'Lateral' :
+                                 photo.id === 2 ? 'Interior' : 
+                                 photo.id === 3 ? 'Maletero' : 
+                                 photo.id === 4 ? 'Motor' : 'Otra'}
+                              </span>
+                              <label className="cursor-pointer bg-gray-200 text-gray-700 px-3 py-1 rounded-md text-sm">
+                                Seleccionar
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => handleImageUpload(e, photo.id)}
+                                />
+                              </label>
+                            </>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -299,7 +656,12 @@ const SellCar = () => {
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                           {['Llantas de aleación', 'Neblineros', 'Barras de techo', 'Spoiler', 'Sunroof', 'Sensores de estacionamiento', 'Cámara de retroceso', 'Espejos eléctricos', 'Faros LED'].map((item) => (
                             <label key={item} className="flex items-center">
-                              <input type="checkbox" className="mr-2" />
+                              <input 
+                                type="checkbox" 
+                                className="mr-2"
+                                checked={features.exterior.includes(item)}
+                                onChange={(e) => handleFeatureChange('exterior', item, e.target.checked)} 
+                              />
                               <span className="text-sm">{item}</span>
                             </label>
                           ))}
@@ -310,7 +672,12 @@ const SellCar = () => {
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                           {['Tapiz de cuero', 'Asientos eléctricos', 'Asientos con memoria', 'Volante multifunción', 'Control de crucero', 'Climatizador', 'Alzavidrios eléctricos', 'Pantalla táctil', 'Android Auto/Apple CarPlay'].map((item) => (
                             <label key={item} className="flex items-center">
-                              <input type="checkbox" className="mr-2" />
+                              <input 
+                                type="checkbox" 
+                                className="mr-2"
+                                checked={features.interior.includes(item)}
+                                onChange={(e) => handleFeatureChange('interior', item, e.target.checked)} 
+                              />
                               <span className="text-sm">{item}</span>
                             </label>
                           ))}
@@ -321,7 +688,12 @@ const SellCar = () => {
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                           {['Airbags frontales', 'Airbags laterales', 'Airbags de cortina', 'Frenos ABS', 'Control de estabilidad', 'Control de tracción', 'Asistente de frenado', 'Sensor de punto ciego', 'Alerta de colisión'].map((item) => (
                             <label key={item} className="flex items-center">
-                              <input type="checkbox" className="mr-2" />
+                              <input 
+                                type="checkbox" 
+                                className="mr-2"
+                                checked={features.seguridad.includes(item)}
+                                onChange={(e) => handleFeatureChange('seguridad', item, e.target.checked)} 
+                              />
                               <span className="text-sm">{item}</span>
                             </label>
                           ))}
@@ -332,7 +704,12 @@ const SellCar = () => {
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                           {['Bluetooth', 'Sistema de sonido premium', 'Cargador inalámbrico', 'Puertos USB', 'Encendido sin llave', 'Acceso sin llave', 'Arranque por botón', 'Asientos calefaccionados', 'Volante calefaccionado'].map((item) => (
                             <label key={item} className="flex items-center">
-                              <input type="checkbox" className="mr-2" />
+                              <input 
+                                type="checkbox" 
+                                className="mr-2"
+                                checked={features.confort.includes(item)}
+                                onChange={(e) => handleFeatureChange('confort', item, e.target.checked)} 
+                              />
                               <span className="text-sm">{item}</span>
                             </label>
                           ))}
@@ -346,6 +723,8 @@ const SellCar = () => {
                     <textarea 
                       placeholder="Agrega información relevante sobre el historial del vehículo, mantenciones, documentos, etc."
                       className="w-full border border-gray-300 rounded-md p-2 h-32"
+                      value={additionalDetails}
+                      onChange={(e) => setAdditionalDetails(e.target.value)}
                     />
                   </div>
                   
@@ -353,14 +732,16 @@ const SellCar = () => {
                     <Button 
                       variant="outline"
                       onClick={prevStep}
+                      disabled={isProcessing}
                     >
                       Atrás
                     </Button>
                     <Button 
                       className="bg-contrareloj hover:bg-contrareloj-dark text-white"
-                      onClick={nextStep}
+                      onClick={saveStep2}
+                      disabled={isProcessing}
                     >
-                      Continuar
+                      {isProcessing ? "Guardando..." : "Continuar"}
                     </Button>
                   </div>
                 </div>
@@ -389,6 +770,8 @@ const SellCar = () => {
                           type="text"
                           placeholder="Precio mínimo que aceptarás"
                           className="w-full border border-gray-300 rounded-md p-2 pl-7"
+                          value={auctionInfo.reservePrice > 0 ? auctionInfo.reservePrice.toString() : ''}
+                          onChange={(e) => handleAuctionInfoChange('reservePrice', e.target.value)}
                         />
                       </div>
                       <p className="text-xs text-gray-500 mt-1">
@@ -404,6 +787,8 @@ const SellCar = () => {
                           type="text"
                           placeholder="Precio de apertura de la subasta"
                           className="w-full border border-gray-300 rounded-md p-2 pl-7"
+                          value={auctionInfo.startPrice > 0 ? auctionInfo.startPrice.toString() : ''}
+                          onChange={(e) => handleAuctionInfoChange('startPrice', e.target.value)}
                         />
                       </div>
                       <p className="text-xs text-gray-500 mt-1">
@@ -413,7 +798,10 @@ const SellCar = () => {
                     
                     <div>
                       <label className="block text-sm font-medium mb-2">Duración de la subasta*</label>
-                      <Select>
+                      <Select
+                        value={auctionInfo.durationDays.toString()}
+                        onValueChange={(value) => handleAuctionInfoChange('durationDays', parseInt(value))}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Selecciona duración" />
                         </SelectTrigger>
@@ -429,7 +817,10 @@ const SellCar = () => {
                     
                     <div>
                       <label className="block text-sm font-medium mb-2">Incremento mínimo*</label>
-                      <Select>
+                      <Select
+                        value={auctionInfo.minIncrement.toString()}
+                        onValueChange={(value) => handleAuctionInfoChange('minIncrement', parseInt(value))}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Selecciona incremento" />
                         </SelectTrigger>
@@ -452,7 +843,12 @@ const SellCar = () => {
                     
                     <div className="space-y-4">
                       <label className="flex items-start">
-                        <input type="checkbox" className="mt-1 mr-3" />
+                        <input 
+                          type="checkbox" 
+                          className="mt-1 mr-3"
+                          checked={auctionInfo.services.includes('verification')}
+                          onChange={(e) => handleServiceChange('verification', e.target.checked)}
+                        />
                         <div>
                           <span className="font-medium">Verificación mecánica</span>
                           <p className="text-sm text-gray-500">
@@ -462,7 +858,12 @@ const SellCar = () => {
                       </label>
                       
                       <label className="flex items-start">
-                        <input type="checkbox" className="mt-1 mr-3" />
+                        <input 
+                          type="checkbox" 
+                          className="mt-1 mr-3"
+                          checked={auctionInfo.services.includes('photography')}
+                          onChange={(e) => handleServiceChange('photography', e.target.checked)}
+                        />
                         <div>
                           <span className="font-medium">Servicio de fotografía profesional</span>
                           <p className="text-sm text-gray-500">
@@ -472,7 +873,12 @@ const SellCar = () => {
                       </label>
                       
                       <label className="flex items-start">
-                        <input type="checkbox" className="mt-1 mr-3" />
+                        <input 
+                          type="checkbox" 
+                          className="mt-1 mr-3"
+                          checked={auctionInfo.services.includes('highlight')}
+                          onChange={(e) => handleServiceChange('highlight', e.target.checked)}
+                        />
                         <div>
                           <span className="font-medium">Destacar anuncio</span>
                           <p className="text-sm text-gray-500">
@@ -487,14 +893,16 @@ const SellCar = () => {
                     <Button 
                       variant="outline"
                       onClick={prevStep}
+                      disabled={isProcessing}
                     >
                       Atrás
                     </Button>
                     <Button 
                       className="bg-contrareloj hover:bg-contrareloj-dark text-white"
-                      onClick={nextStep}
+                      onClick={saveStep3}
+                      disabled={isProcessing}
                     >
-                      Continuar
+                      {isProcessing ? "Guardando..." : "Continuar"}
                     </Button>
                   </div>
                 </div>
@@ -530,22 +938,26 @@ const SellCar = () => {
                         
                         <div>
                           <h4 className="text-sm text-gray-500 mb-1">Precio de inicio</h4>
-                          <p className="font-medium">$5.000.000</p>
+                          <p className="font-medium">${auctionInfo.startPrice.toLocaleString()}</p>
                         </div>
                         
                         <div>
                           <h4 className="text-sm text-gray-500 mb-1">Duración</h4>
-                          <p className="font-medium">7 días</p>
+                          <p className="font-medium">{auctionInfo.durationDays} días</p>
                         </div>
                         
                         <div>
                           <h4 className="text-sm text-gray-500 mb-1">Incremento mínimo</h4>
-                          <p className="font-medium">$100.000</p>
+                          <p className="font-medium">${auctionInfo.minIncrement.toLocaleString()}</p>
                         </div>
                       </div>
                       
                       <div className="mt-4">
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => setStep(1)}
+                        >
                           Editar información
                         </Button>
                       </div>
@@ -565,21 +977,25 @@ const SellCar = () => {
                         </div>
                         <div className="flex justify-between">
                           <span>Verificación mecánica</span>
-                          <span>$80.000</span>
+                          <span>{auctionInfo.services.includes('verification') ? '$80.000' : '$0'}</span>
                         </div>
                         <div className="flex justify-between">
                           <span>Servicio de fotografía</span>
-                          <span>$0</span>
+                          <span>{auctionInfo.services.includes('photography') ? '$50.000' : '$0'}</span>
                         </div>
                         <div className="flex justify-between">
                           <span>Destacar anuncio</span>
-                          <span>$30.000</span>
+                          <span>{auctionInfo.services.includes('highlight') ? '$30.000' : '$0'}</span>
                         </div>
                         
                         <div className="border-t pt-2 mt-2">
                           <div className="flex justify-between font-bold">
                             <span>Total</span>
-                            <span>$135.000</span>
+                            <span>${(25000 + 
+                              (auctionInfo.services.includes('verification') ? 80000 : 0) + 
+                              (auctionInfo.services.includes('photography') ? 50000 : 0) + 
+                              (auctionInfo.services.includes('highlight') ? 30000 : 0)
+                            ).toLocaleString()}</span>
                           </div>
                           <p className="text-xs text-gray-500 mt-1">
                             Cobraremos una comisión del 5% sobre el valor final de venta solo si se concreta la transacción.
@@ -651,13 +1067,16 @@ const SellCar = () => {
                     <Button 
                       variant="outline"
                       onClick={prevStep}
+                      disabled={isProcessing}
                     >
                       Atrás
                     </Button>
                     <Button 
                       className="bg-contrareloj hover:bg-contrareloj-dark text-white"
+                      onClick={finishProcess}
+                      disabled={isProcessing}
                     >
-                      Pagar y publicar
+                      {isProcessing ? "Procesando..." : "Pagar y publicar"}
                     </Button>
                   </div>
                 </div>
@@ -668,7 +1087,73 @@ const SellCar = () => {
       </main>
       
       <Footer />
+
+      <AuthDialog 
+        isOpen={isAuthDialogOpen} 
+        onOpenChange={setIsAuthDialogOpen}
+        loginForm={loginForm}
+        onLoginChange={handleLoginChange}
+        onLogin={handleLogin}
+      />
     </div>
+  );
+};
+
+// Componente de diálogo de autenticación
+const AuthDialog = ({ 
+  isOpen, 
+  onOpenChange, 
+  loginForm, 
+  onLoginChange, 
+  onLogin 
+}: { 
+  isOpen: boolean; 
+  onOpenChange: (open: boolean) => void;
+  loginForm: { email: string; password: string };
+  onLoginChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onLogin: () => void;
+}) => {
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Iniciar sesión</DialogTitle>
+          <DialogDescription>
+            Por favor inicia sesión para publicar tu vehículo
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Email</label>
+            <Input
+              name="email"
+              type="email"
+              placeholder="correo@ejemplo.com"
+              value={loginForm.email}
+              onChange={onLoginChange}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Contraseña</label>
+            <Input
+              name="password"
+              type="password"
+              placeholder="********"
+              value={loginForm.password}
+              onChange={onLoginChange}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancelar
+          </Button>
+          <Button onClick={onLogin} className="bg-contrareloj hover:bg-contrareloj-dark text-white">
+            Iniciar sesión
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 

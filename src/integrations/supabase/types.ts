@@ -9,7 +9,197 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      auction_services: {
+        Row: {
+          auction_id: string | null
+          created_at: string
+          id: string
+          price: number
+          service_type: string
+        }
+        Insert: {
+          auction_id?: string | null
+          created_at?: string
+          id?: string
+          price: number
+          service_type: string
+        }
+        Update: {
+          auction_id?: string | null
+          created_at?: string
+          id?: string
+          price?: number
+          service_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auction_services_auction_id_fkey"
+            columns: ["auction_id"]
+            isOneToOne: false
+            referencedRelation: "auctions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      auctions: {
+        Row: {
+          created_at: string
+          duration_days: number
+          end_date: string | null
+          id: string
+          min_increment: number
+          reserve_price: number
+          start_date: string | null
+          start_price: number
+          status: string
+          updated_at: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          duration_days: number
+          end_date?: string | null
+          id?: string
+          min_increment: number
+          reserve_price: number
+          start_date?: string | null
+          start_price: number
+          status?: string
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          duration_days?: number
+          end_date?: string | null
+          id?: string
+          min_increment?: number
+          reserve_price?: number
+          start_date?: string | null
+          start_price?: number
+          status?: string
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auctions_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vehicle_features: {
+        Row: {
+          category: string
+          created_at: string
+          feature: string
+          id: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          feature: string
+          id?: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          feature?: string
+          id?: string
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_features_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vehicle_photos: {
+        Row: {
+          created_at: string
+          id: string
+          is_primary: boolean | null
+          position: number
+          url: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean | null
+          position: number
+          url: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean | null
+          position?: number
+          url?: string
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_photos_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vehicles: {
+        Row: {
+          brand: string
+          created_at: string
+          description: string | null
+          fuel: string
+          id: string
+          kilometers: number
+          model: string
+          transmission: string
+          updated_at: string
+          user_id: string | null
+          year: number
+        }
+        Insert: {
+          brand: string
+          created_at?: string
+          description?: string | null
+          fuel: string
+          id?: string
+          kilometers: number
+          model: string
+          transmission: string
+          updated_at?: string
+          user_id?: string | null
+          year: number
+        }
+        Update: {
+          brand?: string
+          created_at?: string
+          description?: string | null
+          fuel?: string
+          id?: string
+          kilometers?: number
+          model?: string
+          transmission?: string
+          updated_at?: string
+          user_id?: string | null
+          year?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
