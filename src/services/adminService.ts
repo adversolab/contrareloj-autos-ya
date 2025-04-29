@@ -65,7 +65,7 @@ export async function getUsers() {
     }
     
     // Obtenemos los datos de autenticación para obtener los emails
-    const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+    const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
     
     if (authError) {
       console.error('Error al obtener datos de autenticación:', authError);
@@ -74,9 +74,11 @@ export async function getUsers() {
     
     // Mapa de ID a email para búsqueda rápida
     const emailMap = new Map();
-    if (authUsers) {
-      authUsers.users.forEach(user => {
-        emailMap.set(user.id, user.email);
+    if (authData && authData.users) {
+      authData.users.forEach((user: any) => {
+        if (user && user.id && user.email) {
+          emailMap.set(user.id, user.email);
+        }
       });
     }
     
