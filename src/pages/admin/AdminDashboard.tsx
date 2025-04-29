@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
+import { Link } from "react-router-dom";
 
 interface DashboardStats {
   totalUsers: number;
@@ -33,13 +34,31 @@ const AdminDashboard = () => {
       
       // Usuarios pendientes de verificación
       // Modificado para incluir a usuarios que tienen rut o documentos subidos pero no están verificados
-      const { count: pendingVerifications } = await supabase
+      const { data: pendingVerificationProfiles, error: pendingError } = await supabase
         .from('profiles')
-        .select('*', { count: 'exact', head: true })
+        .select('*')
         .eq('identity_verified', false)
-        .or('identity_document_url.is.not.null,rut.is.not.null,identity_selfie_url.is.not.null');
+        .not('identity_document_url', 'is', null, { foreignTable: 'identity_document_url' })
+        .or('rut.is.not.null,identity_selfie_url.is.not.null');
+        
+      console.log("Query for pending verifications:", pendingVerificationProfiles);
       
-      console.log("Usuarios pendientes de verificación:", pendingVerifications);
+      if (pendingError) {
+        console.error("Error fetching pending verifications:", pendingError);
+      }
+      
+      // Alternative approach to count pending verifications
+      const { data: allProfiles } = await supabase
+        .from('profiles')
+        .select('id, identity_verified, rut, identity_document_url, identity_selfie_url');
+      
+      // Count users with any verification document but not yet verified
+      const pendingVerifications = (allProfiles || []).filter(profile => 
+        !profile.identity_verified && 
+        (profile.rut || profile.identity_document_url || profile.identity_selfie_url)
+      ).length;
+      
+      console.log("Usuarios pendientes de verificación (computed):", pendingVerifications);
       
       // Total de vehículos
       const { count: totalVehicles } = await supabase
@@ -93,9 +112,15 @@ const AdminDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalUsers}</div>
-            <p className={`text-xs ${stats.pendingVerifications > 0 ? "text-amber-500 font-semibold" : "text-muted-foreground"}`}>
-              {stats.pendingVerifications} pendientes de verificación
-            </p>
+            {stats.pendingVerifications > 0 ? (
+              <Link to="/admin/usuarios#pending-verifications" className="text-xs text-amber-500 font-semibold hover:underline">
+                {stats.pendingVerifications} pendientes de verificación
+              </Link>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                {stats.pendingVerifications} pendientes de verificación
+              </p>
+            )}
           </CardContent>
         </Card>
         

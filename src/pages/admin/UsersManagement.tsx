@@ -84,6 +84,7 @@ const UsersManagement = () => {
            user.role !== 'admin'; // No need to verify admins
   });
 
+  console.log("Pending verification users count:", pendingVerificationUsers.length);
   console.log("Pending verification users:", pendingVerificationUsers);
 
   return (
@@ -188,10 +189,10 @@ const UsersManagement = () => {
 
       {/* Show pending verification section */}
       {pendingVerificationUsers.length > 0 && (
-        <div className="mt-8">
+        <div className="mt-8" id="pending-verifications">
           <div className="flex items-center gap-2 mb-4">
             <AlertCircle className="text-yellow-500" />
-            <h2 className="text-xl font-bold">Usuarios pendientes de verificación</h2>
+            <h2 className="text-xl font-bold">Usuarios pendientes de verificación ({pendingVerificationUsers.length})</h2>
           </div>
           
           <div className="rounded-md border bg-yellow-50">

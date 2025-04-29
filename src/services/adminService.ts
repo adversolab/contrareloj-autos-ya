@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -125,24 +126,35 @@ export async function getUsers() {
       return { users: [] };
     }
     
-    console.log("Profiles fetched:", profiles);
+    console.log("Raw profiles data:", profiles);
     
     // Format users with email data and verification status
-    const formattedUsers: AdminUser[] = (profiles || []).map(profile => ({
-      id: profile.id,
-      email: profile.email || 'Sin correo',
-      first_name: profile.first_name,
-      last_name: profile.last_name,
-      role: profile.role as "user" | "admin" | "moderator",
-      identity_verified: profile.identity_verified || false,
-      created_at: profile.created_at || '',
-      // New fields to identify pending verification users
-      has_identity_document: !!profile.identity_document_url,
-      has_selfie: !!profile.identity_selfie_url,
-      has_rut: !!profile.rut
-    }));
+    const formattedUsers: AdminUser[] = (profiles || []).map(profile => {
+      // Check if any verification fields exist
+      const hasDocument = !!profile.identity_document_url;
+      const hasSelfie = !!profile.identity_selfie_url;
+      const hasRut = !!profile.rut;
+      
+      console.log(`User ${profile.email}: doc=${hasDocument}, selfie=${hasSelfie}, rut=${hasRut}, verified=${profile.identity_verified}`);
+      
+      return {
+        id: profile.id,
+        email: profile.email || 'Sin correo',
+        first_name: profile.first_name,
+        last_name: profile.last_name,
+        role: profile.role as "user" | "admin" | "moderator",
+        identity_verified: profile.identity_verified || false,
+        created_at: profile.created_at || '',
+        // New fields to identify pending verification users
+        has_identity_document: hasDocument,
+        has_selfie: hasSelfie,
+        has_rut: hasRut
+      };
+    });
     
     console.log("Formatted users:", formattedUsers);
+    console.log("Pending verification users:", formattedUsers.filter(user => !user.identity_verified && (user.has_identity_document || user.has_selfie || user.has_rut)));
+    
     return { users: formattedUsers };
   } catch (error) {
     console.error('Error inesperado:', error);
