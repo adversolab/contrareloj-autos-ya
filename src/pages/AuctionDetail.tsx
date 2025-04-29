@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -14,6 +13,7 @@ import AnswerDialog from '@/components/AnswerDialog';
 import BidHistory from '@/components/BidHistory';
 import BidConfirmationDialog from '@/components/BidConfirmationDialog';
 import VerifyIdentityDialog from '@/components/VerifyIdentityDialog';
+import AuctionCallToAction from '@/components/AuctionCallToAction';
 import { 
   getAuctionById, 
   isFavorite, 
@@ -458,7 +458,7 @@ const AuctionDetail = () => {
             {/* Auction Details */}
             <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-sm">
               <div className="mb-4">
-                <p className="text-gray-500 uppercase text-xs font-medium">OFERTA ACTUAL</p>
+                <p className="text-sm text-gray-500 uppercase mb-1">OFERTA ACTUAL</p>
                 <h2 className="text-3xl font-bold">${highestBid.toLocaleString('es-CL')}</h2>
                 <p className="text-sm text-gray-500">{bids.length} ofertas</p>
               </div>
@@ -566,6 +566,11 @@ const AuctionDetail = () => {
                   Compartir
                 </Button>
               </div>
+              
+              {/* Add the Call to Action for non-logged in users */}
+              {!user && (
+                <AuctionCallToAction />
+              )}
             </div>
           </div>
           
