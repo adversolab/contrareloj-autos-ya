@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { uploadIdentityDocument, updateRutInfo, getVerificationStatus } from '@/services/vehicleService';
 import { toast } from 'sonner';
@@ -109,11 +110,11 @@ export const useIdentityVerification = () => {
     setIsLoading(true);
     
     try {
-      // Subir frente del documento - pasando isSelfie como booleano y metadata como tercer parámetro
-      const frontResponse = await uploadIdentityDocument(documentFrontFile, false, { side: 'front' });
+      // Subir frente del documento - usando solo los parámetros esperados
+      const frontResponse = await uploadIdentityDocument(documentFrontFile, false);
       
-      // Subir reverso del documento - pasando isSelfie como booleano y metadata como tercer parámetro
-      const backResponse = await uploadIdentityDocument(documentBackFile, false, { side: 'back' });
+      // Subir reverso del documento - usando solo los parámetros esperados
+      const backResponse = await uploadIdentityDocument(documentBackFile, false);
       
       if (frontResponse.url && backResponse.url) {
         setVerificationStatus(prev => ({ ...prev, hasDocuments: true }));
@@ -136,7 +137,7 @@ export const useIdentityVerification = () => {
     setIsLoading(true);
     
     try {
-      // Usar el parámetro booleano para isSelfie
+      // Usar solo los parámetros esperados
       const { url } = await uploadIdentityDocument(selfieFile, true);
       
       if (url) {
