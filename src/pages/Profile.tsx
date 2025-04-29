@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -11,16 +10,19 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { getUserVehicles } from '@/services/vehicleService';
 
 // Tipos para las subastas
 interface Auction {
-  id: number;
+  id: number | string;
   title: string;
   description: string;
   imageUrl: string;
   currentBid: number;
   endTime: Date;
   bidCount: number;
+  status?: string;
+  auctionId?: string | null;
 }
 
 const Profile = () => {
@@ -41,6 +43,7 @@ const Profile = () => {
   const [favoriteAuctions, setFavoriteAuctions] = useState<Auction[]>([]);
   const [sellingAuctions, setSellingAuctions] = useState<Auction[]>([]);
   const [wonAuctions, setWonAuctions] = useState<Auction[]>([]);
+  const [isLoadingVehicles, setIsLoadingVehicles] = useState(false);
 
   // Cargar datos del perfil
   useEffect(() => {
@@ -59,67 +62,71 @@ const Profile = () => {
     }
   }, [user, isLoading, navigate]);
 
-  // Obtener las subastas del usuario (mock data por ahora)
+  // Obtener las subastas publicadas por el usuario
   useEffect(() => {
-    if (user) {
-      // Aquí normalmente haríamos peticiones a Supabase para obtener las subastas reales
-      // Por ahora usamos datos mock
-      setBiddingAuctions([
-        {
-          id: 1,
-          title: 'Toyota RAV4 2.5 Limited 4x4',
-          description: 'SUV familiar en excelentes condiciones. Motor 2.5L, 4x4, equipamiento full.',
-          imageUrl: 'https://images.unsplash.com/photo-1568844293986-ca4c579100f3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80',
-          currentBid: 18500000,
-          endTime: new Date(Date.now() + 14 * 3600 * 1000), // 14 hours from now
-          bidCount: 8,
-        },
-        {
-          id: 4,
-          title: 'Hyundai Tucson New TL 2.0',
-          description: 'SUV compacto ideal para ciudad y carretera. Motor 2.0L, excelente rendimiento.',
-          imageUrl: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80',
-          currentBid: 14250000,
-          endTime: new Date(Date.now() + 55 * 60 * 1000), // 55 minutes from now
-          bidCount: 18,
-        },
-      ]);
-      
-      setFavoriteAuctions([
-        {
-          id: 3,
-          title: 'Mazda 3 Sport 2.0 GT',
-          description: 'Hatchback deportivo con bajo kilometraje. Motor 2.0L, interior premium.',
-          imageUrl: 'https://images.unsplash.com/photo-1580273916550-e323be2ae537?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1734&q=80',
-          currentBid: 12990000,
-          endTime: new Date(Date.now() + 26 * 3600 * 1000), // 26 hours from now
-          bidCount: 5,
-        },
-        {
-          id: 6,
-          title: 'Kia Sportage 2.0 GSL',
-          description: 'SUV moderno con gran espacio interior. Motor 2.0L, pantalla táctil, cámara retroceso.',
-          imageUrl: 'https://images.unsplash.com/photo-1609521263047-f8f205293f24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80',
-          currentBid: 15990000,
-          endTime: new Date(Date.now() + 3 * 3600 * 1000 + 30 * 60 * 1000), // 3 hours 30 minutes from now
-          bidCount: 10,
-        },
-      ]);
-      
-      setSellingAuctions([
-        {
-          id: 5,
-          title: 'Nissan Versa Advance 1.6',
-          description: 'Sedán económico y cómodo. Motor 1.6L, excelente rendimiento de combustible.',
-          imageUrl: 'https://images.unsplash.com/photo-1619767886558-efdc259cde1a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1632&q=80',
-          currentBid: 8500000,
-          endTime: new Date(Date.now() + 2 * 3600 * 1000 + 15 * 60 * 1000), // 2 hours 15 minutes from now
-          bidCount: 7,
-        },
-      ]);
-      
-      setWonAuctions([]);
-    }
+    const loadUserVehicles = async () => {
+      if (user) {
+        setIsLoadingVehicles(true);
+        try {
+          // Cargar los vehículos publicados por el usuario
+          const { vehicles } = await getUserVehicles(user.id);
+          if (vehicles && vehicles.length > 0) {
+            setSellingAuctions(vehicles);
+          }
+          
+          // Mantener las otras subastas mock por ahora
+          setBiddingAuctions([
+            {
+              id: 1,
+              title: 'Toyota RAV4 2.5 Limited 4x4',
+              description: 'SUV familiar en excelentes condiciones. Motor 2.5L, 4x4, equipamiento full.',
+              imageUrl: 'https://images.unsplash.com/photo-1568844293986-ca4c579100f3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80',
+              currentBid: 18500000,
+              endTime: new Date(Date.now() + 14 * 3600 * 1000), // 14 hours from now
+              bidCount: 8,
+            },
+            {
+              id: 4,
+              title: 'Hyundai Tucson New TL 2.0',
+              description: 'SUV compacto ideal para ciudad y carretera. Motor 2.0L, excelente rendimiento.',
+              imageUrl: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80',
+              currentBid: 14250000,
+              endTime: new Date(Date.now() + 55 * 60 * 1000), // 55 minutes from now
+              bidCount: 18,
+            },
+          ]);
+          
+          setFavoriteAuctions([
+            {
+              id: 3,
+              title: 'Mazda 3 Sport 2.0 GT',
+              description: 'Hatchback deportivo con bajo kilometraje. Motor 2.0L, interior premium.',
+              imageUrl: 'https://images.unsplash.com/photo-1580273916550-e323be2ae537?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1734&q=80',
+              currentBid: 12990000,
+              endTime: new Date(Date.now() + 26 * 3600 * 1000), // 26 hours from now
+              bidCount: 5,
+            },
+            {
+              id: 6,
+              title: 'Kia Sportage 2.0 GSL',
+              description: 'SUV moderno con gran espacio interior. Motor 2.0L, pantalla táctil, cámara retroceso.',
+              imageUrl: 'https://images.unsplash.com/photo-1609521263047-f8f205293f24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80',
+              currentBid: 15990000,
+              endTime: new Date(Date.now() + 3 * 3600 * 1000 + 30 * 60 * 1000), // 3 hours 30 minutes from now
+              bidCount: 10,
+            },
+          ]);
+          
+          setWonAuctions([]);
+        } catch (error) {
+          console.error("Error al cargar vehículos del usuario", error);
+        } finally {
+          setIsLoadingVehicles(false);
+        }
+      }
+    };
+
+    loadUserVehicles();
   }, [user]);
 
   const handleSaveProfile = async () => {
@@ -159,6 +166,18 @@ const Profile = () => {
     }
   };
 
+  // Helper function to safely get the user's initials
+  const getInitials = () => {
+    if (profile?.first_name && profile?.last_name) {
+      return `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase();
+    } else if (profile?.first_name) {
+      return profile.first_name[0].toUpperCase();
+    } else if (user?.email) {
+      return user.email[0].toUpperCase();
+    }
+    return 'U'; // Default fallback
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -188,18 +207,6 @@ const Profile = () => {
       </div>
     );
   }
-  
-  // Helper function to safely get the user's initials
-  const getInitials = () => {
-    if (profile?.first_name && profile?.last_name) {
-      return `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase();
-    } else if (profile?.first_name) {
-      return profile.first_name[0].toUpperCase();
-    } else if (user?.email) {
-      return user.email[0].toUpperCase();
-    }
-    return 'U'; // Default fallback
-  };
   
   return (
     <div className="min-h-screen flex flex-col">
@@ -411,10 +418,22 @@ const Profile = () => {
             </TabsContent>
             
             <TabsContent value="selling">
-              {sellingAuctions.length > 0 ? (
+              {isLoadingVehicles ? (
+                <div className="flex justify-center py-10">
+                  <p>Cargando tus publicaciones...</p>
+                </div>
+              ) : sellingAuctions.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {sellingAuctions.map((auction) => (
-                    <AuctionCard key={auction.id} {...auction} />
+                    <AuctionCard 
+                      key={auction.id} 
+                      {...auction}
+                      onClick={() => {
+                        if (auction.auctionId) {
+                          navigate(`/subasta/${auction.auctionId}`);
+                        }
+                      }} 
+                    />
                   ))}
                 </div>
               ) : (

@@ -46,7 +46,7 @@ const PhotosAndDetailsForm: React.FC<PhotosAndDetailsFormProps> = ({
       <div>
         <h3 className="font-medium mb-3">Sube fotos de tu vehículo</h3>
         <p className="text-sm text-gray-500 mb-4">
-          Las fotos de buena calidad aumentan las posibilidades de venta. Sube al menos 5 fotos.
+          Las fotos de buena calidad aumentan las posibilidades de venta. Sube al menos 5 fotos. (Máximo 20)
         </p>
         
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -112,7 +112,14 @@ const PhotosAndDetailsForm: React.FC<PhotosAndDetailsFormProps> = ({
             <button
               type="button"
               className="border-2 border-dashed border-gray-300 rounded-lg aspect-video flex flex-col items-center justify-center p-4 bg-gray-50 hover:bg-gray-100 transition-colors"
-              onClick={() => onImageUpload({ target: { files: [null] } } as any, uploadedPhotos.length)}
+              onClick={() => {
+                // Create an empty input element and trigger a click event
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+                input.onchange = (e) => onImageUpload(e as any, uploadedPhotos.length);
+                input.click();
+              }}
             >
               <Plus className="h-8 w-8 text-gray-400 mb-2" />
               <span className="text-sm text-gray-500">Agregar foto</span>

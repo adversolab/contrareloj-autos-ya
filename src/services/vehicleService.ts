@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -288,5 +287,56 @@ export async function activateAuction(auctionId: string) {
   } catch (error: any) {
     toast.error(error.message || "Error al activar la subasta");
     return { error, auction: null };
+  }
+}
+
+// Get published vehicles for a user
+export async function getUserVehicles(userId: string) {
+  try {
+    // Get the vehicles for this user
+    const { data: vehicles, error } = await supabase
+      .from('vehicles')
+      .select(`
+        id, 
+        brand, 
+        model, 
+        year, 
+        kilometers, 
+        fuel, 
+        transmission,
+        description,
+        vehicle_photos(url, is_primary),
+        auctions(id, start_price, reserve_price, status, start_date, end_date)
+      `)
+      .eq('user_id', userId);
+
+    if (error) {
+      toast.error(error.message);
+      return { error, vehicles: [] };
+    }
+
+    // Process the vehicles to format them for display
+    const formattedVehicles = vehicles.map(vehicle => {
+      const mainPhoto = vehicle.vehicle_photos.find((photo: any) => photo.is_primary) || 
+                        (vehicle.vehicle_photos.length > 0 ? vehicle.vehicle_photos[0] : null);
+      const auction = vehicle.auctions.length > 0 ? vehicle.auctions[0] : null;
+      
+      return {
+        id: vehicle.id,
+        title: `${vehicle.brand} ${vehicle.model} ${vehicle.year}`,
+        description: vehicle.description || `${vehicle.fuel}, ${vehicle.transmission}, ${vehicle.kilometers.toLocaleString()} km`,
+        imageUrl: mainPhoto ? mainPhoto.url : 'https://images.unsplash.com/photo-1583121274602-3e2820c69888?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80',
+        currentBid: auction ? auction.start_price : 0,
+        endTime: auction ? new Date(auction.end_date) : new Date(Date.now() + 7 * 24 * 3600 * 1000),
+        bidCount: 0, // Default to 0 since we don't have this info yet
+        status: auction ? auction.status : 'draft',
+        auctionId: auction ? auction.id : null,
+      };
+    });
+
+    return { error: null, vehicles: formattedVehicles };
+  } catch (error: any) {
+    toast.error(error.message || "Error al obtener vehículos del usuario");
+    return { error, vehicles: [] };
   }
 }

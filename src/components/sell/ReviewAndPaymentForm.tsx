@@ -1,7 +1,8 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { VehicleBasicInfo, AuctionInfo } from '@/services/vehicleService';
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface ReviewAndPaymentFormProps {
   carInfo: VehicleBasicInfo;
@@ -20,6 +21,15 @@ const ReviewAndPaymentForm: React.FC<ReviewAndPaymentFormProps> = ({
   onSubmit,
   isProcessing
 }) => {
+  const [accepted, setAccepted] = useState(false);
+
+  // Calculate total
+  const basePrice = 25000;
+  const verificationPrice = auctionInfo.services.includes('verification') ? 80000 : 0;
+  const photographyPrice = auctionInfo.services.includes('photography') ? 50000 : 0;
+  const highlightPrice = auctionInfo.services.includes('highlight') ? 30000 : 0;
+  const totalPrice = basePrice + verificationPrice + photographyPrice + highlightPrice;
+
   return (
     <div className="space-y-6">
       <div className="border rounded-lg overflow-hidden">
@@ -38,7 +48,7 @@ const ReviewAndPaymentForm: React.FC<ReviewAndPaymentFormProps> = ({
             
             <div>
               <h4 className="text-sm text-gray-500 mb-1">Precio de inicio</h4>
-              <p className="font-medium">${auctionInfo.startPrice.toLocaleString()}</p>
+              <p className="font-medium">${typeof auctionInfo.startPrice === 'number' ? auctionInfo.startPrice.toLocaleString() : '0'}</p>
             </div>
             
             <div>
@@ -48,7 +58,17 @@ const ReviewAndPaymentForm: React.FC<ReviewAndPaymentFormProps> = ({
             
             <div>
               <h4 className="text-sm text-gray-500 mb-1">Incremento mínimo</h4>
-              <p className="font-medium">${auctionInfo.minIncrement.toLocaleString()}</p>
+              <p className="font-medium">${typeof auctionInfo.minIncrement === 'number' ? auctionInfo.minIncrement.toLocaleString() : '0'}</p>
+            </div>
+
+            <div>
+              <h4 className="text-sm text-gray-500 mb-1">Kilometraje</h4>
+              <p className="font-medium">{parseInt(carInfo.kilometers).toLocaleString()} km</p>
+            </div>
+            
+            <div>
+              <h4 className="text-sm text-gray-500 mb-1">Transmisión</h4>
+              <p className="font-medium">{carInfo.transmission}</p>
             </div>
           </div>
           
@@ -73,29 +93,25 @@ const ReviewAndPaymentForm: React.FC<ReviewAndPaymentFormProps> = ({
           <div className="space-y-2">
             <div className="flex justify-between">
               <span>Tarifa básica de publicación</span>
-              <span>$25.000</span>
+              <span>${basePrice.toLocaleString()}</span>
             </div>
             <div className="flex justify-between">
               <span>Verificación mecánica</span>
-              <span>{auctionInfo.services.includes('verification') ? '$80.000' : '$0'}</span>
+              <span>{auctionInfo.services.includes('verification') ? `$${verificationPrice.toLocaleString()}` : '$0'}</span>
             </div>
             <div className="flex justify-between">
               <span>Servicio de fotografía</span>
-              <span>{auctionInfo.services.includes('photography') ? '$50.000' : '$0'}</span>
+              <span>{auctionInfo.services.includes('photography') ? `$${photographyPrice.toLocaleString()}` : '$0'}</span>
             </div>
             <div className="flex justify-between">
               <span>Destacar anuncio</span>
-              <span>{auctionInfo.services.includes('highlight') ? '$30.000' : '$0'}</span>
+              <span>{auctionInfo.services.includes('highlight') ? `$${highlightPrice.toLocaleString()}` : '$0'}</span>
             </div>
             
             <div className="border-t pt-2 mt-2">
               <div className="flex justify-between font-bold">
                 <span>Total</span>
-                <span>${(25000 + 
-                  (auctionInfo.services.includes('verification') ? 80000 : 0) + 
-                  (auctionInfo.services.includes('photography') ? 50000 : 0) + 
-                  (auctionInfo.services.includes('highlight') ? 30000 : 0)
-                ).toLocaleString()}</span>
+                <span>${totalPrice.toLocaleString()}</span>
               </div>
               <p className="text-xs text-gray-500 mt-1">
                 Cobraremos una comisión del 5% sobre el valor final de venta solo si se concreta la transacción.
@@ -157,10 +173,15 @@ const ReviewAndPaymentForm: React.FC<ReviewAndPaymentFormProps> = ({
       </div>
       
       <div className="flex items-start mb-4">
-        <input type="checkbox" className="mt-1 mr-3" />
-        <p className="text-sm">
-          Acepto los <a href="/terminos" className="text-contrareloj hover:underline">Términos y Condiciones</a> y confirmo que la información proporcionada es correcta.
-        </p>
+        <div className="flex items-center space-x-2">
+          <Checkbox id="terms" checked={accepted} onCheckedChange={(value) => setAccepted(!!value)} />
+          <label
+            htmlFor="terms"
+            className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+          >
+            Acepto los <a href="/terminos" className="text-contrareloj hover:underline">Términos y Condiciones</a> y confirmo que la información proporcionada es correcta.
+          </label>
+        </div>
       </div>
       
       <div className="flex justify-between">
@@ -174,7 +195,7 @@ const ReviewAndPaymentForm: React.FC<ReviewAndPaymentFormProps> = ({
         <Button 
           className="bg-contrareloj hover:bg-contrareloj-dark text-white"
           onClick={onSubmit}
-          disabled={isProcessing}
+          disabled={isProcessing || !accepted}
         >
           {isProcessing ? "Procesando..." : "Pagar y publicar"}
         </Button>
