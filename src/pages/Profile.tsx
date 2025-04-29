@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -14,7 +15,7 @@ import { getUserVehicles } from '@/services/vehicleService';
 
 // Tipos para las subastas
 interface Auction {
-  id: number | string;
+  id: string | number;
   title: string;
   description: string;
   imageUrl: string;
@@ -74,52 +75,13 @@ const Profile = () => {
             setSellingAuctions(vehicles);
           }
           
-          // Mantener las otras subastas mock por ahora
-          setBiddingAuctions([
-            {
-              id: 1,
-              title: 'Toyota RAV4 2.5 Limited 4x4',
-              description: 'SUV familiar en excelentes condiciones. Motor 2.5L, 4x4, equipamiento full.',
-              imageUrl: 'https://images.unsplash.com/photo-1568844293986-ca4c579100f3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80',
-              currentBid: 18500000,
-              endTime: new Date(Date.now() + 14 * 3600 * 1000), // 14 hours from now
-              bidCount: 8,
-            },
-            {
-              id: 4,
-              title: 'Hyundai Tucson New TL 2.0',
-              description: 'SUV compacto ideal para ciudad y carretera. Motor 2.0L, excelente rendimiento.',
-              imageUrl: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80',
-              currentBid: 14250000,
-              endTime: new Date(Date.now() + 55 * 60 * 1000), // 55 minutes from now
-              bidCount: 18,
-            },
-          ]);
-          
-          setFavoriteAuctions([
-            {
-              id: 3,
-              title: 'Mazda 3 Sport 2.0 GT',
-              description: 'Hatchback deportivo con bajo kilometraje. Motor 2.0L, interior premium.',
-              imageUrl: 'https://images.unsplash.com/photo-1580273916550-e323be2ae537?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1734&q=80',
-              currentBid: 12990000,
-              endTime: new Date(Date.now() + 26 * 3600 * 1000), // 26 hours from now
-              bidCount: 5,
-            },
-            {
-              id: 6,
-              title: 'Kia Sportage 2.0 GSL',
-              description: 'SUV moderno con gran espacio interior. Motor 2.0L, pantalla táctil, cámara retroceso.',
-              imageUrl: 'https://images.unsplash.com/photo-1609521263047-f8f205293f24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80',
-              currentBid: 15990000,
-              endTime: new Date(Date.now() + 3 * 3600 * 1000 + 30 * 60 * 1000), // 3 hours 30 minutes from now
-              bidCount: 10,
-            },
-          ]);
-          
+          // Por ahora, dejamos las otras listas vacías ya que no tenemos datos reales
+          setBiddingAuctions([]);
+          setFavoriteAuctions([]);
           setWonAuctions([]);
         } catch (error) {
           console.error("Error al cargar vehículos del usuario", error);
+          toast.error("Error al cargar tus vehículos");
         } finally {
           setIsLoadingVehicles(false);
         }
@@ -355,7 +317,7 @@ const Profile = () => {
             </div>
           </div>
           
-          <Tabs defaultValue="bidding" className="space-y-6">
+          <Tabs defaultValue="selling" className="space-y-6">
             <TabsList className="w-full border-b">
               <TabsTrigger value="bidding" className="flex-1">
                 Mis ofertas ({biddingAuctions.length})
@@ -428,8 +390,9 @@ const Profile = () => {
                     <AuctionCard 
                       key={auction.id} 
                       {...auction}
-                      onClick={() => {
+                      onClick={(e) => {
                         if (auction.auctionId) {
+                          e.preventDefault();
                           navigate(`/subasta/${auction.auctionId}`);
                         }
                       }} 

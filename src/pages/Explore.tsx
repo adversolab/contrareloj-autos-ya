@@ -1,99 +1,90 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import AuctionCard from '@/components/AuctionCard';
 import FilterSection from '@/components/FilterSection';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
 
-// Mock data for auctions
-const auctions = [
-  {
-    id: 1,
-    title: 'Toyota RAV4 2.5 Limited 4x4',
-    description: 'SUV familiar en excelentes condiciones. Motor 2.5L, 4x4, equipamiento full.',
-    imageUrl: 'https://images.unsplash.com/photo-1568844293986-ca4c579100f3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80',
-    currentBid: 18500000,
-    endTime: new Date(Date.now() + 14 * 3600 * 1000), // 14 hours from now
-    bidCount: 8,
-  },
-  {
-    id: 2,
-    title: 'Ford F-150 Lariat 3.5 Ecoboost',
-    description: 'Camioneta potente y espaciosa. Motor 3.5L Ecoboost, cuero, cámara retroceso.',
-    imageUrl: 'https://images.unsplash.com/photo-1605893477799-b99e3b8b93fe?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80',
-    currentBid: 22450000,
-    endTime: new Date(Date.now() + 3 * 3600 * 1000), // 3 hours from now
-    bidCount: 12,
-  },
-  {
-    id: 3,
-    title: 'Mazda 3 Sport 2.0 GT',
-    description: 'Hatchback deportivo con bajo kilometraje. Motor 2.0L, interior premium.',
-    imageUrl: 'https://images.unsplash.com/photo-1580273916550-e323be2ae537?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1734&q=80',
-    currentBid: 12990000,
-    endTime: new Date(Date.now() + 26 * 3600 * 1000), // 26 hours from now
-    bidCount: 5,
-  },
-  {
-    id: 4,
-    title: 'Hyundai Tucson New TL 2.0',
-    description: 'SUV compacto ideal para ciudad y carretera. Motor 2.0L, excelente rendimiento.',
-    imageUrl: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80',
-    currentBid: 14250000,
-    endTime: new Date(Date.now() + 55 * 60 * 1000), // 55 minutes from now
-    bidCount: 18,
-  },
-  {
-    id: 5,
-    title: 'Nissan Versa Advance 1.6',
-    description: 'Sedán económico y cómodo. Motor 1.6L, excelente rendimiento de combustible.',
-    imageUrl: 'https://images.unsplash.com/photo-1619767886558-efdc259cde1a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1632&q=80',
-    currentBid: 8500000,
-    endTime: new Date(Date.now() + 2 * 3600 * 1000 + 15 * 60 * 1000), // 2 hours 15 minutes from now
-    bidCount: 7,
-  },
-  {
-    id: 6,
-    title: 'Kia Sportage 2.0 GSL',
-    description: 'SUV moderno con gran espacio interior. Motor 2.0L, pantalla táctil, cámara retroceso.',
-    imageUrl: 'https://images.unsplash.com/photo-1609521263047-f8f205293f24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80',
-    currentBid: 15990000,
-    endTime: new Date(Date.now() + 3 * 3600 * 1000 + 30 * 60 * 1000), // 3 hours 30 minutes from now
-    bidCount: 10,
-  },
-  {
-    id: 7,
-    title: 'Chevrolet Onix LTZ 1.4',
-    description: 'Compacto urbano con gran equipamiento. Motor 1.4L, pantalla táctil, Android Auto/Apple CarPlay.',
-    imageUrl: 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80',
-    currentBid: 7990000,
-    endTime: new Date(Date.now() + 12 * 3600 * 1000), // 12 hours from now
-    bidCount: 3,
-  },
-  {
-    id: 8,
-    title: 'Subaru XV 2.0i AWD',
-    description: 'Crossover con tracción integral permanente. Motor 2.0L, alto despeje.',
-    imageUrl: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80',
-    currentBid: 16490000,
-    endTime: new Date(Date.now() + 5 * 24 * 3600 * 1000), // 5 days from now
-    bidCount: 2,
-  },
-  {
-    id: 9,
-    title: 'Honda Civic Si',
-    description: 'Sedán deportivo con motor turbo. Excelentes prestaciones y manejo deportivo.',
-    imageUrl: 'https://images.unsplash.com/photo-1583121274602-3e2820c69888?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80',
-    currentBid: 17990000,
-    endTime: new Date(Date.now() + 2 * 24 * 3600 * 1000), // 2 days from now
-    bidCount: 6,
-  }
-];
+interface Auction {
+  id: string | number;
+  title: string;
+  description: string;
+  imageUrl: string;
+  currentBid: number;
+  endTime: Date;
+  bidCount: number;
+}
 
 const Explore = () => {
   const [sortBy, setSortBy] = useState('endingSoon');
   const [showFilter, setShowFilter] = useState(false);
+  const [auctions, setAuctions] = useState<Auction[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAuctions = async () => {
+      setIsLoading(true);
+      try {
+        // Get active auctions with vehicle details and photos
+        const { data, error } = await supabase
+          .from('auctions')
+          .select(`
+            id,
+            start_price,
+            reserve_price,
+            start_date,
+            end_date,
+            status,
+            vehicles (
+              id,
+              brand,
+              model,
+              year,
+              description,
+              vehicle_photos (
+                url,
+                is_primary
+              )
+            )
+          `)
+          .eq('status', 'active');
+
+        if (error) {
+          console.error('Error fetching auctions:', error);
+          return;
+        }
+
+        if (data && data.length > 0) {
+          // Process auction data for display
+          const processedAuctions = data.map(auction => {
+            const vehicle = auction.vehicles;
+            const mainPhoto = vehicle?.vehicle_photos?.find((photo: any) => photo.is_primary) || 
+                             (vehicle?.vehicle_photos?.length > 0 ? vehicle.vehicle_photos[0] : null);
+            
+            return {
+              id: auction.id,
+              title: vehicle ? `${vehicle.brand} ${vehicle.model} ${vehicle.year}` : 'Vehículo',
+              description: vehicle?.description || '',
+              imageUrl: mainPhoto ? mainPhoto.url : 'https://images.unsplash.com/photo-1583121274602-3e2820c69888?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80',
+              currentBid: auction.start_price || 0,
+              endTime: auction.end_date ? new Date(auction.end_date) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+              bidCount: 0, // Default to 0 for now, can be updated with actual bid count in the future
+            };
+          });
+
+          setAuctions(processedAuctions);
+        }
+      } catch (error) {
+        console.error('Error in fetchAuctions:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAuctions();
+  }, []);
 
   // Sort the auctions based on the selected criteria
   const sortedAuctions = [...auctions].sort((a, b) => {
@@ -155,17 +146,35 @@ const Explore = () => {
           </div>
         )}
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sortedAuctions.map((auction) => (
-            <AuctionCard key={auction.id} {...auction} />
-          ))}
-        </div>
+        {isLoading ? (
+          <div className="flex justify-center py-20">
+            <p>Cargando subastas...</p>
+          </div>
+        ) : sortedAuctions.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {sortedAuctions.map((auction) => (
+              <AuctionCard key={auction.id} {...auction} />
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+              <span className="text-3xl">🔍</span>
+            </div>
+            <h3 className="text-xl font-medium mb-2">No hay subastas activas</h3>
+            <p className="text-gray-500 mb-6">
+              Pronto tendremos más vehículos disponibles.
+            </p>
+          </div>
+        )}
         
-        <div className="mt-12 flex justify-center">
-          <Button variant="outline" className="text-contrareloj border-contrareloj hover:bg-contrareloj hover:text-white">
-            Cargar más
-          </Button>
-        </div>
+        {sortedAuctions.length > 6 && (
+          <div className="mt-12 flex justify-center">
+            <Button variant="outline" className="text-contrareloj border-contrareloj hover:bg-contrareloj hover:text-white">
+              Cargar más
+            </Button>
+          </div>
+        )}
       </main>
       
       <Footer />

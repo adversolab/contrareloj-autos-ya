@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -327,7 +328,7 @@ export async function getUserVehicles(userId: string) {
         description: vehicle.description || `${vehicle.fuel}, ${vehicle.transmission}, ${vehicle.kilometers.toLocaleString()} km`,
         imageUrl: mainPhoto ? mainPhoto.url : 'https://images.unsplash.com/photo-1583121274602-3e2820c69888?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80',
         currentBid: auction ? auction.start_price : 0,
-        endTime: auction ? new Date(auction.end_date) : new Date(Date.now() + 7 * 24 * 3600 * 1000),
+        endTime: auction && auction.end_date ? new Date(auction.end_date) : new Date(Date.now() + 7 * 24 * 3600 * 1000),
         bidCount: 0, // Default to 0 since we don't have this info yet
         status: auction ? auction.status : 'draft',
         auctionId: auction ? auction.id : null,
@@ -338,5 +339,62 @@ export async function getUserVehicles(userId: string) {
   } catch (error: any) {
     toast.error(error.message || "Error al obtener vehículos del usuario");
     return { error, vehicles: [] };
+  }
+}
+
+// Get auction details by ID
+export async function getAuctionById(auctionId: string) {
+  try {
+    const { data: auction, error } = await supabase
+      .from('auctions')
+      .select(`
+        id,
+        status,
+        start_price,
+        reserve_price,
+        min_increment,
+        start_date,
+        end_date,
+        vehicles (
+          id,
+          brand,
+          model,
+          year,
+          kilometers,
+          fuel,
+          transmission,
+          description,
+          user_id,
+          vehicle_photos (
+            id,
+            url,
+            is_primary,
+            position
+          ),
+          vehicle_features (
+            id,
+            category,
+            feature
+          )
+        )
+      `)
+      .eq('id', auctionId)
+      .single();
+
+    if (error) {
+      toast.error("Error al cargar los detalles de la subasta");
+      console.error(error);
+      return { error, auction: null };
+    }
+
+    if (!auction) {
+      return { error: new Error("Subasta no encontrada"), auction: null };
+    }
+    
+    return { error: null, auction };
+  } catch (error: any) {
+    toast.error("Error al cargar los detalles de la subasta");
+    console.error(error);
+    return { error, auction: null };
   }
 }
