@@ -1,6 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Database } from "@/integrations/supabase/types";
 
 // Tipos
 export interface AdminUser {
@@ -8,7 +9,7 @@ export interface AdminUser {
   email: string;
   first_name?: string;
   last_name?: string;
-  role: string;
+  role: "user" | "admin" | "moderator"; // Especificamos los valores permitidos
   identity_verified: boolean;
   created_at: string;
 }
@@ -65,7 +66,7 @@ export async function getUsers() {
     // Formatear usuarios
     const formattedUsers = users.map(user => ({
       id: user.id,
-      email: user.auth_users?.email || 'Sin correo',
+      email: (user.auth_users as { email: string } | null)?.email || 'Sin correo',
       first_name: user.first_name,
       last_name: user.last_name,
       role: user.role,
@@ -103,7 +104,7 @@ export async function verifyUser(userId: string) {
   }
 }
 
-export async function updateUserRole(userId: string, role: string) {
+export async function updateUserRole(userId: string, role: "user" | "admin" | "moderator") {
   try {
     const { error } = await supabase
       .from('profiles')
@@ -157,9 +158,9 @@ export async function getVehicles() {
       is_approved: vehicle.is_approved || false,
       created_at: vehicle.created_at,
       user: {
-        email: vehicle.profiles?.email || 'Sin correo',
-        first_name: vehicle.profiles?.first_name,
-        last_name: vehicle.profiles?.last_name
+        email: vehicle.profiles ? (vehicle.profiles as any).email || 'Sin correo' : 'Sin correo',
+        first_name: vehicle.profiles ? (vehicle.profiles as any).first_name : undefined,
+        last_name: vehicle.profiles ? (vehicle.profiles as any).last_name : undefined
       }
     }));
     
@@ -237,9 +238,9 @@ export async function getAuctions() {
         year: auction.vehicles?.year || 0
       },
       user: {
-        email: auction.vehicles?.profiles?.email || 'Sin correo',
-        first_name: auction.vehicles?.profiles?.first_name,
-        last_name: auction.vehicles?.profiles?.last_name
+        email: auction.vehicles?.profiles ? (auction.vehicles.profiles as any).email || 'Sin correo' : 'Sin correo',
+        first_name: auction.vehicles?.profiles ? (auction.vehicles.profiles as any).first_name : undefined,
+        last_name: auction.vehicles?.profiles ? (auction.vehicles.profiles as any).last_name : undefined
       }
     }));
     
