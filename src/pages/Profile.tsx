@@ -189,6 +189,18 @@ const Profile = () => {
     );
   }
   
+  // Helper function to safely get the user's initials
+  const getInitials = () => {
+    if (profile?.first_name && profile?.last_name) {
+      return `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase();
+    } else if (profile?.first_name) {
+      return profile.first_name[0].toUpperCase();
+    } else if (user?.email) {
+      return user.email[0].toUpperCase();
+    }
+    return 'U'; // Default fallback
+  };
+  
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -201,9 +213,7 @@ const Profile = () => {
                 <div className="flex items-center mb-4 md:mb-0">
                   <Avatar className="w-16 h-16 mr-4">
                     <AvatarFallback className="text-2xl">
-                      {profile.first_name && profile.last_name 
-                        ? `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase() 
-                        : profile.email[0].toUpperCase()}
+                      {getInitials()}
                     </AvatarFallback>
                   </Avatar>
                   <div>
