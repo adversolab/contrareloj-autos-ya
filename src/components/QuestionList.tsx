@@ -13,7 +13,7 @@ interface Question {
   profiles: {
     first_name: string | null;
     last_name: string | null;
-  };
+  } | null; // Mark profiles as potentially null
 }
 
 interface QuestionListProps {
@@ -45,7 +45,8 @@ const QuestionList: React.FC<QuestionListProps> = ({ questions, isOwner, onAnswe
           <div className="flex items-start justify-between">
             <div>
               <p className="font-medium">
-                {question.profiles.first_name || 'Usuario'} {question.profiles.last_name || ''}
+                {/* Add null checks for profiles object */}
+                {question.profiles?.first_name || 'Usuario'} {question.profiles?.last_name || ''}
                 <span className="ml-2 text-sm text-gray-500 font-normal">
                   • {formatDate(question.created_at)}
                 </span>
