@@ -196,7 +196,8 @@ export async function deleteVehicle(vehicleId: string) {
 // Auction interaction functions
 export async function getAuctionById(auctionId: string) {
   try {
-    const { data, error } = await supabase
+    // Primero, obtener la información básica de la subasta
+    const { data: auction, error } = await supabase
       .from('auctions')
       .select(`
         *,
@@ -209,7 +210,34 @@ export async function getAuctionById(auctionId: string) {
       throw error;
     }
     
-    return { auction: data, error: null };
+    // Después, obtener las fotos del vehículo separadamente
+    if (auction && auction.vehicle_id) {
+      const { data: photos, error: photosError } = await supabase
+        .from('vehicle_photos')
+        .select('*')
+        .eq('vehicle_id', auction.vehicle_id)
+        .order('position', { ascending: true });
+      
+      if (!photosError && photos && photos.length > 0) {
+        // Si hay fotos, añadirlas a la respuesta
+        auction.vehicles.vehicle_photos = photos;
+      }
+      
+      // Obtener características del vehículo
+      const { data: features, error: featuresError } = await supabase
+        .from('vehicle_features')
+        .select('*')
+        .eq('vehicle_id', auction.vehicle_id);
+      
+      if (!featuresError && features && features.length > 0) {
+        // Añadir características al vehículo
+        auction.vehicles.vehicle_features = features;
+      }
+    }
+    
+    console.log("Full auction data with photos:", auction);
+    
+    return { auction, error: null };
   } catch (error) {
     console.error('Error al obtener subasta:', error);
     return { auction: null, error };
@@ -626,6 +654,8 @@ export async function uploadVehiclePhoto(vehicleId: string, photo: {
     if (!publicUrl) {
       throw new Error('Error getting public URL for uploaded image');
     }
+
+    console.log("Image uploaded successfully. URL:", publicUrl.publicUrl);
 
     // Save the photo info to the database
     const { error: dbError } = await supabase

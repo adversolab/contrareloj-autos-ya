@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -83,8 +84,25 @@ const AuctionDetail = () => {
         
         if (auction) {
           setAuctionData(auction);
-          if (auction.vehicles && auction.vehicles.vehicle_photos) {
-            setVehiclePhotos(auction.vehicles.vehicle_photos.sort((a: any, b: any) => a.position - b.position));
+          
+          // Fetch vehicle photos
+          if (auction.vehicle_id) {
+            try {
+              const { data: photos } = await supabase
+                .from('vehicle_photos')
+                .select('*')
+                .eq('vehicle_id', auction.vehicle_id)
+                .order('position', { ascending: true });
+              
+              if (photos && photos.length > 0) {
+                console.log("Found photos:", photos);
+                setVehiclePhotos(photos);
+              } else {
+                console.warn("No photos found for vehicle ID:", auction.vehicle_id);
+              }
+            } catch (photoError) {
+              console.error("Error fetching vehicle photos:", photoError);
+            }
           }
           
           if (auction.vehicles && auction.vehicles.vehicle_features) {
@@ -136,8 +154,12 @@ const AuctionDetail = () => {
     const checkFavoriteStatus = async () => {
       if (!id || !user) return;
       
-      const { isFavorite: isFav } = await isFavorite(id);
-      setIsFavoriteAuction(isFav);
+      try {
+        const { isFavorite: isFav } = await isFavorite(id);
+        setIsFavoriteAuction(isFav);
+      } catch (error) {
+        console.error("Error checking favorite status:", error);
+      }
     };
     
     checkFavoriteStatus();
@@ -217,8 +239,6 @@ const AuctionDetail = () => {
           navigate('/404');
         }
       }
-      
-      // Fetch auction details, photos, etc.
     }
   }, [auctionData, user, profile, navigate]);
 
