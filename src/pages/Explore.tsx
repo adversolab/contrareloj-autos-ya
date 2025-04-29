@@ -15,6 +15,7 @@ interface Auction {
   currentBid: number;
   endTime: Date;
   bidCount: number;
+  status: string;
 }
 
 const Explore = () => {
@@ -65,12 +66,14 @@ const Explore = () => {
             
             return {
               id: auction.id,
+              auctionId: auction.id, // Adding auctionId to match the Auction type
               title: vehicle ? `${vehicle.brand} ${vehicle.model} ${vehicle.year}` : 'Vehículo',
               description: vehicle?.description || '',
               imageUrl: mainPhoto ? mainPhoto.url : 'https://images.unsplash.com/photo-1583121274602-3e2820c69888?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80',
               currentBid: auction.start_price || 0,
               endTime: auction.end_date ? new Date(auction.end_date) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
               bidCount: 0, // Default to 0 for now, can be updated with actual bid count in the future
+              status: auction.status || 'active'
             };
           });
 
@@ -153,7 +156,7 @@ const Explore = () => {
         ) : sortedAuctions.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {sortedAuctions.map((auction) => (
-              <AuctionCard key={auction.id} {...auction} />
+              <AuctionCard key={auction.id} auction={auction} />
             ))}
           </div>
         ) : (

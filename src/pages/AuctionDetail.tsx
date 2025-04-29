@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -28,7 +29,9 @@ import {
   placeBid,
   finalizeAuction,
   getVerificationStatus,
-  deleteAuction
+  deleteAuction,
+  submitQuestion,
+  answerQuestion
 } from '@/services/vehicleService';
 
 import { Button } from '@/components/ui/button';
@@ -42,6 +45,7 @@ import VerifyIdentityDialog from '@/components/VerifyIdentityDialog';
 import AnswerDialog from '@/components/AnswerDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
 
 interface Auction {
   id: string;
@@ -87,7 +91,7 @@ const AuctionDetail = () => {
     hasDocuments: false,
     hasSelfie: false
   });
-  const [isAnswering, setIsAnswering] = useState(null);
+  const [isAnswering, setIsAnswering] = useState<string | null>(null);
   const [answerText, setAnswerText] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -141,14 +145,13 @@ const AuctionDetail = () => {
     setToggleFavLoading(false);
   };
 
-  const submitQuestion = async () => {
-    if (id && newQuestion.trim() !== '') {
-      await placeBid(id, { amount: 1000, holdAmount: 1000 });
-      const { success } = await submitQuestion(id, newQuestion);
-      if (success) {
-        setNewQuestion('');
-        fetchQuestions();
-      }
+  const handleSubmitQuestion = async () => {
+    if (!id || newQuestion.trim() === '') return;
+    
+    const result = await submitQuestion(id, newQuestion);
+    if (result.success) {
+      setNewQuestion('');
+      fetchQuestions();
     }
   };
 
@@ -164,7 +167,7 @@ const AuctionDetail = () => {
     setIsBidDialogOpen(false);
   };
 
-  const handleBidAmountChange = (e) => {
+  const handleBidAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setBidAmount(Number(e.target.value));
   };
 
@@ -177,13 +180,8 @@ const AuctionDetail = () => {
       return;
     }
 
-    const bidInfo = {
-      amount: bidAmount,
-      holdAmount: bidAmount * 1.1 // Example: Hold 10% more
-    };
-
-    const { success } = await placeBid(id, bidInfo);
-    if (success) {
+    const result = await placeBid(id, bidAmount);
+    if (result.success) {
       fetchBids();
       handleCloseBidDialog();
     }
@@ -200,14 +198,14 @@ const AuctionDetail = () => {
 
   const handleFinalizeAuction = async () => {
     if (!id) return;
-    const { success, winnerId } = await finalizeAuction(id);
-    if (success) {
+    const result = await finalizeAuction(id);
+    if (result.success) {
       // Handle success, maybe navigate to a winner page or display a message
-      console.log('Auction finalized, winner ID:', winnerId);
+      console.log('Auction finalized, winner ID:', result.winnerId);
     }
   };
 
-  const handleAnswer = (questionId) => {
+  const handleAnswer = (questionId: string) => {
     setIsAnswering(questionId);
   };
 
@@ -216,14 +214,14 @@ const AuctionDetail = () => {
     setAnswerText('');
   };
 
-  const handleAnswerChange = (e) => {
+  const handleAnswerChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setAnswerText(e.target.value);
   };
 
   const handleSubmitAnswer = async () => {
     if (!isAnswering) return;
-    const { success } = await answerQuestion(isAnswering, answerText);
-    if (success) {
+    const result = await answerQuestion(isAnswering, answerText);
+    if (result.success) {
       fetchQuestions();
       handleCloseAnswerDialog();
     }
@@ -231,7 +229,9 @@ const AuctionDetail = () => {
   
   // Add new function to handle auction deletion
   const handleDeleteAuction = async () => {
-    const success = await deleteAuction(auction.id);
+    if (!id) return;
+    
+    const success = await deleteAuction(id);
     if (success) {
       toast.success('Subasta eliminada correctamente');
       navigate('/explorar');
@@ -264,7 +264,7 @@ const AuctionDetail = () => {
                       <Clock className="mr-2 h-4 w-4" />
                       Finaliza el {auction.end_date ? formatDate(auction.end_date) : 'Desconocida'}
                     </Badge>
-                    <CountdownTimer endTime={auction.end_date} />
+                    <CountdownTimer endTime={new Date(auction.end_date)} />
                   </div>
                   <div className="flex items-center gap-4">
                     <User className="mr-2 h-4 w-4" />
@@ -411,9 +411,8 @@ const AuctionDetail = () => {
                     />
                     {user && (
                       <QuestionForm 
-                        question={newQuestion}
-                        onChange={(e) => setNewQuestion(e.target.value)}
-                        onSubmit={submitQuestion}
+                        auctionId={id || ''} 
+                        onQuestionSubmitted={fetchQuestions}
                       />
                     )}
                   </div>
@@ -429,9 +428,9 @@ const AuctionDetail = () => {
             <BidConfirmationDialog
               isOpen={isBidDialogOpen}
               onClose={handleCloseBidDialog}
-              bidAmount={bidAmount}
-              onBidAmountChange={handleBidAmountChange}
-              onConfirmBid={handlePlaceBid}
+              onConfirm={handlePlaceBid}
+              currentBid={auction.start_price}
+              minIncrement={auction.min_increment}
             />
             
             <VerifyIdentityDialog
@@ -442,9 +441,7 @@ const AuctionDetail = () => {
             <AnswerDialog
               isOpen={!!isAnswering}
               onClose={handleCloseAnswerDialog}
-              answerText={answerText}
-              onAnswerChange={handleAnswerChange}
-              onSubmitAnswer={handleSubmitAnswer}
+              onSubmit={handleSubmitAnswer}
             />
           </>
         )

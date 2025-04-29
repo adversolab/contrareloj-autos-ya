@@ -1,6 +1,7 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Clock, Trash } from 'lucide-react';
+import { Clock, Trash, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { addToFavorites, removeFromFavorites, isFavorite, deleteAuction } from '@/services/vehicleService';
@@ -34,8 +35,8 @@ const AuctionCard = ({ auction, onDeleted }: AuctionCardProps) => {
   // Verificar si es favorito al cargar
   const checkIfFavorite = async () => {
     if (auction.auctionId) {
-      const { isFavorite: isFav } = await isFavorite(auction.auctionId);
-      setIsFav(isFav);
+      const result = await isFavorite(auction.auctionId);
+      setIsFav(result.isFavorite);
     }
   };
 
@@ -50,7 +51,7 @@ const AuctionCard = ({ auction, onDeleted }: AuctionCardProps) => {
     }
   };
 
-  useState(() => {
+  useEffect(() => {
     checkIfFavorite();
   }, [auction.auctionId]);
 
