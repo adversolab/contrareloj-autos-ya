@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,24 +31,31 @@ const AdminDashboard = () => {
         .from('profiles')
         .select('*', { count: 'exact', head: true });
       
-      // Obtener usuarios pendientes de verificación
-      // Enfoque más sencillo - buscar usuarios con documentos pero sin verificar
-      const { data: pendingProfiles, error: pendingError } = await supabase
+      // Improved approach to find users with documents but not verified
+      const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, identity_verified, rut, identity_document_url, identity_selfie_url')
         .eq('identity_verified', false);
+        
+      if (profilesError) {
+        console.error("Error fetching profiles:", profilesError);
+      }
       
-      // Filtrar manualmente los usuarios con documentos pero sin verificar
-      const pendingVerifications = pendingProfiles?.filter(profile => 
+      // Filter users with any document but who aren't verified yet
+      const pendingVerifications = profiles?.filter(profile => 
         !profile.identity_verified && 
         (profile.rut || profile.identity_document_url || profile.identity_selfie_url)
       ).length || 0;
       
-      console.log("Total de usuarios pendientes de verificación:", pendingVerifications);
+      console.log("Profiles with verification status:", profiles?.map(p => ({
+        id: p.id,
+        verified: p.identity_verified,
+        hasRut: !!p.rut,
+        hasDoc: !!p.identity_document_url,
+        hasSelfie: !!p.identity_selfie_url
+      })));
       
-      if (pendingError) {
-        console.error("Error fetching pending verifications:", pendingError);
-      }
+      console.log("Total de usuarios pendientes de verificación:", pendingVerifications);
       
       // Total de vehículos
       const { count: totalVehicles } = await supabase
@@ -75,11 +81,11 @@ const AdminDashboard = () => {
       
       setStats({
         totalUsers: totalUsers || 0,
-        totalVehicles: totalVehicles || 0,
-        totalAuctions: totalAuctions || 0,
+        totalVehicles: stats.totalVehicles,
+        totalAuctions: stats.totalAuctions,
         pendingVerifications: pendingVerifications || 0,
-        pendingVehicles: pendingVehicles || 0,
-        pendingAuctions: pendingAuctions || 0,
+        pendingVehicles: stats.pendingVehicles,
+        pendingAuctions: stats.pendingAuctions,
       });
     } catch (error) {
       console.error("Error al cargar estadísticas:", error);

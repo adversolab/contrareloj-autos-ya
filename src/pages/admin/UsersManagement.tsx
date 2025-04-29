@@ -1,7 +1,8 @@
 
 import React, { useEffect, useState } from 'react';
-import { getUsers, verifyUser, updateUserRole, AdminUser, getUserDocuments, UserDocuments } from '@/services/adminService';
+import { getUsers, verifyUser, updateUserRole, getUserDocuments, UserDocuments } from '@/services/adminService';
 import { Button } from '@/components/ui/button';
+import { AdminUser } from '@/services/types/adminTypes';
 import UsersListTable from '@/components/admin/UsersListTable';
 import PendingVerificationsTable from '@/components/admin/PendingVerificationsTable';
 import UserDocumentsDialog from '@/components/admin/UserDocumentsDialog';
@@ -54,16 +55,19 @@ const UsersManagement = () => {
     fetchUsers();
   }, []);
 
-  // Filter users who have submitted documents but are not yet verified
+  // More robust filter for users who have submitted documents but are not yet verified
   const pendingVerificationUsers = users.filter(user => {
-    // Si el usuario ha subido documentos o selfie o RUT pero no está verificado
-    return !user.identity_verified && 
-           (user.has_identity_document || user.has_selfie || user.has_rut) && 
-           user.role !== 'admin'; // No need to verify admins
+    // Exclude admins
+    if (user.role === 'admin') return false;
+    
+    // Check if user is not verified but has uploaded any document
+    return !user.identity_verified && (user.has_identity_document || user.has_selfie || user.has_rut);
   });
 
   // Get the current user being viewed (if any)
   const currentUserIsVerified = users.find(u => u.id === currentUserId)?.identity_verified || false;
+  
+  console.log("Pending verification users:", pendingVerificationUsers);
 
   return (
     <div>
