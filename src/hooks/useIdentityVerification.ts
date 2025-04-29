@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { uploadIdentityFile } from '@/services/storageService';
 import { updateRutInfo, getVerificationStatus } from '@/services/vehicleService';
@@ -133,9 +132,6 @@ export const useIdentityVerification = () => {
       }
       
       const userId = currentUser.id;
-      
-      // Ensure bucket exists first
-      await uploadIdentityFile(new File(["test"], "test.txt"), "test.txt");
       
       // Generate unique filenames with file extensions
       const frontFileName = `${userId}_front_${Date.now()}.${documentFrontFile.name.split('.').pop()}`;
