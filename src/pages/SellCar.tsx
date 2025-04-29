@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -6,7 +5,7 @@ import Footer from '@/components/Footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { getCurrentUser, signIn } from '@/services/authService';
+import { getCurrentUser } from '@/services/authService';
 import { 
   saveVehicleBasicInfo, 
   updateVehicleBasicInfo,
@@ -37,7 +36,6 @@ const SellCar = () => {
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   
-  const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [carInfo, setCarInfo] = useState<VehicleBasicInfo>({
     brand: '',
     model: '',
@@ -161,30 +159,6 @@ const SellCar = () => {
       ...prev,
       [name]: typeof value === 'string' ? parseFloat(value) : value
     }));
-  };
-
-  const handleLoginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setLoginForm(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleLogin = async () => {
-    const { email, password } = loginForm;
-    
-    if (!email || !password) {
-      toast.error("Por favor completa todos los campos");
-      return;
-    }
-    
-    const { user, error } = await signIn(email, password);
-    
-    if (user) {
-      setIsLoggedIn(true);
-      setIsAuthDialogOpen(false);
-    }
   };
 
   const saveStep1 = async () => {
@@ -333,7 +307,7 @@ const SellCar = () => {
   };
 
   // Redirigir a inicio de sesión si no está logueado
-  if (!isCheckingAuth && !isLoggedIn && !isAuthDialogOpen) {
+  if (!isCheckingAuth && !isLoggedIn) {
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
@@ -350,7 +324,7 @@ const SellCar = () => {
                 <p>Por favor inicia sesión para continuar con la publicación de tu vehículo.</p>
                 <div className="flex justify-end">
                   <Button 
-                    onClick={() => setIsAuthDialogOpen(true)}
+                    onClick={() => navigate('/auth?redirect=/vender')}
                     className="bg-contrareloj hover:bg-contrareloj-dark text-white"
                   >
                     Iniciar sesión
@@ -364,9 +338,7 @@ const SellCar = () => {
         <AuthDialog 
           isOpen={isAuthDialogOpen} 
           onOpenChange={setIsAuthDialogOpen}
-          loginForm={loginForm}
-          onLoginChange={handleLoginChange}
-          onLogin={handleLogin}
+          redirectUrl="/vender"
         />
       </div>
     );
@@ -385,13 +357,6 @@ const SellCar = () => {
       
       <main className="flex-grow container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
-          <div className="mb-8 text-center">
-            <h1 className="text-3xl font-bold mb-3">Vende tu Auto en Contrareloj</h1>
-            <p className="text-gray-600">
-              Sigue los pasos para publicar tu auto en nuestra plataforma de subastas
-            </p>
-          </div>
-          
           {/* Steps indicator */}
           <StepIndicator currentStep={step} steps={stepLabels} />
           
@@ -468,9 +433,7 @@ const SellCar = () => {
       <AuthDialog 
         isOpen={isAuthDialogOpen} 
         onOpenChange={setIsAuthDialogOpen}
-        loginForm={loginForm}
-        onLoginChange={handleLoginChange}
-        onLogin={handleLogin}
+        redirectUrl="/vender"
       />
     </div>
   );

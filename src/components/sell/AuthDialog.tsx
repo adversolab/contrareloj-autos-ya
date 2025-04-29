@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -8,61 +9,49 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
 interface AuthDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  loginForm: { email: string; password: string };
-  onLoginChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onLogin: () => void;
+  redirectUrl?: string;
 }
 
 const AuthDialog: React.FC<AuthDialogProps> = ({
   isOpen,
   onOpenChange,
-  loginForm,
-  onLoginChange,
-  onLogin
+  redirectUrl = '/vender'
 }) => {
+  const navigate = useNavigate();
+
+  const handleRedirectToAuth = () => {
+    onOpenChange(false);
+    navigate(`/auth?redirect=${encodeURIComponent(redirectUrl)}`);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Iniciar sesión</DialogTitle>
+          <DialogTitle>Iniciar sesión requerido</DialogTitle>
           <DialogDescription>
-            Por favor inicia sesión para publicar tu vehículo
+            Para publicar tu vehículo, necesitas iniciar sesión o crear una cuenta
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Email</label>
-            <Input
-              name="email"
-              type="email"
-              placeholder="correo@ejemplo.com"
-              value={loginForm.email}
-              onChange={onLoginChange}
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Contraseña</label>
-            <Input
-              name="password"
-              type="password"
-              placeholder="********"
-              value={loginForm.password}
-              onChange={onLoginChange}
-            />
-          </div>
+        <div className="py-4">
+          <p className="text-sm text-gray-600 mb-4">
+            Por favor inicia sesión con tu cuenta existente o crea una cuenta nueva para continuar.
+          </p>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="flex flex-col gap-2 sm:flex-row">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="sm:order-1">
             Cancelar
           </Button>
-          <Button onClick={onLogin} className="bg-contrareloj hover:bg-contrareloj-dark text-white">
-            Iniciar sesión
+          <Button 
+            onClick={handleRedirectToAuth} 
+            className="bg-contrareloj hover:bg-contrareloj-dark text-white sm:order-2 w-full sm:w-auto"
+          >
+            Ir a iniciar sesión
           </Button>
         </DialogFooter>
       </DialogContent>

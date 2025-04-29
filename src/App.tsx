@@ -10,6 +10,7 @@ import AuctionDetail from "./pages/AuctionDetail";
 import SellCar from "./pages/SellCar";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
+import Auth from "./pages/Auth";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,7 @@ const App = () => (
           <Route path="/subasta/:id" element={<AuctionDetail />} />
           <Route path="/vender" element={<SellCar />} />
           <Route path="/perfil" element={<Profile />} />
+          <Route path="/auth" element={<Auth />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

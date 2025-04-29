@@ -9,6 +9,16 @@ interface StepIndicatorProps {
 const StepIndicator: React.FC<StepIndicatorProps> = ({ currentStep, steps }) => {
   return (
     <div className="mb-10">
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-bold mb-2">
+          <span className="text-contrareloj">CONTRA</span>
+          <span className="text-contrareloj-black">RELOJ</span>
+        </h1>
+        <p className="text-gray-600">
+          Sigue los pasos para publicar tu auto en nuestra plataforma de subastas
+        </p>
+      </div>
+      
       <div className="flex justify-between">
         {steps.map((label, index) => (
           <div key={index} className="flex flex-col items-center">
