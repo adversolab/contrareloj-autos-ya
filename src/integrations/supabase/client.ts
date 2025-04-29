@@ -10,3 +10,20 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // import { supabase } from "@/integrations/supabase/client";
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+// Función auxiliar para comprobar si un usuario es administrador
+export async function isAdmin(): Promise<boolean> {
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) return false;
+
+  // Llamar a la función RPC en Supabase
+  const { data: isAdminData, error } = await supabase
+    .rpc('is_admin', { user_id: data.user.id });
+
+  if (error) {
+    console.error('Error checking admin status:', error);
+    return false;
+  }
+
+  return isAdminData || false;
+}

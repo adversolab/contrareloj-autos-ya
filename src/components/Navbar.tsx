@@ -2,7 +2,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Search, User, LogOut } from 'lucide-react';
+import { Search, User, LogOut, Shield } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -34,6 +34,8 @@ const Navbar = () => {
     navigate('/');
   };
 
+  const isAdmin = profile?.role === 'admin';
+
   return (
     <nav className="bg-white shadow-sm sticky top-0 z-50">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
@@ -54,6 +56,12 @@ const Navbar = () => {
             <Link to="/ayuda" className="text-gray-700 hover:text-contrareloj font-medium">
               Centro de ayuda
             </Link>
+            {isAdmin && (
+              <Link to="/admin" className="text-contrareloj hover:text-contrareloj-dark font-medium flex items-center">
+                <Shield className="h-4 w-4 mr-1" />
+                Administración
+              </Link>
+            )}
           </div>
         </div>
         
@@ -78,6 +86,12 @@ const Navbar = () => {
                   <User className="mr-2 h-4 w-4" />
                   <span>Perfil</span>
                 </DropdownMenuItem>
+                {isAdmin && (
+                  <DropdownMenuItem onClick={() => navigate('/admin')}>
+                    <Shield className="mr-2 h-4 w-4" />
+                    <span>Administración</span>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={handleSignOut}>
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Cerrar sesión</span>

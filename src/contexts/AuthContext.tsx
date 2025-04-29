@@ -13,6 +13,7 @@ type UserProfile = {
   city?: string;
   created_at?: string;
   avatar_url?: string;
+  role?: 'user' | 'admin' | 'moderator';
 };
 
 interface AuthContextType {

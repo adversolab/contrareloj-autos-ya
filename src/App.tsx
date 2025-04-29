@@ -12,6 +12,11 @@ import SellCar from "./pages/SellCar";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminLayout from "./layouts/AdminLayout";
+import UsersManagement from "./pages/admin/UsersManagement";
+import VehiclesManagement from "./pages/admin/VehiclesManagement";
+import AuctionsManagement from "./pages/admin/AuctionsManagement";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +34,15 @@ const App = () => (
             <Route path="/vender" element={<SellCar />} />
             <Route path="/perfil" element={<Profile />} />
             <Route path="/auth" element={<Auth />} />
+            
+            {/* Rutas de administración */}
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<AdminDashboard />} />
+              <Route path="usuarios" element={<UsersManagement />} />
+              <Route path="vehiculos" element={<VehiclesManagement />} />
+              <Route path="subastas" element={<AuctionsManagement />} />
+            </Route>
+            
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

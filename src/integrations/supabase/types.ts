@@ -88,6 +88,7 @@ export type Database = {
           duration_days: number
           end_date: string | null
           id: string
+          is_approved: boolean | null
           min_increment: number
           reserve_price: number
           start_date: string | null
@@ -101,6 +102,7 @@ export type Database = {
           duration_days: number
           end_date?: string | null
           id?: string
+          is_approved?: boolean | null
           min_increment: number
           reserve_price: number
           start_date?: string | null
@@ -114,6 +116,7 @@ export type Database = {
           duration_days?: number
           end_date?: string | null
           id?: string
+          is_approved?: boolean | null
           min_increment?: number
           reserve_price?: number
           start_date?: string | null
@@ -211,6 +214,7 @@ export type Database = {
           identity_verified: boolean | null
           last_name: string | null
           phone: string | null
+          role: Database["public"]["Enums"]["user_role"]
           rut: string | null
           updated_at: string | null
         }
@@ -225,6 +229,7 @@ export type Database = {
           identity_verified?: boolean | null
           last_name?: string | null
           phone?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
           rut?: string | null
           updated_at?: string | null
         }
@@ -239,6 +244,7 @@ export type Database = {
           identity_verified?: boolean | null
           last_name?: string | null
           phone?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
           rut?: string | null
           updated_at?: string | null
         }
@@ -318,6 +324,7 @@ export type Database = {
           description: string | null
           fuel: string
           id: string
+          is_approved: boolean | null
           kilometers: number
           model: string
           transmission: string
@@ -331,6 +338,7 @@ export type Database = {
           description?: string | null
           fuel: string
           id?: string
+          is_approved?: boolean | null
           kilometers: number
           model: string
           transmission: string
@@ -344,6 +352,7 @@ export type Database = {
           description?: string | null
           fuel?: string
           id?: string
+          is_approved?: boolean | null
           kilometers?: number
           model?: string
           transmission?: string
@@ -358,10 +367,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_admin: {
+        Args: { user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      user_role: "user" | "admin" | "moderator"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -476,6 +488,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      user_role: ["user", "admin", "moderator"],
+    },
   },
 } as const
