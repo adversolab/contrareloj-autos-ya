@@ -1,8 +1,9 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { UploadCloud, X, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface DocumentStepProps {
   documentFrontFile: File | null;
@@ -21,6 +22,36 @@ const DocumentStep: React.FC<DocumentStepProps> = ({
   onSubmit,
   isLoading
 }) => {
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const handleSubmit = () => {
+    if (!documentFrontFile || !documentBackFile) {
+      setUploadError("Debes subir ambos lados del documento");
+      toast.error("Debes subir ambos lados del documento");
+      return;
+    }
+    
+    setUploadError(null);
+    onSubmit();
+  };
+
+  // Reset file upload
+  const handleResetFront = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const inputElement = document.getElementById('document-front') as HTMLInputElement;
+    if (inputElement) inputElement.value = '';
+    inputElement?.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+
+  const handleResetBack = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const inputElement = document.getElementById('document-back') as HTMLInputElement;
+    if (inputElement) inputElement.value = '';
+    inputElement?.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+
   return (
     <div className="space-y-4">
       <div className="bg-yellow-50 p-4 rounded-md mb-4">
@@ -47,7 +78,7 @@ const DocumentStep: React.FC<DocumentStepProps> = ({
             <div className="w-full">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm">{documentFrontFile.name}</span>
-                <button onClick={() => document.getElementById('document-front')?.click()}>
+                <button onClick={handleResetFront}>
                   <X className="h-5 w-5 text-gray-500" />
                 </button>
               </div>
@@ -84,7 +115,7 @@ const DocumentStep: React.FC<DocumentStepProps> = ({
             <div className="w-full">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm">{documentBackFile.name}</span>
-                <button onClick={() => document.getElementById('document-back')?.click()}>
+                <button onClick={handleResetBack}>
                   <X className="h-5 w-5 text-gray-500" />
                 </button>
               </div>
@@ -106,8 +137,14 @@ const DocumentStep: React.FC<DocumentStepProps> = ({
         </div>
       </div>
       
+      {uploadError && (
+        <div className="bg-red-50 p-3 rounded-md text-red-700 text-sm">
+          {uploadError}
+        </div>
+      )}
+      
       <Button 
-        onClick={onSubmit} 
+        onClick={handleSubmit} 
         disabled={isLoading || !documentFrontFile || !documentBackFile}
         className="w-full bg-contrareloj hover:bg-contrareloj-dark"
       >

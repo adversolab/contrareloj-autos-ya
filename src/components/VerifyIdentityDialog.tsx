@@ -49,8 +49,19 @@ const VerifyIdentityDialog: React.FC<VerifyIdentityDialogProps> = ({ isOpen, onC
     }
   }, [isOpen]);
 
+  const handleClose = () => {
+    // Confirmar antes de cerrar si el usuario está en medio del proceso
+    if (step > 1 && step < 4) {
+      if (window.confirm("¿Estás seguro de que quieres cerrar? Tu progreso no se guardará.")) {
+        onClose();
+      }
+    } else {
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Verificación de identidad</DialogTitle>
@@ -103,7 +114,7 @@ const VerifyIdentityDialog: React.FC<VerifyIdentityDialogProps> = ({ isOpen, onC
 
         {step < 4 && (
           <DialogFooter className="sm:justify-start">
-            <Button variant="outline" onClick={onClose}>
+            <Button variant="outline" onClick={handleClose}>
               Cancelar
             </Button>
           </DialogFooter>

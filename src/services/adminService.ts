@@ -1,111 +1,56 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { AdminUser } from "./types/adminTypes";
 
-// Re-export all types and functions from the new modules
-export * from './types/adminTypes';
-export * from './userService';
-export * from './vehicleService';
-export * from './auctionService';
-
-// Admin-specific functions
-export async function deleteAuction(auctionId: string) {
+export async function getUsers() {
   try {
-    // First update any associated services
-    const { error: servicesError } = await supabase
-      .from('auction_services')
-      .delete()
-      .eq('auction_id', auctionId);
+    // Obtenemos todos los perfiles
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false });
       
-    if (servicesError) {
-      console.error('Error al eliminar servicios de la subasta:', servicesError);
+    if (profilesError) {
+      console.error('Error al obtener usuarios:', profilesError);
+      toast.error('Error al cargar los usuarios');
+      return { users: [] };
     }
     
-    // Then update any associated questions
-    const { error: questionsError } = await supabase
-      .from('auction_questions')
-      .delete()
-      .eq('auction_id', auctionId);
-      
-    if (questionsError) {
-      console.error('Error al eliminar preguntas de la subasta:', questionsError);
+    // Obtenemos los datos de autenticación para obtener los emails
+    const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
+    
+    if (authError) {
+      console.error('Error al obtener datos de autenticación:', authError);
+      // Continuamos con los perfiles sin emails
     }
     
-    // Then delete any bids
-    const { error: bidsError } = await supabase
-      .from('bids')
-      .delete()
-      .eq('auction_id', auctionId);
-      
-    if (bidsError) {
-      console.error('Error al eliminar pujas de la subasta:', bidsError);
+    // Mapa de ID a email para búsqueda rápida
+    const emailMap = new Map();
+    if (authData && authData.users) {
+      authData.users.forEach((user: any) => {
+        if (user && user.id && user.email) {
+          emailMap.set(user.id, user.email);
+        }
+      });
     }
     
-    // Finally delete the auction
-    const { error } = await supabase
-      .from('auctions')
-      .delete()
-      .eq('id', auctionId);
-      
-    if (error) {
-      console.error('Error al eliminar la subasta:', error);
-      toast.error('Error al eliminar la subasta');
-      return false;
-    }
+    // Formatear usuarios combinando datos
+    const formattedUsers: AdminUser[] = profiles.map(profile => ({
+      id: profile.id,
+      email: emailMap.get(profile.id) || 'Sin correo',
+      first_name: profile.first_name,
+      last_name: profile.last_name,
+      role: profile.role as "user" | "admin" | "moderator",
+      identity_verified: profile.identity_verified || false,
+      created_at: profile.created_at
+    }));
     
-    toast.success('Subasta eliminada correctamente');
-    return true;
+    return { users: formattedUsers };
   } catch (error) {
     console.error('Error inesperado:', error);
-    toast.error('Error al eliminar la subasta');
-    return false;
-  }
-}
-
-export async function pauseAuction(auctionId: string) {
-  try {
-    const { error } = await supabase
-      .from('auctions')
-      .update({ status: 'paused' })
-      .eq('id', auctionId);
-      
-    if (error) {
-      console.error('Error al pausar la subasta:', error);
-      toast.error('Error al pausar la subasta');
-      return false;
-    }
-    
-    toast.success('Subasta pausada correctamente');
-    return true;
-  } catch (error) {
-    console.error('Error inesperado:', error);
-    toast.error('Error al pausar la subasta');
-    return false;
-  }
-}
-
-export async function approveAuction(auctionId: string) {
-  try {
-    const { error } = await supabase
-      .from('auctions')
-      .update({ 
-        is_approved: true,
-        status: 'active'
-      })
-      .eq('id', auctionId);
-      
-    if (error) {
-      console.error('Error al aprobar la subasta:', error);
-      toast.error('Error al aprobar la subasta');
-      return false;
-    }
-    
-    toast.success('Subasta aprobada correctamente');
-    return true;
-  } catch (error) {
-    console.error('Error inesperado:', error);
-    toast.error('Error al aprobar la subasta');
-    return false;
+    toast.error('Error al cargar los usuarios');
+    return { users: [] };
   }
 }
 
@@ -118,15 +63,63 @@ export async function getUserDocuments(userId: string) {
       .single();
       
     if (error) {
-      console.error('Error al obtener documentos del usuario:', error);
-      toast.error('Error al obtener documentos del usuario');
+      console.error('Error al obtener documentos:', error);
+      toast.error('Error al cargar los documentos');
       return null;
     }
     
-    return data;
+    return {
+      rut: data?.rut,
+      identity_document_url: data?.identity_document_url,
+      identity_selfie_url: data?.identity_selfie_url
+    };
   } catch (error) {
     console.error('Error inesperado:', error);
-    toast.error('Error al obtener documentos del usuario');
+    toast.error('Error al cargar los documentos');
     return null;
+  }
+}
+
+export async function verifyUser(userId: string) {
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ identity_verified: true })
+      .eq('id', userId);
+      
+    if (error) {
+      console.error('Error al verificar usuario:', error);
+      toast.error('Error al verificar el usuario');
+      return false;
+    }
+    
+    toast.success('Usuario verificado correctamente');
+    return true;
+  } catch (error) {
+    console.error('Error inesperado:', error);
+    toast.error('Error al verificar el usuario');
+    return false;
+  }
+}
+
+export async function updateUserRole(userId: string, role: "user" | "admin" | "moderator") {
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ role })
+      .eq('id', userId);
+      
+    if (error) {
+      console.error('Error al actualizar rol:', error);
+      toast.error('Error al actualizar el rol del usuario');
+      return false;
+    }
+    
+    toast.success('Rol actualizado correctamente');
+    return true;
+  } catch (error) {
+    console.error('Error inesperado:', error);
+    toast.error('Error al actualizar el rol del usuario');
+    return false;
   }
 }

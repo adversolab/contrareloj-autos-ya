@@ -1,8 +1,9 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { UploadCloud, X, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface SelfieStepProps {
   selfieFile: File | null;
@@ -17,6 +18,28 @@ const SelfieStep: React.FC<SelfieStepProps> = ({
   onSubmit,
   isLoading
 }) => {
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const handleSubmit = () => {
+    if (!selfieFile) {
+      setUploadError("Debes subir una selfie con tu documento");
+      toast.error("Debes subir una selfie con tu documento");
+      return;
+    }
+    
+    setUploadError(null);
+    onSubmit();
+  };
+
+  // Reset file upload
+  const handleReset = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const inputElement = document.getElementById('selfie') as HTMLInputElement;
+    if (inputElement) inputElement.value = '';
+    inputElement?.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+
   return (
     <div className="space-y-4">
       <div className="bg-yellow-50 p-4 rounded-md mb-4">
@@ -47,7 +70,7 @@ const SelfieStep: React.FC<SelfieStepProps> = ({
             <div className="w-full">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm">{selfieFile.name}</span>
-                <button onClick={() => document.getElementById('selfie')?.click()}>
+                <button onClick={handleReset}>
                   <X className="h-5 w-5 text-gray-500" />
                 </button>
               </div>
@@ -69,8 +92,14 @@ const SelfieStep: React.FC<SelfieStepProps> = ({
         </div>
       </div>
       
+      {uploadError && (
+        <div className="bg-red-50 p-3 rounded-md text-red-700 text-sm">
+          {uploadError}
+        </div>
+      )}
+      
       <Button 
-        onClick={onSubmit} 
+        onClick={handleSubmit} 
         disabled={isLoading || !selfieFile}
         className="w-full bg-contrareloj hover:bg-contrareloj-dark"
       >

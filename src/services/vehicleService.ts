@@ -1,873 +1,108 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { AdminVehicle } from "./types/adminTypes";
+import { getCurrentUser } from "@/services/authService";
 
-// Types definitions
-export interface VehicleBasicInfo {
-  brand: string;
-  model: string;
-  year: string;
-  kilometers: string;
-  fuel: string;
-  transmission: string;
-  description: string;
-}
-
-export interface VehicleFeature {
-  category: string;
-  feature: string;
-}
-
-export interface AuctionInfo {
-  reservePrice: number;
-  startPrice: number;
-  durationDays: number;
-  minIncrement: number;
-  services: string[];
-}
-
-export interface PhotoUploadParams {
-  file: File;
-  isMain: boolean;
-  position: number;
-}
-
-// Vehicle management functions
-export async function getVehicles() {
+// Update this function to handle identity document uploads properly
+export async function uploadIdentityDocument(file: File, isSelfie: boolean = false): Promise<{ url: string; success: boolean }> {
   try {
-    // Primero obtenemos los vehículos
-    const { data: vehicles, error: vehiclesError } = await supabase
-      .from('vehicles')
-      .select('*')
-      .order('created_at', { ascending: false });
-      
-    if (vehiclesError) {
-      console.error('Error al obtener vehículos:', vehiclesError);
-      toast.error('Error al cargar los vehículos');
-      return { vehicles: [] };
+    const user = await getCurrentUser();
+    if (!user) {
+      toast.error('Debes iniciar sesión para subir documentos');
+      return { url: '', success: false };
     }
     
-    // Obtener información de usuarios por separado
-    const userIds = [...new Set(vehicles.map(v => v.user_id))];
-    const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
-      .select('*')
-      .in('id', userIds);
-      
-    if (profilesError) {
-      console.error('Error al obtener perfiles de usuarios:', profilesError);
-      // Continuamos con los vehículos sin información de usuario
-    }
+    // Create a unique filename using a timestamp and the user ID
+    const timestamp = new Date().getTime();
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user.id}_${isSelfie ? 'selfie' : 'document'}_${timestamp}.${fileExt}`;
     
-    // Crear un mapa de perfiles para búsqueda rápida
-    const profileMap = new Map();
-    if (profiles) {
-      profiles.forEach(profile => {
-        profileMap.set(profile.id, profile);
-      });
-    }
+    // Use the right path based on whether it's a selfie or a document
+    const filePath = isSelfie 
+      ? `identity_verification/${user.id}/selfie`
+      : `identity_verification/${user.id}/document`;
     
-    // Formatear vehículos
-    const formattedVehicles: AdminVehicle[] = vehicles.map(vehicle => {
-      const profile = profileMap.get(vehicle.user_id);
-      
-      return {
-        id: vehicle.id,
-        brand: vehicle.brand,
-        model: vehicle.model,
-        year: vehicle.year,
-        user_id: vehicle.user_id,
-        is_approved: vehicle.is_approved || false,
-        created_at: vehicle.created_at,
-        user: {
-          email: profile ? (profile.email || 'Sin correo') : 'Sin correo',
-          first_name: profile ? profile.first_name : undefined,
-          last_name: profile ? profile.last_name : undefined
-        }
-      };
-    });
-    
-    return { vehicles: formattedVehicles };
-  } catch (error) {
-    console.error('Error inesperado:', error);
-    toast.error('Error al cargar los vehículos');
-    return { vehicles: [] };
-  }
-}
-
-export async function approveVehicle(vehicleId: string) {
-  try {
-    const { error } = await supabase
-      .from('vehicles')
-      .update({ is_approved: true })
-      .eq('id', vehicleId);
-      
-    if (error) {
-      console.error('Error al aprobar vehículo:', error);
-      toast.error('Error al aprobar el vehículo');
-      return false;
-    }
-    
-    toast.success('Vehículo aprobado correctamente');
-    return true;
-  } catch (error) {
-    console.error('Error inesperado:', error);
-    toast.error('Error al aprobar el vehículo');
-    return false;
-  }
-}
-
-export async function deleteVehicle(vehicleId: string) {
-  try {
-    // First, check if there are auctions related to this vehicle
-    const { data: auctions } = await supabase
-      .from('auctions')
-      .select('id')
-      .eq('vehicle_id', vehicleId);
-
-    // Delete related auctions if they exist
-    if (auctions && auctions.length > 0) {
-      const auctionIds = auctions.map(a => a.id);
-      
-      // Delete auction services
-      await supabase
-        .from('auction_services')
-        .delete()
-        .in('auction_id', auctionIds);
-      
-      // Delete auction questions
-      await supabase
-        .from('auction_questions')
-        .delete()
-        .in('auction_id', auctionIds);
-      
-      // Delete bids
-      await supabase
-        .from('bids')
-        .delete()
-        .in('auction_id', auctionIds);
-      
-      // Delete favorites
-      await supabase
-        .from('favorites')
-        .delete()
-        .in('auction_id', auctionIds);
-      
-      // Delete auctions
-      await supabase
-        .from('auctions')
-        .delete()
-        .in('id', auctionIds);
-    }
-
-    // Delete vehicle features
-    await supabase
-      .from('vehicle_features')
-      .delete()
-      .eq('vehicle_id', vehicleId);
-
-    // Delete vehicle photos
-    await supabase
-      .from('vehicle_photos')
-      .delete()
-      .eq('vehicle_id', vehicleId);
-
-    // Delete the vehicle
-    const { error } = await supabase
-      .from('vehicles')
-      .delete()
-      .eq('id', vehicleId);
-      
-    if (error) {
-      console.error('Error al eliminar vehículo:', error);
-      toast.error('Error al eliminar el vehículo');
-      return false;
-    }
-    
-    toast.success('Vehículo eliminado correctamente');
-    return true;
-  } catch (error) {
-    console.error('Error inesperado:', error);
-    toast.error('Error al eliminar el vehículo');
-    return false;
-  }
-}
-
-// Auction interaction functions
-export async function getAuctionById(auctionId: string) {
-  try {
-    // Primero, obtener la información básica de la subasta
-    const { data: auction, error } = await supabase
-      .from('auctions')
-      .select(`
-        *,
-        vehicles(*)
-      `)
-      .eq('id', auctionId)
-      .single();
-    
-    if (error) {
-      throw error;
-    }
-    
-    // Después, obtener las fotos del vehículo separadamente
-    if (auction && auction.vehicle_id) {
-      const { data: photos, error: photosError } = await supabase
-        .from('vehicle_photos')
-        .select('*')
-        .eq('vehicle_id', auction.vehicle_id)
-        .order('position', { ascending: true });
-      
-      if (!photosError && photos && photos.length > 0) {
-        // Si hay fotos, añadirlas a la respuesta
-        // Use type assertion to add the new property
-        (auction.vehicles as any).vehicle_photos = photos;
-      }
-      
-      // Obtener características del vehículo
-      const { data: features, error: featuresError } = await supabase
-        .from('vehicle_features')
-        .select('*')
-        .eq('vehicle_id', auction.vehicle_id);
-      
-      if (!featuresError && features && features.length > 0) {
-        // Añadir características al vehículo
-        // Use type assertion to add the new property
-        (auction.vehicles as any).vehicle_features = features;
-      }
-    }
-    
-    console.log("Full auction data with photos:", auction);
-    
-    return { auction, error: null };
-  } catch (error) {
-    console.error('Error al obtener subasta:', error);
-    return { auction: null, error };
-  }
-}
-
-export async function getAuctionQuestions(auctionId: string) {
-  try {
-    const { data, error } = await supabase
-      .from('auction_questions')
-      .select('*')
-      .eq('auction_id', auctionId)
-      .order('created_at', { ascending: false });
-      
-    if (error) {
-      throw error;
-    }
-    
-    return { questions: data, error: null };
-  } catch (error) {
-    console.error('Error al obtener preguntas:', error);
-    return { questions: [], error };
-  }
-}
-
-export async function submitQuestion(auctionId: string, question: string) {
-  try {
-    const { error } = await supabase
-      .from('auction_questions')
-      .insert({
-        auction_id: auctionId,
-        question,
-        user_id: (await supabase.auth.getUser()).data.user?.id
-      });
-      
-    if (error) {
-      toast.error('Error al enviar la pregunta');
-      return { success: false };
-    }
-    
-    toast.success('Pregunta enviada correctamente');
-    return { success: true };
-  } catch (error) {
-    console.error('Error al enviar pregunta:', error);
-    toast.error('Error al enviar la pregunta');
-    return { success: false };
-  }
-}
-
-export async function answerQuestion(questionId: string, answer: string) {
-  try {
-    const { error } = await supabase
-      .from('auction_questions')
-      .update({
-        answer,
-        is_answered: true,
-        answered_at: new Date().toISOString()
-      })
-      .eq('id', questionId);
-      
-    if (error) {
-      toast.error('Error al responder la pregunta');
-      return { success: false };
-    }
-    
-    toast.success('Respuesta enviada correctamente');
-    return { success: true };
-  } catch (error) {
-    console.error('Error al responder pregunta:', error);
-    toast.error('Error al responder la pregunta');
-    return { success: false };
-  }
-}
-
-export async function getAuctionBids(auctionId: string) {
-  try {
-    const { data, error } = await supabase
-      .from('bids')
-      .select('*')
-      .eq('auction_id', auctionId)
-      .order('created_at', { ascending: false });
-      
-    if (error) {
-      throw error;
-    }
-    
-    return { bids: data, error: null };
-  } catch (error) {
-    console.error('Error al obtener pujas:', error);
-    return { bids: [], error };
-  }
-}
-
-export async function placeBid(auctionId: string, bidInfo: { amount: number, holdAmount: number }) {
-  try {
-    const { error } = await supabase
-      .from('bids')
-      .insert({
-        auction_id: auctionId,
-        amount: bidInfo.amount,
-        user_id: (await supabase.auth.getUser()).data.user?.id,
-        hold_amount: bidInfo.holdAmount
-      });
-      
-    if (error) {
-      toast.error('Error al realizar la oferta');
-      return { success: false, error, needsVerification: false };
-    }
-    
-    toast.success('Oferta realizada correctamente');
-    return { success: true, error: null, needsVerification: false };
-  } catch (error) {
-    console.error('Error al realizar oferta:', error);
-    toast.error('Error al realizar la oferta');
-    return { success: false, error, needsVerification: false };
-  }
-}
-
-export async function finalizeAuction(auctionId: string) {
-  try {
-    const { error } = await supabase
-      .from('auctions')
-      .update({ status: 'completed' })
-      .eq('id', auctionId);
-      
-    if (error) {
-      toast.error('Error al finalizar la subasta');
-      return { success: false };
-    }
-    
-    // Get the highest bid to determine winner
-    const { data: bids } = await supabase
-      .from('bids')
-      .select('user_id')
-      .eq('auction_id', auctionId)
-      .order('amount', { ascending: false })
-      .limit(1);
-    
-    const winnerId = bids && bids.length > 0 ? bids[0].user_id : null;
-    
-    toast.success('Subasta finalizada correctamente');
-    return { success: true, winnerId };
-  } catch (error) {
-    console.error('Error al finalizar subasta:', error);
-    toast.error('Error al finalizar la subasta');
-    return { success: false };
-  }
-}
-
-// Favorite management
-export async function isFavorite(auctionId: string) {
-  try {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) {
-      return { isFavorite: false };
-    }
-    
-    const { data, error } = await supabase
-      .from('favorites')
-      .select('*')
-      .eq('auction_id', auctionId)
-      .eq('user_id', user.user.id);
-      
-    if (error) {
-      throw error;
-    }
-    
-    return { isFavorite: data.length > 0 };
-  } catch (error) {
-    console.error('Error al verificar favorito:', error);
-    return { isFavorite: false };
-  }
-}
-
-export async function addToFavorites(auctionId: string) {
-  try {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) {
-      toast.error('Debes iniciar sesión para guardar favoritos');
-      return;
-    }
-    
-    const { error } = await supabase
-      .from('favorites')
-      .insert({
-        auction_id: auctionId,
-        user_id: user.user.id
-      });
-      
-    if (error) {
-      toast.error('Error al guardar en favoritos');
-      throw error;
-    }
-    
-    toast.success('Agregado a favoritos');
-  } catch (error) {
-    console.error('Error al agregar a favoritos:', error);
-  }
-}
-
-export async function removeFromFavorites(auctionId: string) {
-  try {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) {
-      return;
-    }
-    
-    const { error } = await supabase
-      .from('favorites')
-      .delete()
-      .eq('auction_id', auctionId)
-      .eq('user_id', user.user.id);
-      
-    if (error) {
-      toast.error('Error al eliminar de favoritos');
-      throw error;
-    }
-    
-    toast.success('Eliminado de favoritos');
-  } catch (error) {
-    console.error('Error al eliminar de favoritos:', error);
-  }
-}
-
-// User-specific functions
-export async function getUserVehicles() {
-  try {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) {
-      return { vehicles: [] };
-    }
-    
-    const { data, error } = await supabase
-      .from('vehicles')
-      .select(`
-        *,
-        auctions(*)
-      `)
-      .eq('user_id', user.user.id);
-      
-    if (error) {
-      throw error;
-    }
-
-    // Transform data to match the Auction type expected by the components
-    const formattedVehicles = data.map(vehicle => {
-      // Get the auction ID if available
-      const auctionId = vehicle.auctions && vehicle.auctions.length > 0 
-        ? vehicle.auctions[0].id 
-        : null;
-      
-      return {
-        id: vehicle.id,
-        title: `${vehicle.brand} ${vehicle.model} ${vehicle.year}`,
-        description: vehicle.description || '',
-        imageUrl: '', // This would ideally come from vehicle_photos
-        currentBid: vehicle.auctions && vehicle.auctions.length > 0 
-          ? vehicle.auctions[0].start_price 
-          : 0,
-        endTime: vehicle.auctions && vehicle.auctions.length > 0 && vehicle.auctions[0].end_date
-          ? new Date(vehicle.auctions[0].end_date)
-          : new Date(),
-        bidCount: 0,
-        status: vehicle.auctions && vehicle.auctions.length > 0 
-          ? vehicle.auctions[0].status 
-          : 'draft',
-        auctionId
-      };
-    });
-    
-    return { vehicles: formattedVehicles };
-  } catch (error) {
-    console.error('Error al obtener vehículos del usuario:', error);
-    return { vehicles: [] };
-  }
-}
-
-export async function getUserFavorites() {
-  try {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) {
-      return { favorites: [], error: null };
-    }
-    
-    const { data, error } = await supabase
-      .from('favorites')
-      .select(`
-        *,
-        auctions(
-          *,
-          vehicles(*)
-        )
-      `)
-      .eq('user_id', user.user.id);
-      
-    if (error) {
-      return { favorites: [], error };
-    }
-
-    // Transform data to match the Auction type
-    const formattedFavorites = data.map(favorite => {
-      const auction = favorite.auctions;
-      const vehicle = auction?.vehicles;
-      
-      return {
-        id: favorite.id,
-        title: vehicle ? `${vehicle.brand} ${vehicle.model} ${vehicle.year}` : 'Subasta',
-        description: vehicle?.description || '',
-        imageUrl: '', // This would come from vehicle_photos
-        currentBid: auction?.start_price || 0,
-        endTime: auction?.end_date ? new Date(auction.end_date) : new Date(),
-        bidCount: 0,
-        status: auction?.status || 'active',
-        auctionId: auction?.id
-      };
-    });
-    
-    return { favorites: formattedFavorites, error: null };
-  } catch (error) {
-    console.error('Error al obtener favoritos del usuario:', error);
-    return { favorites: [], error };
-  }
-}
-
-// Vehicle selling process
-export async function saveVehicleBasicInfo(vehicleInfo: VehicleBasicInfo) {
-  try {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) {
-      return { vehicle: null, error: new Error('Usuario no autenticado') };
-    }
-    
-    const { data, error } = await supabase
-      .from('vehicles')
-      .insert({
-        brand: vehicleInfo.brand,
-        model: vehicleInfo.model,
-        year: parseInt(vehicleInfo.year),
-        kilometers: parseInt(vehicleInfo.kilometers),
-        fuel: vehicleInfo.fuel,
-        transmission: vehicleInfo.transmission,
-        description: vehicleInfo.description,
-        user_id: user.user.id
-      })
-      .select()
-      .single();
-      
-    if (error) {
-      throw error;
-    }
-    
-    return { vehicle: data, error: null };
-  } catch (error) {
-    console.error('Error al guardar información del vehículo:', error);
-    return { vehicle: null, error };
-  }
-}
-
-export async function updateVehicleBasicInfo(vehicleId: string, vehicleInfo: VehicleBasicInfo) {
-  try {
-    const { error } = await supabase
-      .from('vehicles')
-      .update({
-        brand: vehicleInfo.brand,
-        model: vehicleInfo.model,
-        year: parseInt(vehicleInfo.year),
-        kilometers: parseInt(vehicleInfo.kilometers),
-        fuel: vehicleInfo.fuel,
-        transmission: vehicleInfo.transmission,
-        description: vehicleInfo.description
-      })
-      .eq('id', vehicleId);
-      
-    if (error) {
-      throw error;
-    }
-    
-    return { success: true };
-  } catch (error) {
-    console.error('Error al actualizar información del vehículo:', error);
-    return { success: false };
-  }
-}
-
-export async function uploadVehiclePhoto(vehicleId: string, photo: {
-  file: File,
-  isMain: boolean,
-  position: number
-}) {
-  try {
-    // Generate a unique file name
-    const fileExt = photo.file.name.split('.').pop();
-    const fileName = `${vehicleId}_${photo.position}_${Date.now()}.${fileExt}`;
-    const filePath = `vehicle_photos/${fileName}`;
-
-    // Upload the file to storage
-    const { error: uploadError } = await supabase.storage
-      .from('images')
-      .upload(filePath, photo.file, {
+    // Upload the file to Supabase storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('identity_docs')
+      .upload(`${filePath}/${fileName}`, file, {
         cacheControl: '3600',
         upsert: true
       });
-
+    
     if (uploadError) {
-      console.error('Error uploading image:', uploadError);
-      throw uploadError;
+      console.error('Error al subir el documento:', uploadError);
+      toast.error('Error al subir el documento. Por favor intenta de nuevo.');
+      return { url: '', success: false };
     }
-
-    // Get the public URL
-    const { data: publicUrl } = supabase.storage
-      .from('images')
-      .getPublicUrl(filePath);
-
-    if (!publicUrl) {
-      throw new Error('Error getting public URL for uploaded image');
+    
+    // Get the public URL of the uploaded file
+    const { data: publicUrlData } = supabase.storage
+      .from('identity_docs')
+      .getPublicUrl(`${filePath}/${fileName}`);
+    
+    const url = publicUrlData?.publicUrl || '';
+    
+    // Update the user profile with the document URL
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update(isSelfie 
+        ? { identity_selfie_url: url } 
+        : { identity_document_url: url }
+      )
+      .eq('id', user.id);
+    
+    if (updateError) {
+      console.error('Error al actualizar el perfil:', updateError);
+      toast.error('Error al guardar la información. Por favor intenta de nuevo.');
+      return { url, success: false };
     }
-
-    console.log("Image uploaded successfully. URL:", publicUrl.publicUrl);
-
-    // Save the photo info to the database
-    const { error: dbError } = await supabase
-      .from('vehicle_photos')
-      .insert({
-        vehicle_id: vehicleId,
-        is_primary: photo.isMain,
-        position: photo.position,
-        url: publicUrl.publicUrl // Make sure we're using the correct property
-      });
-
-    if (dbError) {
-      console.error('Error saving photo info to database:', dbError);
-      throw dbError;
-    }
-
-    return { success: true, url: publicUrl.publicUrl };
+    
+    return { url, success: true };
   } catch (error) {
-    console.error('Error in uploadVehiclePhoto:', error);
-    toast.error('Error al subir la foto');
-    return { success: false, error };
+    console.error('Error inesperado:', error);
+    toast.error('Error al procesar la solicitud');
+    return { url: '', success: false };
   }
 }
 
-export async function saveVehicleFeatures(vehicleId: string, features: VehicleFeature[]) {
+// Update the RUT info and store it in the profile
+export async function updateRutInfo(rut: string): Promise<{ success: boolean }> {
   try {
-    if (features.length === 0) {
-      return { success: true };
-    }
-    
-    // Insert features
-    const featuresToInsert = features.map(f => ({
-      vehicle_id: vehicleId,
-      category: f.category,
-      feature: f.feature
-    }));
-    
-    const { error } = await supabase
-      .from('vehicle_features')
-      .insert(featuresToInsert);
-      
-    if (error) {
-      throw error;
-    }
-    
-    return { success: true };
-  } catch (error) {
-    console.error('Error al guardar características:', error);
-    return { success: false };
-  }
-}
-
-export async function saveAuctionInfo(vehicleId: string, auctionInfo: AuctionInfo) {
-  try {
-    // Create auction
-    const { data: auction, error: auctionError } = await supabase
-      .from('auctions')
-      .insert({
-        vehicle_id: vehicleId,
-        start_price: auctionInfo.startPrice,
-        reserve_price: auctionInfo.reservePrice,
-        duration_days: auctionInfo.durationDays,
-        min_increment: auctionInfo.minIncrement
-      })
-      .select()
-      .single();
-      
-    if (auctionError) {
-      throw auctionError;
-    }
-    
-    // Add services if selected
-    if (auctionInfo.services.length > 0) {
-      const servicesToInsert = auctionInfo.services.map(service => ({
-        auction_id: auction.id,
-        service_type: service,
-        price: service === 'verification' ? 80000 : 
-               service === 'photography' ? 50000 : 
-               service === 'highlight' ? 30000 : 0
-      }));
-      
-      const { error: servicesError } = await supabase
-        .from('auction_services')
-        .insert(servicesToInsert);
-        
-      if (servicesError) {
-        console.error('Error al guardar servicios:', servicesError);
-      }
-    }
-    
-    return { auction, error: null };
-  } catch (error) {
-    console.error('Error al guardar información de subasta:', error);
-    return { auction: null, error };
-  }
-}
-
-export async function activateAuction(auctionId: string) {
-  try {
-    // Get auction details to verify if it's approved
-    const { data: auction, error: fetchError } = await supabase
-      .from('auctions')
-      .select('*, vehicle_id')
-      .eq('id', auctionId)
-      .single();
-
-    if (fetchError) {
-      throw fetchError;
-    }
-
-    // Calculate start and end dates
-    const startDate = new Date();
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + auction.duration_days);
-
-    // Update auction status to draft by default (will need admin approval to become active)
-    const { error } = await supabase
-      .from('auctions')
-      .update({
-        status: 'draft',
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString()
-      })
-      .eq('id', auctionId);
-
-    if (error) {
-      throw error;
-    }
-
-    return { success: true };
-  } catch (error) {
-    console.error('Error activating auction:', error);
-    return { success: false, error };
-  }
-}
-
-// Identity verification
-export async function updateRutInfo(rut: string) {
-  try {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) {
+    const user = await getCurrentUser();
+    if (!user) {
+      toast.error('Debes iniciar sesión para actualizar tu información');
       return { success: false };
     }
     
     const { error } = await supabase
       .from('profiles')
       .update({ rut })
-      .eq('id', user.user.id);
-      
+      .eq('id', user.id);
+    
     if (error) {
-      throw error;
+      console.error('Error al actualizar RUT:', error);
+      toast.error('Error al guardar tu RUT');
+      return { success: false };
     }
     
     return { success: true };
   } catch (error) {
-    console.error('Error al guardar RUT:', error);
+    console.error('Error inesperado:', error);
+    toast.error('Error al procesar la solicitud');
     return { success: false };
   }
 }
 
-export async function uploadIdentityDocument(file: File, isSelfie: boolean) {
+// Get the current verification status
+export async function getVerificationStatus(): Promise<{
+  isVerified: boolean;
+  hasRut: boolean;
+  hasDocuments: boolean;
+  hasSelfie: boolean;
+}> {
   try {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) {
-      return { success: false, url: null };
-    }
-    
-    const filename = `${Date.now()}-${file.name}`;
-    const filePath = `identity/${user.user.id}/${filename}`;
-    
-    // Upload file to storage
-    const { error: uploadError } = await supabase.storage
-      .from('identity-docs')
-      .upload(filePath, file);
-      
-    if (uploadError) {
-      throw uploadError;
-    }
-    
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('identity-docs')
-      .getPublicUrl(filePath);
-    
-    // Save reference to user profile
-    const updateData = isSelfie 
-      ? { identity_selfie_url: publicUrl }
-      : { identity_document_url: publicUrl };
-    
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update(updateData)
-      .eq('id', user.user.id);
-      
-    if (updateError) {
-      throw updateError;
-    }
-    
-    return { success: true, url: publicUrl };
-  } catch (error) {
-    console.error('Error al subir documento:', error);
-    return { success: false, url: null };
-  }
-}
-
-export async function getVerificationStatus() {
-  try {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) {
+    const user = await getCurrentUser();
+    if (!user) {
       return {
         isVerified: false,
         hasRut: false,
@@ -879,21 +114,27 @@ export async function getVerificationStatus() {
     const { data, error } = await supabase
       .from('profiles')
       .select('rut, identity_document_url, identity_selfie_url, identity_verified')
-      .eq('id', user.user.id)
+      .eq('id', user.id)
       .single();
-      
+    
     if (error) {
-      throw error;
+      console.error('Error al obtener estado de verificación:', error);
+      return {
+        isVerified: false,
+        hasRut: false,
+        hasDocuments: false,
+        hasSelfie: false
+      };
     }
     
     return {
-      isVerified: data.identity_verified || false,
-      hasRut: !!data.rut,
-      hasDocuments: !!data.identity_document_url,
-      hasSelfie: !!data.identity_selfie_url
+      isVerified: data?.identity_verified || false,
+      hasRut: !!data?.rut,
+      hasDocuments: !!data?.identity_document_url,
+      hasSelfie: !!data?.identity_selfie_url
     };
   } catch (error) {
-    console.error('Error al obtener estado de verificación:', error);
+    console.error('Error inesperado:', error);
     return {
       isVerified: false,
       hasRut: false,

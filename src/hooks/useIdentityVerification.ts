@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react';
 import { uploadIdentityDocument, updateRutInfo, getVerificationStatus } from '@/services/vehicleService';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { getCurrentUser } from '@/services/authService';
 
 export interface VerificationStatus {
   isVerified: boolean;
@@ -48,18 +50,24 @@ export const useIdentityVerification = () => {
   const handleDocumentFrontFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setDocumentFrontFile(e.target.files[0]);
+    } else {
+      setDocumentFrontFile(null);
     }
   };
 
   const handleDocumentBackFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setDocumentBackFile(e.target.files[0]);
+    } else {
+      setDocumentBackFile(null);
     }
   };
 
   const handleSelfieFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setSelfieFile(e.target.files[0]);
+    } else {
+      setSelfieFile(null);
     }
   };
 
@@ -92,6 +100,7 @@ export const useIdentityVerification = () => {
       if (success) {
         setVerificationStatus(prev => ({ ...prev, hasRut: true }));
         setStep(2);
+        toast.success("RUT guardado correctamente");
       }
     } catch (error) {
       console.error("Error al guardar RUT:", error);
@@ -110,16 +119,25 @@ export const useIdentityVerification = () => {
     setIsLoading(true);
     
     try {
-      // Subir frente del documento - usando solo los parámetros esperados
+      // Crear un único archivo combinado con ambas imágenes para almacenar en la base de datos
+      // Primero, subir el frente del documento
       const frontResponse = await uploadIdentityDocument(documentFrontFile, false);
       
-      // Subir reverso del documento - usando solo los parámetros esperados
+      if (!frontResponse.success) {
+        throw new Error("Error al subir el frente del documento");
+      }
+      
+      // Luego, subir el reverso del documento
       const backResponse = await uploadIdentityDocument(documentBackFile, false);
       
-      if (frontResponse.url && backResponse.url) {
-        setVerificationStatus(prev => ({ ...prev, hasDocuments: true }));
-        setStep(3);
+      if (!frontResponse.success || !backResponse.success) {
+        throw new Error("Error al subir los documentos");
       }
+      
+      // Si ambas cargas fueron exitosas, actualizar el estado y avanzar al siguiente paso
+      setVerificationStatus(prev => ({ ...prev, hasDocuments: true }));
+      setStep(3);
+      toast.success("Documentos subidos correctamente");
     } catch (error) {
       console.error("Error al subir documentos:", error);
       toast.error("Error al subir los documentos");
@@ -137,12 +155,15 @@ export const useIdentityVerification = () => {
     setIsLoading(true);
     
     try {
-      // Usar solo los parámetros esperados
-      const { url } = await uploadIdentityDocument(selfieFile, true);
+      // Usar el método para subir la selfie
+      const { success, url } = await uploadIdentityDocument(selfieFile, true);
       
-      if (url) {
+      if (success && url) {
         setVerificationStatus(prev => ({ ...prev, hasSelfie: true }));
         setStep(4);
+        toast.success("Selfie subida correctamente");
+      } else {
+        throw new Error("Error al subir la selfie");
       }
     } catch (error) {
       console.error("Error al subir selfie:", error);
