@@ -79,10 +79,10 @@ interface VehicleWithProfile {
   is_approved: boolean | null;
   created_at: string;
   profiles: {
-    email: string | null;
-    first_name: string | null;
-    last_name: string | null;
-  };
+    email?: string | null;
+    first_name?: string | null;
+    last_name?: string | null;
+  } | null;
 }
 
 interface AuctionWithDetails {
@@ -99,11 +99,11 @@ interface AuctionWithDetails {
     year: number;
     user_id: string;
     profiles: {
-      email: string | null;
-      first_name: string | null;
-      last_name: string | null;
-    };
-  };
+      email?: string | null;
+      first_name?: string | null;
+      last_name?: string | null;
+    } | null;
+  } | null;
 }
 
 export async function getUsers() {
@@ -250,7 +250,7 @@ export async function getVehicles() {
     }
     
     // Format vehicles with owner information
-    const formattedVehicles: AdminVehicle[] = (vehicles as VehicleWithProfile[]).map(vehicle => {
+    const formattedVehicles: AdminVehicle[] = (vehicles as unknown as VehicleWithProfile[]).map(vehicle => {
       const profile = vehicle.profiles || {};
       
       return {
@@ -363,7 +363,7 @@ export async function getAuctions() {
     }
     
     // Format auctions with vehicle and owner information
-    const formattedAuctions: AdminAuction[] = (auctions as AuctionWithDetails[]).map(auction => {
+    const formattedAuctions: AdminAuction[] = (auctions as unknown as AuctionWithDetails[]).map(auction => {
       const vehicle = auction.vehicle || {} as AuctionWithDetails['vehicle'];
       const profile = vehicle.profiles || {};
       
