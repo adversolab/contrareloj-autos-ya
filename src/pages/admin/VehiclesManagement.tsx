@@ -166,7 +166,7 @@ const VehiclesManagement = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={handleCancelDelete}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteAuction} className="bg-red-600 hover:bg-red-700">
+            <AlertDialogAction onClick={handleDeleteVehicle} className="bg-red-600 hover:bg-red-700">
               Eliminar
             </AlertDialogAction>
           </AlertDialogFooter>

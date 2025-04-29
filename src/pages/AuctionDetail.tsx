@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -29,6 +29,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const AuctionDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { user, profile } = useAuth();
   const [bidAmount, setBidAmount] = useState('');
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -219,7 +220,7 @@ const AuctionDetail = () => {
       
       // Fetch auction details, photos, etc.
     }
-  }, [auctionData, user, profile]);
+  }, [auctionData, user, profile, navigate]);
 
   const handleBid = () => {
     if (!user) {
