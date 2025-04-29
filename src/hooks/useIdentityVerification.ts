@@ -145,12 +145,17 @@ export const useIdentityVerification = () => {
         throw new Error("Error al subir el reverso del documento");
       }
       
-      // Actualizar perfil con las URLs de los documentos
+      // Combinar las URLs en un único campo JSON para almacenar en la base de datos
+      const documentUrls = {
+        front: frontResponse.url,
+        back: backResponse.url
+      };
+      
+      // Actualizar perfil con las URLs de los documentos como un único campo JSON
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
-          identity_document_front_url: frontResponse.url,
-          identity_document_back_url: backResponse.url
+          identity_document_url: JSON.stringify(documentUrls),
         })
         .eq('id', userId);
       
