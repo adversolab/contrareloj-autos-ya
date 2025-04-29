@@ -4,7 +4,16 @@ import { toast } from "sonner";
 
 export async function signUp(email: string, password: string) {
   try {
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({ 
+      email, 
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth`,
+        data: {
+          // Podemos agregar datos personalizados aquí si los necesitamos
+        }
+      }
+    });
     
     if (error) {
       let errorMessage = error.message;
@@ -35,6 +44,8 @@ export async function signIn(email: string, password: string) {
       // Personalizar mensajes de error comunes
       if (error.message.includes("Invalid login credentials")) {
         errorMessage = "Credenciales inválidas. Por favor verifica tu correo y contraseña.";
+      } else if (error.message.includes("Email not confirmed")) {
+        errorMessage = "Por favor confirma tu correo electrónico antes de iniciar sesión.";
       }
       
       console.error("Error de inicio de sesión:", error);
@@ -68,8 +79,8 @@ export async function signOut() {
 
 export async function getCurrentUser() {
   try {
-    const { data } = await supabase.auth.getUser();
-    return data.user;
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.user || null;
   } catch (error) {
     console.error("Error al obtener usuario actual:", error);
     return null;
@@ -90,6 +101,28 @@ export async function resetPassword(email: string) {
     return { error: null };
   } catch (error: any) {
     console.error("Error inesperado en resetPassword:", error);
+    return { error };
+  }
+}
+
+export async function updateUserProfile(userId: string, data: any) {
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .upsert({
+        id: userId,
+        ...data,
+        updated_at: new Date().toISOString(),
+      });
+
+    if (error) {
+      console.error("Error al actualizar perfil:", error);
+      return { error };
+    }
+    
+    return { error: null };
+  } catch (error: any) {
+    console.error("Error inesperado en updateUserProfile:", error);
     return { error };
   }
 }
