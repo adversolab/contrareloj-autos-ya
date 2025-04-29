@@ -63,15 +63,15 @@ export async function verifyUser(userId: string) {
       
     if (error) {
       console.error('Error al verificar usuario:', error);
-      toast({ title: "Error", description: "No se pudo verificar al usuario", variant: "destructive" });
+      toast.error('No se pudo verificar al usuario');
       return false;
     }
     
-    toast({ title: "Éxito", description: "Usuario verificado correctamente" });
+    toast.success('Usuario verificado correctamente');
     return true;
   } catch (error) {
     console.error('Error inesperado:', error);
-    toast({ title: "Error", description: "No se pudo verificar al usuario", variant: "destructive" });
+    toast.error('No se pudo verificar al usuario');
     return false;
   }
 }
@@ -85,15 +85,15 @@ export async function updateUserRole(userId: string, role: "user" | "admin" | "m
       
     if (error) {
       console.error('Error al actualizar rol:', error);
-      toast({ title: "Error", description: "No se pudo actualizar el rol del usuario", variant: "destructive" });
+      toast.error('No se pudo actualizar el rol del usuario');
       return false;
     }
     
-    toast({ title: "Éxito", description: "Rol actualizado correctamente" });
+    toast.success('Rol actualizado correctamente');
     return true;
   } catch (error) {
     console.error('Error inesperado:', error);
-    toast({ title: "Error", description: "No se pudo actualizar el rol del usuario", variant: "destructive" });
+    toast.error('No se pudo actualizar el rol del usuario');
     return false;
   }
 }
@@ -108,7 +108,7 @@ export async function getUserDocuments(userId: string): Promise<UserDocuments | 
       
     if (error) {
       console.error('Error al obtener documentos:', error);
-      toast({ title: "Error", description: "Error al cargar los documentos", variant: "destructive" });
+      toast.error('Error al cargar los documentos');
       return null;
     }
     
@@ -149,7 +149,7 @@ export async function getUserDocuments(userId: string): Promise<UserDocuments | 
     };
   } catch (error) {
     console.error('Error inesperado:', error);
-    toast({ title: "Error", description: "Error al cargar los documentos", variant: "destructive" });
+    toast.error('Error al cargar los documentos');
     return null;
   }
 }
