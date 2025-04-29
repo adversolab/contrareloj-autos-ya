@@ -318,6 +318,8 @@ export async function getAuctions() {
       return { auctions: [] };
     }
     
+    console.log("Raw auction data:", data);
+    
     // Process data to match AdminAuction interface with proper type checking
     const auctions: AdminAuction[] = data.map(auction => {
       // Handle the case where vehicle or user might be a SelectQueryError
@@ -328,18 +330,23 @@ export async function getAuctions() {
       // Handle nested user object or create default if not available
       let userInfo = { email: 'unknown@email.com', first_name: null, last_name: null };
       
+      // Handle the complex user structure safely
       if (
         typeof auction.user === 'object' && 
-        auction.user && 
-        !('error' in auction.user) && 
-        auction.user.user_id && 
-        typeof auction.user.user_id === 'object'
+        auction.user !== null
       ) {
-        userInfo = {
-          email: auction.user.user_id.email || 'unknown@email.com',
-          first_name: auction.user.user_id.first_name,
-          last_name: auction.user.user_id.last_name
-        };
+        // Check if it's an error object or if it has the expected user data
+        if (!('error' in auction.user)) {
+          // Try to safely extract user email and name
+          const userData = auction.user;
+          if (userData && typeof userData === 'object') {
+            userInfo = {
+              email: userData.email || 'unknown@email.com',
+              first_name: userData.first_name || null,
+              last_name: userData.last_name || null
+            };
+          }
+        }
       }
 
       return {
