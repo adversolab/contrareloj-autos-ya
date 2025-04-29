@@ -5,10 +5,10 @@ import { AdminUser } from "./types/adminTypes";
 
 export async function getUsers() {
   try {
-    // Obtenemos todos los perfiles
+    // Obtenemos todos los perfiles con emails
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
-      .select('*')
+      .select('id, first_name, last_name, role, identity_verified, created_at, email')
       .order('created_at', { ascending: false });
       
     if (profilesError) {
@@ -17,28 +17,10 @@ export async function getUsers() {
       return { users: [] };
     }
     
-    // Obtenemos los datos de autenticación para obtener los emails
-    const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
-    
-    if (authError) {
-      console.error('Error al obtener datos de autenticación:', authError);
-      // Continuamos con los perfiles sin emails
-    }
-    
-    // Mapa de ID a email para búsqueda rápida
-    const emailMap = new Map();
-    if (authData && authData.users) {
-      authData.users.forEach((user: any) => {
-        if (user && user.id && user.email) {
-          emailMap.set(user.id, user.email);
-        }
-      });
-    }
-    
-    // Formatear usuarios combinando datos
+    // Formatear usuarios
     const formattedUsers: AdminUser[] = profiles.map(profile => ({
       id: profile.id,
-      email: emailMap.get(profile.id) || 'Sin correo',
+      email: profile.email || 'Sin correo',
       first_name: profile.first_name,
       last_name: profile.last_name,
       role: profile.role as "user" | "admin" | "moderator",

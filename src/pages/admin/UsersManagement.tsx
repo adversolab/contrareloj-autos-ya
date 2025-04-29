@@ -37,8 +37,10 @@ const UsersManagement = () => {
   const [loadingDocuments, setLoadingDocuments] = useState(false);
 
   const fetchUsers = async () => {
+    console.log("Fetching users...");
     setLoading(true);
     const { users: fetchedUsers } = await getUsers();
+    console.log("Fetched users:", fetchedUsers);
     setUsers(fetchedUsers);
     setLoading(false);
   };
@@ -63,7 +65,9 @@ const UsersManagement = () => {
     setLoadingDocuments(true);
     setViewingDocuments(true);
     
+    console.log("Fetching documents for user:", userId);
     const documents = await getUserDocuments(userId);
+    console.log("User documents:", documents);
     setUserDocuments(documents);
     setLoadingDocuments(false);
   };
@@ -73,10 +77,12 @@ const UsersManagement = () => {
   }, []);
 
   // Filter users who have submitted documents but are not yet verified
-  const pendingVerificationUsers = users.filter(user => 
-    !user.identity_verified && 
-    user.role !== 'admin' // We don't need to verify admins
-  );
+  const pendingVerificationUsers = users.filter(user => {
+    // If the user has submitted documents or selfie but is not verified
+    return !user.identity_verified && user.role !== 'admin'; // No need to verify admins
+  });
+
+  console.log("Pending verification users:", pendingVerificationUsers);
 
   return (
     <div>
