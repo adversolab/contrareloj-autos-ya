@@ -20,12 +20,16 @@ export async function getUsers() {
     }
     
     console.log('Raw profiles data from database:', data);
+    console.log('Number of profiles returned from database:', data ? data.length : 0);
     
-    // Asegurarnos que data es un array
-    const profiles = Array.isArray(data) ? data : [];
+    // Verificación adicional para asegurarnos de que data sea un array
+    if (!data || !Array.isArray(data)) {
+      console.error('Data returned is not an array or is null:', data);
+      return { users: [] };
+    }
     
     // Formatear usuarios asegurándose de que todos sean incluidos
-    const formattedUsers: AdminUser[] = profiles.map(profile => ({
+    const formattedUsers: AdminUser[] = data.map(profile => ({
       id: profile.id,
       email: profile.email || 'Sin correo',
       first_name: profile.first_name || null,
@@ -39,7 +43,7 @@ export async function getUsers() {
     }));
     
     console.log('Formatted users (should include all):', formattedUsers);
-    console.log('Total number of users:', formattedUsers.length);
+    console.log('Total number of users after formatting:', formattedUsers.length);
     
     return { users: formattedUsers };
   } catch (error) {

@@ -23,17 +23,23 @@ const UsersManagement = () => {
   const fetchUsers = async () => {
     console.log("Fetching users...");
     setLoading(true);
-    const { users: fetchedUsers } = await getUsers();
-    console.log("Fetched users:", fetchedUsers);
-    
-    if (fetchedUsers && fetchedUsers.length > 0) {
-      setUsers(fetchedUsers);
-    } else {
-      console.log("No users found or empty array returned");
+    try {
+      const { users: fetchedUsers } = await getUsers();
+      console.log("Fetched users:", fetchedUsers);
+      console.log("Number of users fetched:", fetchedUsers ? fetchedUsers.length : 0);
+      
+      if (fetchedUsers && fetchedUsers.length > 0) {
+        setUsers(fetchedUsers);
+      } else {
+        console.log("No users found or empty array returned");
+        setUsers([]);
+      }
+    } catch (error) {
+      console.error("Error fetching users:", error);
       setUsers([]);
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   const handleVerifyUser = async (userId: string) => {

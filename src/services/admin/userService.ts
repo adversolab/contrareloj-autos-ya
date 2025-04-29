@@ -21,6 +21,13 @@ export async function getUsers() {
     }
     
     console.log("Admin service: Raw profiles data:", data);
+    console.log('Admin service: Number of profiles returned:', data ? data.length : 0);
+    
+    // Verificación adicional
+    if (!data || !Array.isArray(data)) {
+      console.error('Admin service: Data returned is not an array or is null:', data);
+      return { users: [] };
+    }
     
     // Process the user data to determine document availability
     const users: AdminUser[] = data.map(user => ({
@@ -37,6 +44,7 @@ export async function getUsers() {
     }));
     
     console.log("Admin service: Total users found:", users.length);
+    console.log("Admin service: Users details:", users.map(u => ({id: u.id, email: u.email})));
     
     return { users };
   } catch (error) {
