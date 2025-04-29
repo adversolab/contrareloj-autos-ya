@@ -102,6 +102,28 @@ export async function approveAuction(auctionId: string) {
   }
 }
 
+export async function pauseAuction(auctionId: string) {
+  try {
+    const { error } = await supabase
+      .from('auctions')
+      .update({ status: 'paused' })
+      .eq('id', auctionId);
+      
+    if (error) {
+      console.error('Error al pausar subasta:', error);
+      toast({ title: "Error", description: "No se pudo pausar la subasta", variant: "destructive" });
+      return false;
+    }
+    
+    toast({ title: "Éxito", description: "Subasta pausada correctamente" });
+    return true;
+  } catch (error) {
+    console.error('Error inesperado:', error);
+    toast({ title: "Error", description: "No se pudo pausar la subasta", variant: "destructive" });
+    return false;
+  }
+}
+
 export async function deleteAuction(auctionId: string) {
   try {
     const { error } = await supabase
