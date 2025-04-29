@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -340,12 +339,20 @@ const SellCar = () => {
       // Simular procesamiento de pago
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Activar la subasta
-      await activateAuction(auctionId);
+      // Activar la subasta (que ahora la deja como borrador por defecto)
+      const result = await activateAuction(auctionId);
       
-      toast.success("¡Felicidades! Tu vehículo ha sido publicado correctamente");
-      // Redireccionar a la página del detalle de la subasta
-      navigate(`/subasta/${auctionId}`);
+      if (result.success) {
+        toast.success("¡Felicidades! Tu vehículo ha sido enviado para aprobación");
+        
+        // Esperar un segundo antes de redirigir para que el usuario vea el mensaje
+        setTimeout(() => {
+          // Redireccionar a la página del detalle de la subasta
+          navigate(`/subasta/${auctionId}`);
+        }, 1000);
+      } else {
+        toast.error("Ocurrió un error al finalizar el proceso");
+      }
     } catch (error) {
       toast.error("Ocurrió un error al procesar el pago");
       console.error(error);

@@ -66,6 +66,11 @@ const AuctionsManagement = () => {
     setAuctionToDelete(null);
   };
 
+  const handleCancelDelete = () => {
+    setDeleteDialogOpen(false);
+    setAuctionToDelete(null);
+  };
+
   useEffect(() => {
     fetchAuctions();
   }, []);
@@ -189,7 +194,7 @@ const AuctionsManagement = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel onClick={handleCancelDelete}>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteAuction} className="bg-red-600 hover:bg-red-700">
               Eliminar
             </AlertDialogAction>

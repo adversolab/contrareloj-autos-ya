@@ -58,6 +58,11 @@ const VehiclesManagement = () => {
     setVehicleToDelete(null);
   };
 
+  const handleCancelDelete = () => {
+    setDeleteDialogOpen(false);
+    setVehicleToDelete(null);
+  };
+
   useEffect(() => {
     fetchVehicles();
   }, []);
@@ -160,8 +165,8 @@ const VehiclesManagement = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteVehicle} className="bg-red-600 hover:bg-red-700">
+            <AlertDialogCancel onClick={handleCancelDelete}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteAuction} className="bg-red-600 hover:bg-red-700">
               Eliminar
             </AlertDialogAction>
           </AlertDialogFooter>

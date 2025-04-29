@@ -29,7 +29,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const AuctionDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [bidAmount, setBidAmount] = useState('');
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -206,6 +206,20 @@ const AuctionDetail = () => {
     const timer = setInterval(checkEndTime, 1000);
     return () => clearInterval(timer);
   }, [auctionData, isAuctionEnded]);
+
+  useEffect(() => {
+    // Check if auction is a draft and not approved
+    if (auctionData) {
+      if (auctionData.status === 'draft' && !auctionData.is_approved) {
+        // If current user is not the owner and not an admin, redirect to 404
+        if (user?.id !== auctionData.user_id && profile?.role !== 'admin') {
+          navigate('/404');
+        }
+      }
+      
+      // Fetch auction details, photos, etc.
+    }
+  }, [auctionData, user, profile]);
 
   const handleBid = () => {
     if (!user) {

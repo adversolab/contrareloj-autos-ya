@@ -84,6 +84,31 @@ export async function pauseAuction(auctionId: string) {
   }
 }
 
+export async function approveAuction(auctionId: string) {
+  try {
+    const { error } = await supabase
+      .from('auctions')
+      .update({ 
+        is_approved: true,
+        status: 'active'
+      })
+      .eq('id', auctionId);
+      
+    if (error) {
+      console.error('Error al aprobar la subasta:', error);
+      toast.error('Error al aprobar la subasta');
+      return false;
+    }
+    
+    toast.success('Subasta aprobada correctamente');
+    return true;
+  } catch (error) {
+    console.error('Error inesperado:', error);
+    toast.error('Error al aprobar la subasta');
+    return false;
+  }
+}
+
 export async function getUserDocuments(userId: string) {
   try {
     const { data, error } = await supabase

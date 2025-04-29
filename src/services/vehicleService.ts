@@ -594,43 +594,59 @@ export async function updateVehicleBasicInfo(vehicleId: string, vehicleInfo: Veh
   }
 }
 
-export async function uploadVehiclePhoto(vehicleId: string, photoParams: PhotoUploadParams) {
+export async function uploadVehiclePhoto(vehicleId: string, photo: {
+  file: File,
+  isMain: boolean,
+  position: number
+}) {
   try {
-    const filename = `${Date.now()}-${photoParams.file.name}`;
-    const filePath = `vehicles/${vehicleId}/${filename}`;
-    
-    // Upload file to storage
+    // Generate a unique file name
+    const fileExt = photo.file.name.split('.').pop();
+    const fileName = `${vehicleId}_${photo.position}_${Date.now()}.${fileExt}`;
+    const filePath = `vehicle_photos/${fileName}`;
+
+    // Upload the file to storage
     const { error: uploadError } = await supabase.storage
-      .from('vehicle-photos')
-      .upload(filePath, photoParams.file);
-      
+      .from('images')
+      .upload(filePath, photo.file, {
+        cacheControl: '3600',
+        upsert: true
+      });
+
     if (uploadError) {
+      console.error('Error uploading image:', uploadError);
       throw uploadError;
     }
-    
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('vehicle-photos')
+
+    // Get the public URL
+    const { data: publicUrl } = supabase.storage
+      .from('images')
       .getPublicUrl(filePath);
-    
-    // Save photo reference to database
+
+    if (!publicUrl) {
+      throw new Error('Error getting public URL for uploaded image');
+    }
+
+    // Save the photo info to the database
     const { error: dbError } = await supabase
       .from('vehicle_photos')
       .insert({
         vehicle_id: vehicleId,
-        url: publicUrl,
-        is_primary: photoParams.isMain,
-        position: photoParams.position
+        is_primary: photo.isMain,
+        position: photo.position,
+        url: publicUrl.publicUrl // Make sure we're using the correct property
       });
-      
+
     if (dbError) {
+      console.error('Error saving photo info to database:', dbError);
       throw dbError;
     }
-    
-    return { success: true, url: publicUrl };
+
+    return { success: true, url: publicUrl.publicUrl };
   } catch (error) {
-    console.error('Error al subir foto:', error);
-    return { success: false };
+    console.error('Error in uploadVehiclePhoto:', error);
+    toast.error('Error al subir la foto');
+    return { success: false, error };
   }
 }
 
@@ -709,41 +725,40 @@ export async function saveAuctionInfo(vehicleId: string, auctionInfo: AuctionInf
 
 export async function activateAuction(auctionId: string) {
   try {
-    const startDate = new Date();
-    const endDate = new Date();
-    
-    // Obtener los días de duración
+    // Get auction details to verify if it's approved
     const { data: auction, error: fetchError } = await supabase
       .from('auctions')
-      .select('duration_days')
+      .select('*, vehicle_id')
       .eq('id', auctionId)
       .single();
-      
+
     if (fetchError) {
       throw fetchError;
     }
-    
-    // Calcular fecha de finalización
+
+    // Calculate start and end dates
+    const startDate = new Date();
+    const endDate = new Date();
     endDate.setDate(endDate.getDate() + auction.duration_days);
-    
-    // Actualizar la subasta
+
+    // Update auction status to draft by default (will need admin approval to become active)
     const { error } = await supabase
       .from('auctions')
       .update({
-        status: 'active',
+        status: 'draft',
         start_date: startDate.toISOString(),
         end_date: endDate.toISOString()
       })
       .eq('id', auctionId);
-      
+
     if (error) {
       throw error;
     }
-    
+
     return { success: true };
   } catch (error) {
-    console.error('Error al activar subasta:', error);
-    return { success: false };
+    console.error('Error activating auction:', error);
+    return { success: false, error };
   }
 }
 
