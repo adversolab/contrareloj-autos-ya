@@ -327,7 +327,7 @@ export async function getAuctions() {
         ? auction.vehicle
         : { brand: 'Unknown', model: 'Unknown', year: 0 };
         
-      // Handle nested user object or create default if not available
+      // Default user info
       let userInfo = { email: 'unknown@email.com', first_name: null, last_name: null };
       
       // Handle the complex user structure safely
@@ -336,12 +336,12 @@ export async function getAuctions() {
         auction.user !== null
       ) {
         // Check if it's an error object or if it has the expected user data
-        if (!('error' in auction.user)) {
+        if (auction.user && !('error' in auction.user)) {
           // Try to safely extract user email and name
           const userData = auction.user;
-          if (userData && typeof userData === 'object') {
+          if (userData) {
             userInfo = {
-              email: userData.email || 'unknown@email.com',
+              email: typeof userData.email === 'string' ? userData.email : 'unknown@email.com',
               first_name: userData.first_name || null,
               last_name: userData.last_name || null
             };
