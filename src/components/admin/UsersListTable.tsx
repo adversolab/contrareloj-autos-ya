@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { AdminUser } from '@/services/types/adminTypes';
+import { AdminUser } from '@/services/admin/types';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import {

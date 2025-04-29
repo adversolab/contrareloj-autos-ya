@@ -5,8 +5,8 @@ import {
   verifyUser, 
   updateUserRole, 
   getUserDocuments
-} from '@/services/admin/userService';  // Changed import path to use admin service
-import { AdminUser } from '@/services/admin/types';  // Changed import path to use admin types
+} from '@/services/admin/userService';  // Using admin service
+import { AdminUser } from '@/services/admin/types';  // Using admin types
 import { Button } from '@/components/ui/button';
 import UsersListTable from '@/components/admin/UsersListTable';
 import PendingVerificationsTable from '@/components/admin/PendingVerificationsTable';

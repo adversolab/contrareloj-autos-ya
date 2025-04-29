@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 import { AdminUser, UserDocuments } from './types';
 
 // User management functions
@@ -16,7 +16,7 @@ export async function getUsers() {
       
     if (error) {
       console.error('Error al obtener usuarios:', error);
-      toast({ title: "Error", description: "No se pudieron cargar los usuarios", variant: "destructive" });
+      toast.error('Error al cargar los usuarios');
       return { users: [] };
     }
     
@@ -49,7 +49,7 @@ export async function getUsers() {
     return { users };
   } catch (error) {
     console.error('Error inesperado:', error);
-    toast({ title: "Error", description: "No se pudieron cargar los usuarios", variant: "destructive" });
+    toast.error('Error al cargar los usuarios');
     return { users: [] };
   }
 }
