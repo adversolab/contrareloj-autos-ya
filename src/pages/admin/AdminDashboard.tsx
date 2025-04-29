@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,7 +32,7 @@ const AdminDashboard = () => {
         .from('profiles')
         .select('*', { count: 'exact', head: true });
       
-      // Improved approach to find users with documents but not verified
+      // Obtener usuarios con documentos pero no verificados
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('id, identity_verified, rut, identity_document_url, identity_selfie_url')
@@ -41,18 +42,18 @@ const AdminDashboard = () => {
         console.error("Error fetching profiles:", profilesError);
       }
       
-      // Filter users with any document but who aren't verified yet
+      // Mejorado: usar Boolean para asegurar la conversión a booleano
       const pendingVerifications = profiles?.filter(profile => 
         !profile.identity_verified && 
-        (profile.rut || profile.identity_document_url || profile.identity_selfie_url)
+        (Boolean(profile.rut) || Boolean(profile.identity_document_url) || Boolean(profile.identity_selfie_url))
       ).length || 0;
       
       console.log("Profiles with verification status:", profiles?.map(p => ({
         id: p.id,
         verified: p.identity_verified,
-        hasRut: !!p.rut,
-        hasDoc: !!p.identity_document_url,
-        hasSelfie: !!p.identity_selfie_url
+        hasRut: Boolean(p.rut),
+        hasDoc: Boolean(p.identity_document_url),
+        hasSelfie: Boolean(p.identity_selfie_url)
       })));
       
       console.log("Total de usuarios pendientes de verificación:", pendingVerifications);
@@ -81,11 +82,11 @@ const AdminDashboard = () => {
       
       setStats({
         totalUsers: totalUsers || 0,
-        totalVehicles: stats.totalVehicles,
-        totalAuctions: stats.totalAuctions,
-        pendingVerifications: pendingVerifications || 0,
-        pendingVehicles: stats.pendingVehicles,
-        pendingAuctions: stats.pendingAuctions,
+        totalVehicles: totalVehicles || 0,
+        totalAuctions: totalAuctions || 0,
+        pendingVerifications: pendingVerifications,
+        pendingVehicles: pendingVehicles || 0,
+        pendingAuctions: pendingAuctions || 0,
       });
     } catch (error) {
       console.error("Error al cargar estadísticas:", error);

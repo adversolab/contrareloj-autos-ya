@@ -61,13 +61,14 @@ const UsersManagement = () => {
     fetchUsers();
   }, []);
 
-  // More robust filter for users who have submitted documents but are not yet verified
+  // Improved filter for users who have submitted documents but are not yet verified
   const pendingVerificationUsers = users.filter(user => {
     // Exclude admins
     if (user.role === 'admin') return false;
     
     // Check if user is not verified but has uploaded any document
-    return !user.identity_verified && (user.has_identity_document || user.has_selfie || user.has_rut);
+    const hasDocuments = user.has_identity_document || user.has_selfie || user.has_rut;
+    return !user.identity_verified && hasDocuments;
   });
 
   // Get the current user being viewed (if any)

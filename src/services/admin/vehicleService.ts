@@ -6,32 +6,42 @@ import { AdminVehicle } from './types';
 // Vehicle management functions
 export async function getVehicles() {
   try {
-    const { data, error } = await supabase
+    // First get all vehicles
+    const { data: vehiclesData, error: vehiclesError } = await supabase
       .from('vehicles')
-      .select(`
-        *,
-        user:user_id (
-          email,
-          first_name,
-          last_name
-        )
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
       
-    if (error) {
-      console.error('Error al obtener vehículos:', error);
+    if (vehiclesError) {
+      console.error('Error al obtener vehículos:', vehiclesError);
       toast({ title: "Error", description: "No se pudieron cargar los vehículos", variant: "destructive" });
       return { vehicles: [] };
     }
-    
-    // Process and validate the data to ensure it matches our AdminVehicle type
-    const vehicles: AdminVehicle[] = data.map(vehicle => {
-      // Handle case where user might be a SelectQueryError
-      const userInfo = typeof vehicle.user === 'object' && vehicle.user && !('error' in vehicle.user) 
-        ? vehicle.user 
-        : { email: 'unknown@email.com', first_name: null, last_name: null };
 
-      return {
+    // Then get user information for each vehicle
+    const vehicles: AdminVehicle[] = [];
+    
+    for (const vehicle of vehiclesData) {
+      // Get user info if user_id exists
+      let userInfo = { email: 'unknown@email.com', first_name: null, last_name: null };
+      
+      if (vehicle.user_id) {
+        const { data: userData, error: userError } = await supabase
+          .from('profiles')
+          .select('email, first_name, last_name')
+          .eq('id', vehicle.user_id)
+          .single();
+          
+        if (!userError && userData) {
+          userInfo = {
+            email: userData.email || 'unknown@email.com',
+            first_name: userData.first_name,
+            last_name: userData.last_name
+          };
+        }
+      }
+      
+      vehicles.push({
         id: vehicle.id,
         brand: vehicle.brand,
         model: vehicle.model,
@@ -39,13 +49,9 @@ export async function getVehicles() {
         user_id: vehicle.user_id,
         is_approved: vehicle.is_approved || false,
         created_at: vehicle.created_at,
-        user: {
-          email: userInfo.email || 'unknown@email.com',
-          first_name: userInfo.first_name,
-          last_name: userInfo.last_name
-        }
-      };
-    });
+        user: userInfo
+      });
+    }
     
     return { vehicles };
   } catch (error) {

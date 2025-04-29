@@ -17,6 +17,8 @@ export async function getUsers() {
       return { users: [] };
     }
     
+    console.log("Raw profiles data:", data);
+    
     // Process the user data to determine document availability
     const users: AdminUser[] = data.map(user => ({
       id: user.id,
@@ -25,11 +27,20 @@ export async function getUsers() {
       last_name: user.last_name,
       role: user.role as "user" | "admin" | "moderator",
       identity_verified: user.identity_verified || false,
-      has_identity_document: !!user.identity_document_url,
-      has_selfie: !!user.identity_selfie_url,
-      has_rut: !!user.rut,
+      has_identity_document: Boolean(user.identity_document_url), // Convert to boolean
+      has_selfie: Boolean(user.identity_selfie_url), // Convert to boolean
+      has_rut: Boolean(user.rut), // Convert to boolean
       created_at: user.created_at || new Date().toISOString()
     }));
+    
+    console.log("Processed users with document flags:", users.map(u => ({
+      id: u.id,
+      email: u.email,
+      verified: u.identity_verified,
+      has_doc: u.has_identity_document,
+      has_selfie: u.has_selfie,
+      has_rut: u.has_rut
+    })));
     
     return { users };
   } catch (error) {
@@ -107,7 +118,7 @@ export async function getUserDocuments(userId: string): Promise<UserDocuments | 
       try {
         // Check if it's a JSON string
         if (typeof data.identity_document_url === 'string' && 
-            (data.identity_document_url.startsWith('{') || data.identity_document_url.includes('front'))) {
+            (data.identity_document_url.startsWith('{') || data.identity_document_url.includes('front') || data.identity_document_url.includes('"'))) {
           // Try to parse it as JSON
           const documentUrls = JSON.parse(data.identity_document_url);
           frontUrl = documentUrls.front;
