@@ -14,6 +14,7 @@ type UserProfile = {
   created_at?: string;
   avatar_url?: string;
   role?: 'user' | 'admin' | 'moderator';
+  identity_verified?: boolean;
 };
 
 interface AuthContextType {
