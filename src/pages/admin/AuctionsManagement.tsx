@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { getAuctions, approveAuction, deleteAuction, pauseAuction, AdminAuction } from '@/services/adminService';
 import { Badge } from '@/components/ui/badge';

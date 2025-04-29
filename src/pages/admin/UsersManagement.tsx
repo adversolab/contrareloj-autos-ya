@@ -1,8 +1,6 @@
-
 import React, { useEffect, useState } from 'react';
-import { getUsers, verifyUser, updateUserRole, getUserDocuments, UserDocuments } from '@/services/adminService';
+import { getUsers, verifyUser, updateUserRole, getUserDocuments, UserDocuments, AdminUser } from '@/services/adminService';
 import { Button } from '@/components/ui/button';
-import { AdminUser } from '@/services/types/adminTypes';
 import UsersListTable from '@/components/admin/UsersListTable';
 import PendingVerificationsTable from '@/components/admin/PendingVerificationsTable';
 import UserDocumentsDialog from '@/components/admin/UserDocumentsDialog';

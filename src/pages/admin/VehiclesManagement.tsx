@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { getVehicles, approveVehicle, deleteVehicle, AdminVehicle } from '@/services/adminService';
 import { Badge } from '@/components/ui/badge';
