@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
-import { uploadIdentityDocument, updateRutInfo, getVerificationStatus } from '@/services/vehicleService';
+import { uploadIdentityFile } from '@/services/storageService';
+import { updateRutInfo, getVerificationStatus } from '@/services/vehicleService';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { getCurrentUser } from '@/services/authService';
@@ -119,22 +120,45 @@ export const useIdentityVerification = () => {
     setIsLoading(true);
     
     try {
-      // Crear un único archivo combinado con ambas imágenes para almacenar en la base de datos
+      const currentUser = await getCurrentUser();
+      if (!currentUser) {
+        throw new Error("Usuario no autenticado");
+      }
+      
+      const userId = currentUser.id;
+      
+      // Generar nombres de archivo únicos
+      const frontFileName = `${userId}_front_${Date.now()}.${documentFrontFile.name.split('.').pop()}`;
+      const backFileName = `${userId}_back_${Date.now()}.${documentBackFile.name.split('.').pop()}`;
+      
       // Primero, subir el frente del documento
-      const frontResponse = await uploadIdentityDocument(documentFrontFile, false);
+      const frontResponse = await uploadIdentityFile(documentFrontFile, frontFileName);
       
       if (!frontResponse.success) {
         throw new Error("Error al subir el frente del documento");
       }
       
       // Luego, subir el reverso del documento
-      const backResponse = await uploadIdentityDocument(documentBackFile, false);
+      const backResponse = await uploadIdentityFile(documentBackFile, backFileName);
       
-      if (!frontResponse.success || !backResponse.success) {
-        throw new Error("Error al subir los documentos");
+      if (!backResponse.success) {
+        throw new Error("Error al subir el reverso del documento");
       }
       
-      // Si ambas cargas fueron exitosas, actualizar el estado y avanzar al siguiente paso
+      // Actualizar perfil con las URLs de los documentos
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          identity_document_front_url: frontResponse.url,
+          identity_document_back_url: backResponse.url
+        })
+        .eq('id', userId);
+      
+      if (updateError) {
+        throw new Error("Error al guardar referencias de documentos");
+      }
+      
+      // Si todo fue exitoso, actualizar el estado y avanzar al siguiente paso
       setVerificationStatus(prev => ({ ...prev, hasDocuments: true }));
       setStep(3);
       toast.success("Documentos subidos correctamente");
@@ -155,16 +179,39 @@ export const useIdentityVerification = () => {
     setIsLoading(true);
     
     try {
-      // Usar el método para subir la selfie
-      const { success, url } = await uploadIdentityDocument(selfieFile, true);
+      const currentUser = await getCurrentUser();
+      if (!currentUser) {
+        throw new Error("Usuario no autenticado");
+      }
       
-      if (success && url) {
-        setVerificationStatus(prev => ({ ...prev, hasSelfie: true }));
-        setStep(4);
-        toast.success("Selfie subida correctamente");
-      } else {
+      const userId = currentUser.id;
+      
+      // Generar nombre de archivo único
+      const selfieFileName = `${userId}_selfie_${Date.now()}.${selfieFile.name.split('.').pop()}`;
+      
+      // Subir la selfie
+      const selfieResponse = await uploadIdentityFile(selfieFile, selfieFileName, true);
+      
+      if (!selfieResponse.success || !selfieResponse.url) {
         throw new Error("Error al subir la selfie");
       }
+      
+      // Actualizar perfil con la URL de la selfie
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          identity_selfie_url: selfieResponse.url
+        })
+        .eq('id', userId);
+      
+      if (updateError) {
+        throw new Error("Error al guardar referencia de selfie");
+      }
+      
+      // Si todo fue exitoso, actualizar el estado y avanzar al siguiente paso
+      setVerificationStatus(prev => ({ ...prev, hasSelfie: true }));
+      setStep(4);
+      toast.success("Selfie subida correctamente");
     } catch (error) {
       console.error("Error al subir selfie:", error);
       toast.error("Error al subir la selfie");
