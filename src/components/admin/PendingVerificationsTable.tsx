@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { AdminUser } from '@/services/adminService';
+import { AdminUser } from '@/services/types/adminTypes';
 import { format } from 'date-fns';
 import {
   Table,

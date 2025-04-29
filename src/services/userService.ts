@@ -23,8 +23,8 @@ export async function getUsers() {
     const formattedUsers: AdminUser[] = profiles.map(profile => ({
       id: profile.id,
       email: profile.email || 'Sin correo',
-      first_name: profile.first_name || '',
-      last_name: profile.last_name || '',
+      first_name: profile.first_name || null,
+      last_name: profile.last_name || null,
       role: profile.role as "user" | "admin" | "moderator",
       identity_verified: profile.identity_verified || false,
       has_identity_document: Boolean(profile.identity_document_url),

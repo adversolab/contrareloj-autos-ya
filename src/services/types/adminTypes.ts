@@ -15,9 +15,9 @@ export interface AdminUser {
   last_name: string | null;
   role: "user" | "admin" | "moderator";
   identity_verified: boolean;
-  has_identity_document?: boolean;
-  has_selfie?: boolean;
-  has_rut?: boolean;
+  has_identity_document: boolean;  // Changed from optional to required
+  has_selfie: boolean;  // Changed from optional to required
+  has_rut: boolean;  // Changed from optional to required
   created_at: string;
 }
 
