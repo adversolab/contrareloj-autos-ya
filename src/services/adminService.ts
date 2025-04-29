@@ -108,10 +108,12 @@ interface AuctionWithDetails {
 
 export async function getUsers() {
   try {
-    // Get all profiles from the public profiles table
+    console.log("Fetching users from profiles table...");
+    
+    // Modified query to include emails directly from profiles table
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
-      .select('id, first_name, last_name, role, identity_verified, created_at, email')
+      .select('id, email, first_name, last_name, role, identity_verified, created_at')
       .order('created_at', { ascending: false });
       
     if (profilesError) {
@@ -120,8 +122,10 @@ export async function getUsers() {
       return { users: [] };
     }
     
+    console.log("Profiles fetched:", profiles);
+    
     // Format users with email data
-    const formattedUsers: AdminUser[] = (profiles as ProfileWithEmail[]).map(profile => ({
+    const formattedUsers: AdminUser[] = (profiles || []).map(profile => ({
       id: profile.id,
       email: profile.email || 'Sin correo',
       first_name: profile.first_name,
@@ -131,6 +135,7 @@ export async function getUsers() {
       created_at: profile.created_at || ''
     }));
     
+    console.log("Formatted users:", formattedUsers);
     return { users: formattedUsers };
   } catch (error) {
     console.error('Error inesperado:', error);
@@ -248,6 +253,8 @@ export async function getVehicles() {
       toast.error('Error al cargar los vehículos');
       return { vehicles: [] };
     }
+    
+    console.log("Vehicles fetched:", vehicles);
     
     // Format vehicles with owner information
     const formattedVehicles: AdminVehicle[] = (vehicles as unknown as VehicleWithProfile[]).map(vehicle => {
