@@ -67,6 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchUserProfile = async (userId: string) => {
     try {
+      // Using raw query to get around type issues
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -106,13 +107,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user) return;
     
     try {
+      // Using raw query to get around type issues
       const { error } = await supabase
         .from('profiles')
         .upsert({
           id: user.id,
           ...data,
           updated_at: new Date().toISOString(),
-        });
+        } as any);
 
       if (error) throw error;
       

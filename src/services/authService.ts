@@ -107,13 +107,14 @@ export async function resetPassword(email: string) {
 
 export async function updateUserProfile(userId: string, data: any) {
   try {
+    // Using a type assertion to work around type issues
     const { error } = await supabase
       .from('profiles')
       .upsert({
         id: userId,
         ...data,
         updated_at: new Date().toISOString(),
-      });
+      } as any);
 
     if (error) {
       console.error("Error al actualizar perfil:", error);
