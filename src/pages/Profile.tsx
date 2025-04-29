@@ -542,7 +542,7 @@ const Profile = () => {
             variant="outline"
             className="w-full md:w-auto"
           >
-            {user?.identity_verified ? "Ver estado de verificación" : "Verificar mi identidad"}
+            {profile?.identity_verified ? "Ver estado de verificación" : "Verificar mi identidad"}
           </Button>
         </div>
       </main>
