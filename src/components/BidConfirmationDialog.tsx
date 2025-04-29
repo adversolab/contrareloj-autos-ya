@@ -14,21 +14,17 @@ import { AlertCircle } from 'lucide-react';
 interface BidConfirmationDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  bidAmount: number;
   onConfirm: () => void;
-  bidAmount?: number; // Changed from bidAmount to match usage in AuctionDetail
-  currentBid?: number; // Added to match usage in AuctionDetail
-  minIncrement?: number; // Added to match usage in AuctionDetail
 }
 
 const BidConfirmationDialog: React.FC<BidConfirmationDialogProps> = ({ 
   isOpen, 
   onClose, 
-  onConfirm,
-  bidAmount = 0, // Providing default values to prevent undefined errors
-  currentBid = 0,
-  minIncrement = 0
+  bidAmount,
+  onConfirm
 }) => {
-  const holdAmount = Math.round((bidAmount || currentBid) * 0.05);
+  const holdAmount = Math.round(bidAmount * 0.05);
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -48,7 +44,7 @@ const BidConfirmationDialog: React.FC<BidConfirmationDialogProps> = ({
             <h4 className="font-medium mb-2">Detalles de la oferta:</h4>
             <div className="grid grid-cols-2 gap-2">
               <div className="text-sm text-gray-500">Monto de la oferta:</div>
-              <div className="text-sm font-medium text-right">${(bidAmount || currentBid).toLocaleString('es-CL')}</div>
+              <div className="text-sm font-medium text-right">${bidAmount.toLocaleString('es-CL')}</div>
               
               <div className="text-sm text-gray-500">Comisión (5%):</div>
               <div className="text-sm font-medium text-right">${holdAmount.toLocaleString('es-CL')}</div>
@@ -56,7 +52,7 @@ const BidConfirmationDialog: React.FC<BidConfirmationDialogProps> = ({
               <div className="border-t border-gray-200 col-span-2 my-2"></div>
               
               <div className="text-sm font-medium">Total en caso de adjudicación:</div>
-              <div className="text-sm font-medium text-right">${(bidAmount || currentBid).toLocaleString('es-CL')}</div>
+              <div className="text-sm font-medium text-right">${bidAmount.toLocaleString('es-CL')}</div>
             </div>
           </div>
 
