@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -12,12 +13,12 @@ import { toast } from 'sonner';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { getUserVehicles, getUserFavorites } from '@/services/vehicleService';
 
-// Tipos para las subastas
+// Types for auctions
 interface Auction {
   id: string | number;
   title: string;
   description: string;
-  imageUrl: string;
+  imageUrl?: string; // Make optional to match what we get from API
   currentBid: number;
   endTime: Date;
   bidCount: number;
@@ -25,12 +26,24 @@ interface Auction {
   auctionId?: string | null;
 }
 
+// Type for vehicle data from API
+interface Vehicle {
+  id: string;
+  brand: string;
+  model: string;
+  year: number;
+  description?: string;
+  created_at: string;
+  auctions?: any[];
+  // Add other vehicle fields as needed
+}
+
 const Profile = () => {
   const navigate = useNavigate();
   const { user, profile, isLoading, updateUserProfile } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   
-  // Estados para los campos del formulario
+  // Form field states
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
@@ -38,7 +51,7 @@ const Profile = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  // Estados para las subastas
+  // Auction states
   const [biddingAuctions, setBiddingAuctions] = useState<Auction[]>([]);
   const [favoriteAuctions, setFavoriteAuctions] = useState<Auction[]>([]);
   const [sellingAuctions, setSellingAuctions] = useState<Auction[]>([]);
@@ -46,7 +59,7 @@ const Profile = () => {
   const [isLoadingVehicles, setIsLoadingVehicles] = useState(false);
   const [isLoadingFavorites, setIsLoadingFavorites] = useState(false);
 
-  // Cargar datos del perfil
+  // Load profile data
   useEffect(() => {
     if (profile) {
       setFirstName(profile.first_name || '');
@@ -56,26 +69,39 @@ const Profile = () => {
     }
   }, [profile]);
 
-  // Redirigir a la página de autenticación si no hay usuario
+  // Redirect to auth page if not logged in
   useEffect(() => {
     if (!isLoading && !user) {
       navigate('/auth?redirect=/perfil');
     }
   }, [user, isLoading, navigate]);
 
-  // Obtener las subastas publicadas por el usuario
+  // Load user vehicles
   useEffect(() => {
     const loadUserVehicles = async () => {
       if (user) {
         setIsLoadingVehicles(true);
         try {
-          // Cargar los vehículos publicados por el usuario
+          // Load user vehicles
           const { vehicles } = await getUserVehicles();
           if (vehicles && vehicles.length > 0) {
-            setSellingAuctions(vehicles);
+            // Transform vehicles to Auction format
+            const formattedVehicles: Auction[] = vehicles.map((vehicle: Vehicle) => ({
+              id: vehicle.id,
+              title: `${vehicle.brand} ${vehicle.model} ${vehicle.year}`,
+              description: vehicle.description || '',
+              imageUrl: '', // Default value
+              currentBid: vehicle.auctions?.length > 0 ? vehicle.auctions[0].start_price : 0,
+              endTime: vehicle.auctions?.length > 0 ? new Date(vehicle.auctions[0].end_date) : new Date(),
+              bidCount: 0, // Default value
+              status: vehicle.auctions?.length > 0 ? vehicle.auctions[0].status : 'draft',
+              auctionId: vehicle.auctions?.length > 0 ? vehicle.auctions[0].id : null
+            }));
+            
+            setSellingAuctions(formattedVehicles);
           }
           
-          // Por ahora, dejamos las otras listas vacías ya que no tenemos datos reales
+          // For now, leave other lists empty since we don't have real data
           setBiddingAuctions([]);
           setWonAuctions([]);
         } catch (error) {
@@ -90,7 +116,7 @@ const Profile = () => {
     loadUserVehicles();
   }, [user]);
 
-  // Cargar favoritos
+  // Load favorites
   useEffect(() => {
     const loadUserFavorites = async () => {
       if (user) {
@@ -99,8 +125,19 @@ const Profile = () => {
           const { favorites, error } = await getUserFavorites();
           if (error) {
             console.error("Error al cargar favoritos:", error);
-          } else {
-            setFavoriteAuctions(favorites);
+          } else if (favorites && favorites.length > 0) {
+            // Transform favorites to match the Auction interface
+            const formattedFavorites: Auction[] = favorites.map(favorite => ({
+              id: favorite.id || '',
+              title: favorite.title || '',
+              description: favorite.description || '',
+              imageUrl: '', // Default value
+              currentBid: favorite.currentBid || 0,
+              endTime: favorite.endTime || new Date(),
+              bidCount: 0 // Default value
+            }));
+            
+            setFavoriteAuctions(formattedFavorites);
           }
         } catch (error) {
           console.error("Error al cargar favoritos:", error);

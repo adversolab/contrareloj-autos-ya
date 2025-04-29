@@ -289,7 +289,7 @@ const AuctionDetail = () => {
     const bidValue = parseInt(bidAmount.replace(/\D/g, ''));
     const holdAmount = Math.round(bidValue * 0.05);
     
-    const { success, error, needsVerification } = await placeBid(id, {
+    const { success, needsVerification } = await placeBid(id, {
       amount: bidValue,
       holdAmount
     });
@@ -297,7 +297,7 @@ const AuctionDetail = () => {
     if (needsVerification) {
       setIsVerifyDialogOpen(true);
     } else if (success) {
-      // Recargar historial de ofertas
+      // Reload bid history
       const { bids: updatedBids } = await getAuctionBids(id);
       setBids(updatedBids || []);
       setBidAmount('');

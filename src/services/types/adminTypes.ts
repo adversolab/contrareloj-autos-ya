@@ -1,9 +1,10 @@
 
+// Define admin-related types here
 export interface AdminUser {
   id: string;
   email: string;
-  first_name?: string;
-  last_name?: string;
+  first_name: string | null;
+  last_name: string | null;
   role: "user" | "admin" | "moderator";
   identity_verified: boolean;
   created_at: string;
@@ -19,8 +20,8 @@ export interface AdminVehicle {
   created_at: string;
   user: {
     email: string;
-    first_name?: string;
-    last_name?: string;
+    first_name?: string | null;
+    last_name?: string | null;
   };
 }
 
@@ -39,7 +40,7 @@ export interface AdminAuction {
   };
   user: {
     email: string;
-    first_name?: string;
-    last_name?: string;
+    first_name?: string | null;
+    last_name?: string | null;
   };
 }

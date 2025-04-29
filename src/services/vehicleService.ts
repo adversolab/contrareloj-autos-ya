@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getCurrentUser } from "@/services/authService";
@@ -130,7 +129,10 @@ export async function saveVehicleFeatures(vehicleId: string, features: VehicleFe
   }
 }
 
-export async function uploadVehiclePhoto(vehicleId: string, file: File, position: number): Promise<{ success: boolean; url?: string }> {
+export async function uploadVehiclePhoto(
+  vehicleId: string, 
+  { file, isMain = false, position = 0 }: { file: File; isMain?: boolean; position: number }
+): Promise<{ success: boolean; url?: string }> {
   try {
     const timestamp = new Date().getTime();
     const fileExt = file.name.split('.').pop();
@@ -164,7 +166,8 @@ export async function uploadVehiclePhoto(vehicleId: string, file: File, position
       .insert({
         vehicle_id: vehicleId,
         url,
-        position
+        position,
+        is_primary: isMain
       });
 
     if (dbError) {
@@ -188,9 +191,6 @@ export async function saveAuctionInfo(vehicleId: string, info: AuctionInfo): Pro
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + info.durationDays);
 
-    // Format services as JSON
-    const services = info.services;
-
     // Insert auction record
     const { data, error } = await supabase
       .from('auctions')
@@ -202,7 +202,7 @@ export async function saveAuctionInfo(vehicleId: string, info: AuctionInfo): Pro
         start_date: startDate.toISOString(),
         end_date: endDate.toISOString(),
         status: 'draft',
-        services
+        duration_days: info.durationDays
       })
       .select()
       .single();
@@ -211,6 +211,23 @@ export async function saveAuctionInfo(vehicleId: string, info: AuctionInfo): Pro
       console.error('Error al guardar información de subasta:', error);
       toast.error('Error al guardar la información de la subasta');
       return { success: false };
+    }
+
+    // Handle services separately if needed in a separate table
+    if (info.services && info.services.length > 0) {
+      const servicesToInsert = info.services.map(service => ({
+        auction_id: data.id,
+        service_type: service
+      }));
+
+      const { error: servicesError } = await supabase
+        .from('auction_services')
+        .insert(servicesToInsert);
+        
+      if (servicesError) {
+        console.error('Error al guardar servicios:', servicesError);
+        // Continue without failing the whole process
+      }
     }
 
     return { success: true, auctionId: data.id };
@@ -273,7 +290,7 @@ export async function getAuctionQuestions(auctionId: string) {
       .from('auction_questions')
       .select(`
         *,
-        profiles!auction_questions_user_id_fkey(first_name, last_name)
+        profiles(first_name, last_name)
       `)
       .eq('auction_id', auctionId)
       .order('created_at', { ascending: false });
@@ -293,10 +310,10 @@ export async function getAuctionQuestions(auctionId: string) {
 export async function getAuctionBids(auctionId: string) {
   try {
     const { data, error } = await supabase
-      .from('auction_bids')
+      .from('bids') // Use 'bids' table instead of 'auction_bids'
       .select(`
         *,
-        profiles!auction_bids_user_id_fkey(first_name, last_name)
+        profiles(first_name, last_name)
       `)
       .eq('auction_id', auctionId)
       .order('amount', { ascending: false });
@@ -386,7 +403,7 @@ export async function placeBid(auctionId: string, { amount, holdAmount }: { amou
 
     // Place the bid
     const { error } = await supabase
-      .from('auction_bids')
+      .from('bids') // Use 'bids' table instead of 'auction_bids'
       .insert({
         auction_id: auctionId,
         user_id: user.id,
@@ -413,7 +430,7 @@ export async function finalizeAuction(auctionId: string) {
   try {
     // Get the highest bid
     const { data: bids } = await supabase
-      .from('auction_bids')
+      .from('bids') // Use 'bids' table instead of 'auction_bids'
       .select('id, user_id, amount')
       .eq('auction_id', auctionId)
       .order('amount', { ascending: false })
@@ -455,7 +472,7 @@ export async function addToFavorites(auctionId: string) {
     }
 
     const { error } = await supabase
-      .from('user_favorites')
+      .from('favorites') // Use 'favorites' table instead of 'user_favorites'
       .insert({
         user_id: user.id,
         auction_id: auctionId
@@ -490,7 +507,7 @@ export async function removeFromFavorites(auctionId: string) {
     }
 
     const { error } = await supabase
-      .from('user_favorites')
+      .from('favorites') // Use 'favorites' table instead of 'user_favorites'
       .delete()
       .match({
         user_id: user.id,
@@ -519,7 +536,7 @@ export async function isFavorite(auctionId: string) {
     }
 
     const { data, error } = await supabase
-      .from('user_favorites')
+      .from('favorites') // Use 'favorites' table instead of 'user_favorites'
       .select()
       .match({
         user_id: user.id,
@@ -546,7 +563,7 @@ export async function getUserFavorites() {
     }
 
     const { data, error } = await supabase
-      .from('user_favorites')
+      .from('favorites') // Use 'favorites' table instead of 'user_favorites'
       .select(`
         auction_id,
         auctions(

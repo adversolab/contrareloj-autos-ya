@@ -18,7 +18,7 @@ import {
   AuctionInfo,
 } from '@/services/vehicleService';
 
-// Componentes refactorizados
+// Components
 import StepIndicator from '@/components/sell/StepIndicator';
 import BasicInfoForm from '@/components/sell/BasicInfoForm';
 import PhotosAndDetailsForm from '@/components/sell/PhotosAndDetailsForm';
@@ -210,7 +210,7 @@ const SellCar = () => {
       return;
     }
 
-    // Validar campos obligatorios
+    // Validate required fields
     if (!carInfo.brand || !carInfo.model || !carInfo.year || !carInfo.kilometers || !carInfo.fuel || !carInfo.transmission) {
       toast.error("Por favor completa todos los campos obligatorios");
       return;
@@ -220,19 +220,22 @@ const SellCar = () => {
 
     try {
       if (vehicleId) {
-        // Actualizar vehículo existente
-        await updateVehicleBasicInfo(vehicleId, carInfo);
+        // Update existing vehicle
+        const result = await updateVehicleBasicInfo(vehicleId, carInfo);
+        if (!result.success) {
+          throw new Error("Error updating vehicle info");
+        }
       } else {
-        // Crear nuevo vehículo
-        const { vehicle, error } = await saveVehicleBasicInfo(carInfo);
-        if (vehicle && !error) {
-          setVehicleId(vehicle.id);
+        // Create new vehicle
+        const result = await saveVehicleBasicInfo(carInfo);
+        if (result.success && result.vehicleId) {
+          setVehicleId(result.vehicleId);
         } else {
-          throw new Error(error?.message || "Error al guardar la información");
+          throw new Error("Error saving vehicle info");
         }
       }
       
-      // Ir al siguiente paso
+      // Go to next step
       nextStep();
     } catch (error) {
       toast.error("Ocurrió un error al guardar la información");
@@ -248,7 +251,7 @@ const SellCar = () => {
       return;
     }
 
-    // Verificar si hay al menos una foto
+    // Check for at least one photo
     const hasPhotos = uploadedPhotos.some(photo => photo.file !== null);
     if (!hasPhotos) {
       toast.error("Debes subir al menos una foto principal");
@@ -258,7 +261,7 @@ const SellCar = () => {
     setIsProcessing(true);
 
     try {
-      // Subir fotos
+      // Upload photos
       for (const photo of uploadedPhotos) {
         if (photo.file) {
           await uploadVehiclePhoto(vehicleId, {
@@ -269,7 +272,7 @@ const SellCar = () => {
         }
       }
 
-      // Guardar características
+      // Save features
       const allFeatures: VehicleFeature[] = [];
       Object.entries(features).forEach(([category, selectedFeatures]) => {
         selectedFeatures.forEach(feature => {
@@ -279,7 +282,7 @@ const SellCar = () => {
 
       await saveVehicleFeatures(vehicleId, allFeatures);
 
-      // Ir al siguiente paso
+      // Go to next step
       nextStep();
     } catch (error) {
       toast.error("Ocurrió un error al guardar las fotos y características");
@@ -295,13 +298,13 @@ const SellCar = () => {
       return;
     }
 
-    // Validar campos
+    // Validate fields
     if (auctionInfo.reservePrice <= 0 || auctionInfo.startPrice <= 0) {
       toast.error("Por favor ingresa precios válidos");
       return;
     }
 
-    // Verificar duración mínima
+    // Check minimum duration
     if (auctionInfo.durationDays < 7) {
       setAuctionInfo(prev => ({ ...prev, durationDays: 7 }));
       toast.info("La duración mínima de la subasta es de 7 días");
@@ -311,13 +314,13 @@ const SellCar = () => {
     setIsProcessing(true);
 
     try {
-      const { auction, error } = await saveAuctionInfo(vehicleId, auctionInfo);
+      const result = await saveAuctionInfo(vehicleId, auctionInfo);
       
-      if (auction && !error) {
-        setAuctionId(auction.id);
+      if (result.success && result.auctionId) {
+        setAuctionId(result.auctionId);
         nextStep();
       } else {
-        throw new Error(error?.message || "Error al guardar la información de la subasta");
+        throw new Error("Error al guardar la información de la subasta");
       }
     } catch (error) {
       toast.error("Ocurrió un error al guardar la información de la subasta");
@@ -339,15 +342,15 @@ const SellCar = () => {
       // Simular procesamiento de pago
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Activar la subasta (que ahora la deja como borrador por defecto)
+      // Activate the auction (which now defaults to a draft)
       const result = await activateAuction(auctionId);
       
       if (result.success) {
         toast.success("¡Felicidades! Tu vehículo ha sido enviado para aprobación");
         
-        // Esperar un segundo antes de redirigir para que el usuario vea el mensaje
+        // Wait a second before redirecting to show the message
         setTimeout(() => {
-          // Redireccionar a la página del detalle de la subasta
+          // Redirect to the auction details page
           navigate(`/subasta/${auctionId}`);
         }, 1000);
       } else {

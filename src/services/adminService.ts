@@ -1,11 +1,55 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { AdminUser, AdminVehicle, AdminAuction } from "./types/adminTypes";
+
+// Admin type definitions
+export interface AdminUser {
+  id: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  role: "user" | "admin" | "moderator";
+  identity_verified: boolean;
+  created_at: string;
+}
+
+export interface AdminVehicle {
+  id: string;
+  brand: string;
+  model: string;
+  year: number;
+  user_id: string;
+  is_approved: boolean;
+  created_at: string;
+  user: {
+    email: string;
+    first_name?: string | null;
+    last_name?: string | null;
+  };
+}
+
+export interface AdminAuction {
+  id: string;
+  start_price: number;
+  reserve_price: number;
+  status: string;
+  vehicle_id: string;
+  is_approved: boolean;
+  created_at: string;
+  vehicle: {
+    brand: string;
+    model: string;
+    year: number;
+  };
+  user: {
+    email: string;
+    first_name?: string | null;
+    last_name?: string | null;
+  };
+}
 
 export async function getUsers() {
   try {
-    // Obtenemos todos los perfiles
+    // Get all profiles
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
       .select('*')
@@ -17,15 +61,15 @@ export async function getUsers() {
       return { users: [] };
     }
     
-    // Obtenemos los datos de autenticación para obtener los emails
+    // Get auth data to obtain emails
     const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
     
     if (authError) {
       console.error('Error al obtener datos de autenticación:', authError);
-      // Continuamos con los perfiles sin emails
+      // Continue with profiles without emails
     }
     
-    // Mapa de ID a email para búsqueda rápida
+    // Create ID to email map for quick lookup
     const emailMap = new Map();
     if (authData && authData.users) {
       authData.users.forEach((user: any) => {
@@ -35,7 +79,7 @@ export async function getUsers() {
       });
     }
     
-    // Formatear usuarios combinando datos
+    // Format users combining data
     const formattedUsers: AdminUser[] = profiles.map(profile => ({
       id: profile.id,
       email: emailMap.get(profile.id) || 'Sin correo',
@@ -124,14 +168,14 @@ export async function updateUserRole(userId: string, role: "user" | "admin" | "m
   }
 }
 
-// Implement missing admin functions for vehicles
+// Admin functions for vehicles
 export async function getVehicles() {
   try {
     const { data: vehicles, error } = await supabase
       .from('vehicles')
       .select(`
         *,
-        profiles(id, email, first_name, last_name)
+        profiles(id, first_name, last_name)
       `)
       .order('created_at', { ascending: false });
       
@@ -150,9 +194,9 @@ export async function getVehicles() {
       is_approved: vehicle.is_approved || false,
       created_at: vehicle.created_at,
       user: {
-        email: vehicle.profiles?.email || 'Sin correo',
-        first_name: vehicle.profiles?.first_name,
-        last_name: vehicle.profiles?.last_name
+        email: vehicle.profiles?.email || 'Sin correo', // May need to modify this if email is not available in profiles
+        first_name: vehicle.profiles?.first_name || null,
+        last_name: vehicle.profiles?.last_name || null
       }
     }));
     
@@ -221,14 +265,16 @@ export async function deleteVehicle(vehicleId: string) {
   }
 }
 
-// Implement missing admin functions for auctions
+// Admin functions for auctions
 export async function getAuctions() {
   try {
     const { data: auctions, error } = await supabase
       .from('auctions')
       .select(`
         *,
-        vehicles(*, user_id, profiles:profiles(id, email, first_name, last_name))
+        vehicles(*,
+          profiles:profiles(id, first_name, last_name)
+        )
       `)
       .order('created_at', { ascending: false });
       
@@ -238,25 +284,30 @@ export async function getAuctions() {
       return { auctions: [] };
     }
     
-    const formattedAuctions: AdminAuction[] = auctions.map(auction => ({
-      id: auction.id,
-      start_price: auction.start_price,
-      reserve_price: auction.reserve_price,
-      status: auction.status,
-      vehicle_id: auction.vehicle_id,
-      is_approved: auction.is_approved || false,
-      created_at: auction.created_at,
-      vehicle: {
-        brand: auction.vehicles?.brand || 'Desconocida',
-        model: auction.vehicles?.model || 'Desconocido',
-        year: auction.vehicles?.year || 0
-      },
-      user: {
-        email: auction.vehicles?.profiles?.email || 'Sin correo',
-        first_name: auction.vehicles?.profiles?.first_name,
-        last_name: auction.vehicles?.profiles?.last_name
-      }
-    }));
+    const formattedAuctions: AdminAuction[] = auctions.map(auction => {
+      const vehicle = auction.vehicles || {};
+      const profile = vehicle.profiles || {};
+      
+      return {
+        id: auction.id,
+        start_price: auction.start_price,
+        reserve_price: auction.reserve_price,
+        status: auction.status,
+        vehicle_id: auction.vehicle_id,
+        is_approved: auction.is_approved || false,
+        created_at: auction.created_at,
+        vehicle: {
+          brand: vehicle.brand || 'Desconocida',
+          model: vehicle.model || 'Desconocido',
+          year: vehicle.year || 0
+        },
+        user: {
+          email: profile.email || 'Sin correo',
+          first_name: profile.first_name,
+          last_name: profile.last_name
+        }
+      };
+    });
     
     return { auctions: formattedAuctions };
   } catch (error) {
