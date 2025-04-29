@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -18,7 +17,7 @@ interface Auction {
   id: string | number;
   title: string;
   description: string;
-  imageUrl?: string; // Make optional to match what we get from API
+  imageUrl?: string;
   currentBid: number;
   endTime: Date;
   bidCount: number;
@@ -34,6 +33,7 @@ interface Vehicle {
   year: number;
   description?: string;
   created_at: string;
+  photo_url?: string;
   auctions?: any[];
   // Add other vehicle fields as needed
 }
@@ -90,7 +90,7 @@ const Profile = () => {
               id: vehicle.id,
               title: `${vehicle.brand} ${vehicle.model} ${vehicle.year}`,
               description: vehicle.description || '',
-              imageUrl: '', // Default value
+              imageUrl: vehicle.photo_url || '/placeholder.svg',
               currentBid: vehicle.auctions?.length > 0 ? vehicle.auctions[0].start_price : 0,
               endTime: vehicle.auctions?.length > 0 ? new Date(vehicle.auctions[0].end_date) : new Date(),
               bidCount: 0, // Default value
@@ -131,10 +131,10 @@ const Profile = () => {
               id: favorite.id || '',
               title: favorite.title || '',
               description: favorite.description || '',
-              imageUrl: '', // Default value
+              imageUrl: favorite.imageUrl || '/placeholder.svg',
               currentBid: favorite.currentBid || 0,
               endTime: favorite.endTime || new Date(),
-              bidCount: 0 // Default value
+              bidCount: favorite.bidCount || 0
             }));
             
             setFavoriteAuctions(formattedFavorites);
@@ -396,7 +396,16 @@ const Profile = () => {
               {biddingAuctions.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {biddingAuctions.map((auction) => (
-                    <AuctionCard key={auction.id} {...auction} />
+                    <AuctionCard 
+                      key={auction.id} 
+                      id={auction.id} 
+                      title={auction.title} 
+                      description={auction.description} 
+                      imageUrl={auction.imageUrl || '/placeholder.svg'} 
+                      currentBid={auction.currentBid} 
+                      endTime={auction.endTime} 
+                      bidCount={auction.bidCount} 
+                    />
                   ))}
                 </div>
               ) : (
@@ -423,7 +432,16 @@ const Profile = () => {
               ) : favoriteAuctions.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {favoriteAuctions.map((auction) => (
-                    <AuctionCard key={auction.id} {...auction} />
+                    <AuctionCard 
+                      key={auction.id} 
+                      id={auction.id} 
+                      title={auction.title} 
+                      description={auction.description} 
+                      imageUrl={auction.imageUrl || '/placeholder.svg'} 
+                      currentBid={auction.currentBid} 
+                      endTime={auction.endTime} 
+                      bidCount={auction.bidCount} 
+                    />
                   ))}
                 </div>
               ) : (
@@ -452,7 +470,13 @@ const Profile = () => {
                   {sellingAuctions.map((auction) => (
                     <AuctionCard 
                       key={auction.id} 
-                      {...auction}
+                      id={auction.id} 
+                      title={auction.title} 
+                      description={auction.description} 
+                      imageUrl={auction.imageUrl || '/placeholder.svg'} 
+                      currentBid={auction.currentBid} 
+                      endTime={auction.endTime} 
+                      bidCount={auction.bidCount} 
                       onClick={(e) => {
                         if (auction.auctionId) {
                           e.preventDefault();

@@ -215,9 +215,11 @@ export async function saveAuctionInfo(vehicleId: string, info: AuctionInfo): Pro
 
     // Handle services separately if needed in a separate table
     if (info.services && info.services.length > 0) {
+      // Add price to each service (default value of 0)
       const servicesToInsert = info.services.map(service => ({
         auction_id: data.id,
-        service_type: service
+        service_type: service,
+        price: 0 // Add default price value
       }));
 
       const { error: servicesError } = await supabase
@@ -620,6 +622,20 @@ export async function getUserVehicles() {
     if (error) {
       console.error('Error al obtener vehículos:', error);
       return { vehicles: [], error: error.message };
+    }
+
+    // Try to load first photo for each vehicle
+    for (const vehicle of data) {
+      const { data: photos } = await supabase
+        .from('vehicle_photos')
+        .select('url')
+        .eq('vehicle_id', vehicle.id)
+        .eq('is_primary', true)
+        .limit(1);
+      
+      if (photos && photos.length > 0) {
+        vehicle.photo_url = photos[0].url;
+      }
     }
 
     return { vehicles: data, error: null };

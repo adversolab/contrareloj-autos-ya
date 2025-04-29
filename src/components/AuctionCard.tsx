@@ -12,7 +12,7 @@ interface AuctionCardProps {
   id: string | number;
   title: string;
   description: string;
-  imageUrl: string;
+  imageUrl?: string; // Make this optional
   currentBid: number;
   endTime: Date;
   bidCount: number;
@@ -23,7 +23,7 @@ const AuctionCard: React.FC<AuctionCardProps> = ({
   id,
   title,
   description,
-  imageUrl,
+  imageUrl = '', // Provide default empty string
   currentBid,
   endTime,
   bidCount,
@@ -76,7 +76,7 @@ const AuctionCard: React.FC<AuctionCardProps> = ({
       <Card className="overflow-hidden hover:shadow-lg transition-shadow">
         <div className="relative">
           <img 
-            src={imageUrl} 
+            src={imageUrl || '/placeholder.svg'} 
             alt={title} 
             className="h-48 w-full object-cover"
           />

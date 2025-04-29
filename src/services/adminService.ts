@@ -175,7 +175,7 @@ export async function getVehicles() {
       .from('vehicles')
       .select(`
         *,
-        profiles(id, first_name, last_name)
+        profiles(id, first_name, last_name, email)
       `)
       .order('created_at', { ascending: false });
       
@@ -194,7 +194,8 @@ export async function getVehicles() {
       is_approved: vehicle.is_approved || false,
       created_at: vehicle.created_at,
       user: {
-        email: vehicle.profiles?.email || 'Sin correo', // May need to modify this if email is not available in profiles
+        // Use optional chaining and provide default values
+        email: vehicle.profiles?.email || 'Sin correo',
         first_name: vehicle.profiles?.first_name || null,
         last_name: vehicle.profiles?.last_name || null
       }
@@ -272,8 +273,8 @@ export async function getAuctions() {
       .from('auctions')
       .select(`
         *,
-        vehicles(*,
-          profiles:profiles(id, first_name, last_name)
+        vehicles(*, 
+          profiles:profiles(id, first_name, last_name, email)
         )
       `)
       .order('created_at', { ascending: false });
@@ -297,14 +298,14 @@ export async function getAuctions() {
         is_approved: auction.is_approved || false,
         created_at: auction.created_at,
         vehicle: {
-          brand: vehicle.brand || 'Desconocida',
-          model: vehicle.model || 'Desconocido',
-          year: vehicle.year || 0
+          brand: vehicle?.brand || 'Desconocida',
+          model: vehicle?.model || 'Desconocido',
+          year: vehicle?.year || 0
         },
         user: {
-          email: profile.email || 'Sin correo',
-          first_name: profile.first_name,
-          last_name: profile.last_name
+          email: profile?.email || 'Sin correo',
+          first_name: profile?.first_name || null,
+          last_name: profile?.last_name || null
         }
       };
     });
@@ -343,7 +344,7 @@ export async function deleteAuction(auctionId: string) {
   try {
     // Primero eliminar pujas asociadas
     await supabase
-      .from('auction_bids')
+      .from('bids') // Use 'bids' instead of 'auction_bids'
       .delete()
       .eq('auction_id', auctionId);
       
