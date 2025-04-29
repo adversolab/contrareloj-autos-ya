@@ -6,13 +6,14 @@ import { Heart } from 'lucide-react';
 import CountdownTimer from './CountdownTimer';
 
 interface AuctionCardProps {
-  id: number;
+  id: string | number;
   title: string;
   description: string;
   imageUrl: string;
   currentBid: number;
   endTime: Date;
   bidCount: number;
+  onClick?: (e: React.MouseEvent) => void;
 }
 
 const AuctionCard: React.FC<AuctionCardProps> = ({
@@ -23,9 +24,10 @@ const AuctionCard: React.FC<AuctionCardProps> = ({
   currentBid,
   endTime,
   bidCount,
+  onClick,
 }) => {
   return (
-    <Link to={`/subasta/${id}`}>
+    <Link to={`/subasta/${id}`} onClick={onClick}>
       <Card className="overflow-hidden hover:shadow-lg transition-shadow">
         <div className="relative">
           <img 
