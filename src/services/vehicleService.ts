@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getCurrentUser } from "@/services/authService";
@@ -27,6 +28,24 @@ export interface AuctionInfo {
   durationDays: number;
   minIncrement: number;
   services: string[];
+}
+
+// Extended vehicle interface to handle photo_url property
+export interface VehicleWithPhoto {
+  id: string;
+  brand: string;
+  model: string;
+  year: number;
+  kilometers: number;
+  fuel: string;
+  transmission: string;
+  description: string;
+  user_id: string;
+  is_approved: boolean;
+  created_at: string;
+  updated_at: string;
+  photo_url?: string;
+  auctions: any[];
 }
 
 // Vehicle management functions
@@ -288,12 +307,10 @@ export async function getAuctionById(id: string) {
 
 export async function getAuctionQuestions(auctionId: string) {
   try {
-    const { data, error } = await supabase
+    // First, get questions without profiles join
+    const { data: questionsData, error } = await supabase
       .from('auction_questions')
-      .select(`
-        *,
-        profiles(first_name, last_name)
-      `)
+      .select('*')
       .eq('auction_id', auctionId)
       .order('created_at', { ascending: false });
 
@@ -302,7 +319,23 @@ export async function getAuctionQuestions(auctionId: string) {
       return { questions: null, error };
     }
 
-    return { questions: data, error: null };
+    // Then get user profiles for each question
+    const questionsWithProfiles = await Promise.all(
+      questionsData.map(async (question) => {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('id', question.user_id)
+          .single();
+
+        return {
+          ...question,
+          profiles: profileData || { first_name: null, last_name: null }
+        };
+      })
+    );
+
+    return { questions: questionsWithProfiles, error: null };
   } catch (error) {
     console.error('Error inesperado:', error);
     return { questions: null, error };
@@ -311,12 +344,10 @@ export async function getAuctionQuestions(auctionId: string) {
 
 export async function getAuctionBids(auctionId: string) {
   try {
-    const { data, error } = await supabase
-      .from('bids') // Use 'bids' table instead of 'auction_bids'
-      .select(`
-        *,
-        profiles(first_name, last_name)
-      `)
+    // First, get bids without profiles join
+    const { data: bidsData, error } = await supabase
+      .from('bids')
+      .select('*')
       .eq('auction_id', auctionId)
       .order('amount', { ascending: false });
 
@@ -325,7 +356,23 @@ export async function getAuctionBids(auctionId: string) {
       return { bids: null, error };
     }
 
-    return { bids: data, error: null };
+    // Then get user profiles for each bid
+    const bidsWithProfiles = await Promise.all(
+      bidsData.map(async (bid) => {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('id', bid.user_id)
+          .single();
+
+        return {
+          ...bid,
+          profiles: profileData || { first_name: null, last_name: null }
+        };
+      })
+    );
+
+    return { bids: bidsWithProfiles, error: null };
   } catch (error) {
     console.error('Error inesperado:', error);
     return { bids: null, error };
@@ -405,7 +452,7 @@ export async function placeBid(auctionId: string, { amount, holdAmount }: { amou
 
     // Place the bid
     const { error } = await supabase
-      .from('bids') // Use 'bids' table instead of 'auction_bids'
+      .from('bids')
       .insert({
         auction_id: auctionId,
         user_id: user.id,
@@ -432,7 +479,7 @@ export async function finalizeAuction(auctionId: string) {
   try {
     // Get the highest bid
     const { data: bids } = await supabase
-      .from('bids') // Use 'bids' table instead of 'auction_bids'
+      .from('bids')
       .select('id, user_id, amount')
       .eq('auction_id', auctionId)
       .order('amount', { ascending: false })
@@ -474,7 +521,7 @@ export async function addToFavorites(auctionId: string) {
     }
 
     const { error } = await supabase
-      .from('favorites') // Use 'favorites' table instead of 'user_favorites'
+      .from('favorites')
       .insert({
         user_id: user.id,
         auction_id: auctionId
@@ -509,7 +556,7 @@ export async function removeFromFavorites(auctionId: string) {
     }
 
     const { error } = await supabase
-      .from('favorites') // Use 'favorites' table instead of 'user_favorites'
+      .from('favorites')
       .delete()
       .match({
         user_id: user.id,
@@ -538,7 +585,7 @@ export async function isFavorite(auctionId: string) {
     }
 
     const { data, error } = await supabase
-      .from('favorites') // Use 'favorites' table instead of 'user_favorites'
+      .from('favorites')
       .select()
       .match({
         user_id: user.id,
@@ -565,7 +612,7 @@ export async function getUserFavorites() {
     }
 
     const { data, error } = await supabase
-      .from('favorites') // Use 'favorites' table instead of 'user_favorites'
+      .from('favorites')
       .select(`
         auction_id,
         auctions(
@@ -625,20 +672,23 @@ export async function getUserVehicles() {
     }
 
     // Try to load first photo for each vehicle
-    for (const vehicle of data) {
-      const { data: photos } = await supabase
-        .from('vehicle_photos')
-        .select('url')
-        .eq('vehicle_id', vehicle.id)
-        .eq('is_primary', true)
-        .limit(1);
-      
-      if (photos && photos.length > 0) {
-        vehicle.photo_url = photos[0].url;
-      }
-    }
+    const vehiclesWithPhotos: VehicleWithPhoto[] = await Promise.all(
+      data.map(async (vehicle) => {
+        const { data: photos } = await supabase
+          .from('vehicle_photos')
+          .select('url')
+          .eq('vehicle_id', vehicle.id)
+          .eq('is_primary', true)
+          .limit(1);
+        
+        return {
+          ...vehicle,
+          photo_url: photos && photos.length > 0 ? photos[0].url : undefined
+        } as VehicleWithPhoto;
+      })
+    );
 
-    return { vehicles: data, error: null };
+    return { vehicles: vehiclesWithPhotos, error: null };
   } catch (error) {
     console.error('Error inesperado:', error);
     return { vehicles: [], error: 'Error al cargar vehículos' };
