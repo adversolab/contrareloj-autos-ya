@@ -48,6 +48,14 @@ export interface AdminAuction {
   };
 }
 
+export interface UserDocuments {
+  rut?: string;
+  identity_document_url?: string;
+  identity_selfie_url?: string;
+  front_url?: string;
+  back_url?: string;
+}
+
 export async function getUsers() {
   try {
     // Get all profiles
@@ -99,7 +107,7 @@ export async function getUsers() {
   }
 }
 
-export async function getUserDocuments(userId: string) {
+export async function getUserDocuments(userId: string): Promise<UserDocuments | null> {
   try {
     const { data, error } = await supabase
       .from('profiles')
@@ -113,10 +121,28 @@ export async function getUserDocuments(userId: string) {
       return null;
     }
     
+    // Parse the JSON string in identity_document_url if it exists
+    let frontUrl: string | undefined = undefined;
+    let backUrl: string | undefined = undefined;
+    
+    if (data?.identity_document_url) {
+      try {
+        const documentUrls = JSON.parse(data.identity_document_url);
+        frontUrl = documentUrls.front;
+        backUrl = documentUrls.back;
+      } catch (e) {
+        console.error('Error parsing document URL JSON:', e);
+        // If parsing fails, assume it's a legacy format with just a single URL
+        frontUrl = data.identity_document_url;
+      }
+    }
+    
     return {
       rut: data?.rut,
       identity_document_url: data?.identity_document_url,
-      identity_selfie_url: data?.identity_selfie_url
+      identity_selfie_url: data?.identity_selfie_url,
+      front_url: frontUrl,
+      back_url: backUrl
     };
   } catch (error) {
     console.error('Error inesperado:', error);

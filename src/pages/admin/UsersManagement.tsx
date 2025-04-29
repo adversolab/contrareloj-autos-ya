@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { getUsers, verifyUser, updateUserRole, AdminUser, getUserDocuments } from '@/services/adminService';
+import { getUsers, verifyUser, updateUserRole, AdminUser, getUserDocuments, UserDocuments } from '@/services/adminService';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
@@ -26,13 +26,7 @@ import {
   DialogTitle,
   DialogFooter
 } from "@/components/ui/dialog";
-import { CheckCircle, MoreHorizontal, UserCog, Shield, FileText } from 'lucide-react';
-
-interface UserDocuments {
-  rut?: string;
-  identity_document_url?: string;
-  identity_selfie_url?: string;
-}
+import { CheckCircle, MoreHorizontal, UserCog, Shield, FileText, AlertCircle } from 'lucide-react';
 
 const UsersManagement = () => {
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -77,6 +71,12 @@ const UsersManagement = () => {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  // Filter users who have submitted documents but are not yet verified
+  const pendingVerificationUsers = users.filter(user => 
+    !user.identity_verified && 
+    user.role !== 'admin' // We don't need to verify admins
+  );
 
   return (
     <div>
@@ -174,6 +174,63 @@ const UsersManagement = () => {
         </div>
       )}
 
+      {/* Show pending verification section */}
+      {pendingVerificationUsers.length > 0 && (
+        <div className="mt-8">
+          <div className="flex items-center gap-2 mb-4">
+            <AlertCircle className="text-yellow-500" />
+            <h2 className="text-xl font-bold">Usuarios pendientes de verificación</h2>
+          </div>
+          
+          <div className="rounded-md border bg-yellow-50">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Usuario</TableHead>
+                  <TableHead>Correo</TableHead>
+                  <TableHead>Fecha de registro</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pendingVerificationUsers.map((user) => (
+                  <TableRow key={`pending-${user.id}`}>
+                    <TableCell>
+                      <div className="font-medium">
+                        {user.first_name || ''} {user.last_name || ''}
+                        {!user.first_name && !user.last_name && 'Usuario'}
+                      </div>
+                    </TableCell>
+                    <TableCell>{user.email}</TableCell>
+                    <TableCell>
+                      {user.created_at ? format(new Date(user.created_at), 'dd/MM/yyyy') : ''}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleViewDocuments(user.id)}
+                        className="mr-2"
+                      >
+                        <FileText className="mr-2 h-4 w-4" />
+                        Ver documentos
+                      </Button>
+                      <Button 
+                        size="sm"
+                        onClick={() => handleVerifyUser(user.id)}
+                      >
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Verificar
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      )}
+
       {/* Dialog for viewing user documents */}
       <Dialog open={viewingDocuments} onOpenChange={setViewingDocuments}>
         <DialogContent className="sm:max-w-md md:max-w-xl">
@@ -199,7 +256,56 @@ const UsersManagement = () => {
                 <p className="p-2 bg-gray-50 rounded">{userDocuments.rut || 'No proporcionado'}</p>
               </div>
               
-              {userDocuments.identity_document_url && (
+              {/* Front of document */}
+              {userDocuments.front_url && (
+                <div>
+                  <h3 className="font-medium mb-2">Documento de identidad (frontal)</h3>
+                  <div className="overflow-hidden rounded-md border">
+                    <img 
+                      src={userDocuments.front_url} 
+                      alt="Frente del documento de identidad" 
+                      className="w-full object-contain max-h-60"
+                    />
+                    <div className="p-3 border-t">
+                      <a 
+                        href={userDocuments.front_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-500 hover:underline"
+                      >
+                        Ver imagen en tamaño completo
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Back of document */}
+              {userDocuments.back_url && (
+                <div>
+                  <h3 className="font-medium mb-2">Documento de identidad (reverso)</h3>
+                  <div className="overflow-hidden rounded-md border">
+                    <img 
+                      src={userDocuments.back_url} 
+                      alt="Reverso del documento de identidad" 
+                      className="w-full object-contain max-h-60"
+                    />
+                    <div className="p-3 border-t">
+                      <a 
+                        href={userDocuments.back_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-500 hover:underline"
+                      >
+                        Ver imagen en tamaño completo
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Fallback for legacy format */}
+              {!userDocuments.front_url && !userDocuments.back_url && userDocuments.identity_document_url && (
                 <div>
                   <h3 className="font-medium mb-2">Documento de identidad</h3>
                   <div className="overflow-hidden rounded-md border">
@@ -222,6 +328,7 @@ const UsersManagement = () => {
                 </div>
               )}
 
+              {/* Selfie */}
               {userDocuments.identity_selfie_url && (
                 <div>
                   <h3 className="font-medium mb-2">Selfie con documento</h3>
@@ -251,7 +358,7 @@ const UsersManagement = () => {
             <Button variant="outline" onClick={() => setViewingDocuments(false)}>
               Cerrar
             </Button>
-            {currentUserId && !loadingDocuments && (
+            {currentUserId && !loadingDocuments && !users.find(u => u.id === currentUserId)?.identity_verified && (
               <Button 
                 onClick={() => handleVerifyUser(currentUserId)} 
                 className="bg-contrareloj hover:bg-contrareloj-dark"
