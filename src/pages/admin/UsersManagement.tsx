@@ -5,8 +5,8 @@ import {
   verifyUser, 
   updateUserRole, 
   getUserDocuments
-} from '@/services/userService';
-import { AdminUser } from '@/services/types/adminTypes';
+} from '@/services/admin/userService';  // Changed import path to use admin service
+import { AdminUser } from '@/services/admin/types';  // Changed import path to use admin types
 import { Button } from '@/components/ui/button';
 import UsersListTable from '@/components/admin/UsersListTable';
 import PendingVerificationsTable from '@/components/admin/PendingVerificationsTable';
@@ -21,7 +21,7 @@ const UsersManagement = () => {
   const [loadingDocuments, setLoadingDocuments] = useState(false);
 
   const fetchUsers = async () => {
-    console.log("Fetching users...");
+    console.log("Fetching users from admin service...");
     setLoading(true);
     try {
       const { users: fetchedUsers } = await getUsers();
