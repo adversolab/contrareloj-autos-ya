@@ -38,7 +38,7 @@ const UsersManagement = () => {
     }
   };
 
-  const handleUpdateRole = async (userId: string, role: string) => {
+  const handleUpdateRole = async (userId: string, role: "user" | "admin" | "moderator") => {
     const success = await updateUserRole(userId, role);
     if (success) {
       fetchUsers();
@@ -122,11 +122,11 @@ const UsersManagement = () => {
                               <span>Verificar usuario</span>
                             </DropdownMenuItem>
                           )}
-                          <DropdownMenuItem onClick={() => handleUpdateRole(user.id, 'user')}>
+                          <DropdownMenuItem onClick={() => handleUpdateRole(user.id, "user")}>
                             <UserCog className="mr-2 h-4 w-4" />
                             <span>Establecer como Usuario</span>
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleUpdateRole(user.id, 'admin')}>
+                          <DropdownMenuItem onClick={() => handleUpdateRole(user.id, "admin")}>
                             <Shield className="mr-2 h-4 w-4" />
                             <span>Establecer como Admin</span>
                           </DropdownMenuItem>

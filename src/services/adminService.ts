@@ -66,7 +66,7 @@ export async function getUsers() {
     // Formatear usuarios
     const formattedUsers = users.map(user => ({
       id: user.id,
-      email: (user.auth_users as { email: string } | null)?.email || 'Sin correo',
+      email: (user.auth_users as unknown as { email: string } | null)?.email || 'Sin correo',
       first_name: user.first_name,
       last_name: user.last_name,
       role: user.role,
