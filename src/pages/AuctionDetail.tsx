@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -51,6 +50,23 @@ const AuctionDetail = () => {
   const [isVerified, setIsVerified] = useState(false);
   const [isAuctionEnded, setIsAuctionEnded] = useState(false);
   const [winner, setWinner] = useState<any>(null);
+
+  // Add new useMemo for processing vehicle features by category
+  const featuresByCategory = useMemo(() => {
+    if (!vehicleFeatures || vehicleFeatures.length === 0) return {};
+    
+    // Group features by category
+    const groupedFeatures = vehicleFeatures.reduce((acc: {[key: string]: string[]}, feature: any) => {
+      const category = feature.category || 'General';
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(feature.feature);
+      return acc;
+    }, {});
+    
+    return groupedFeatures;
+  }, [vehicleFeatures]);
 
   useEffect(() => {
     const fetchAuctionDetails = async () => {
@@ -522,7 +538,7 @@ const AuctionDetail = () => {
             <h1 className="text-2xl font-bold">{vehicle.brand} {vehicle.model} {vehicle.year}</h1>
             <p className="text-gray-600 mb-6">{vehicle.description}</p>
             
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-y-6 gap-x-12">
               <div>
                 <p className="text-sm text-gray-500 mb-1">Año</p>
                 <p className="font-medium">{vehicle.year}</p>
