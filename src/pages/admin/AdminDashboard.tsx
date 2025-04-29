@@ -38,8 +38,7 @@ const AdminDashboard = () => {
         .from('profiles')
         .select('*')
         .eq('identity_verified', false)
-        .not('identity_document_url', 'is', null, { foreignTable: 'identity_document_url' })
-        .or('rut.is.not.null,identity_selfie_url.is.not.null');
+        .or('rut.is.not.null,identity_document_url.is.not.null,identity_selfie_url.is.not.null');
         
       console.log("Query for pending verifications:", pendingVerificationProfiles);
       
