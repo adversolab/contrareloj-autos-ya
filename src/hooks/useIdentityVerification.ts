@@ -110,11 +110,17 @@ export const useIdentityVerification = () => {
     setIsLoading(true);
     
     try {
-      // Subir frente del documento
-      const frontResponse = await uploadIdentityDocument(documentFrontFile, false, 'front');
+      // Subir frente del documento con un objeto de metadatos
+      const frontResponse = await uploadIdentityDocument(documentFrontFile, {
+        isSelfie: false,
+        side: 'front'
+      });
       
-      // Subir reverso del documento
-      const backResponse = await uploadIdentityDocument(documentBackFile, false, 'back');
+      // Subir reverso del documento con un objeto de metadatos
+      const backResponse = await uploadIdentityDocument(documentBackFile, {
+        isSelfie: false,
+        side: 'back'
+      });
       
       if (frontResponse.url && backResponse.url) {
         setVerificationStatus(prev => ({ ...prev, hasDocuments: true }));
@@ -137,7 +143,10 @@ export const useIdentityVerification = () => {
     setIsLoading(true);
     
     try {
-      const { url, error } = await uploadIdentityDocument(selfieFile, true);
+      const { url } = await uploadIdentityDocument(selfieFile, {
+        isSelfie: true
+      });
+      
       if (url) {
         setVerificationStatus(prev => ({ ...prev, hasSelfie: true }));
         setStep(4);
