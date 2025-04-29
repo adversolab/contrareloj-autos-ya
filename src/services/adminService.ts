@@ -56,6 +56,56 @@ export interface UserDocuments {
   back_url?: string;
 }
 
+// Define interfaces for database responses
+interface ProfileWithEmail {
+  id: string;
+  email: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  role: "user" | "admin" | "moderator";
+  identity_verified: boolean | null;
+  created_at: string | null;
+  rut?: string | null;
+  identity_document_url?: string | null;
+  identity_selfie_url?: string | null;
+}
+
+interface VehicleWithProfile {
+  id: string;
+  brand: string;
+  model: string;
+  year: number;
+  user_id: string;
+  is_approved: boolean | null;
+  created_at: string;
+  profiles: {
+    email: string | null;
+    first_name: string | null;
+    last_name: string | null;
+  };
+}
+
+interface AuctionWithDetails {
+  id: string;
+  start_price: number;
+  reserve_price: number;
+  status: string;
+  vehicle_id: string;
+  is_approved: boolean | null;
+  created_at: string;
+  vehicle: {
+    brand: string;
+    model: string;
+    year: number;
+    user_id: string;
+    profiles: {
+      email: string | null;
+      first_name: string | null;
+      last_name: string | null;
+    };
+  };
+}
+
 export async function getUsers() {
   try {
     // Get all profiles from the public profiles table
@@ -71,14 +121,14 @@ export async function getUsers() {
     }
     
     // Format users with email data
-    const formattedUsers: AdminUser[] = profiles.map(profile => ({
+    const formattedUsers: AdminUser[] = (profiles as ProfileWithEmail[]).map(profile => ({
       id: profile.id,
       email: profile.email || 'Sin correo',
       first_name: profile.first_name,
       last_name: profile.last_name,
       role: profile.role as "user" | "admin" | "moderator",
       identity_verified: profile.identity_verified || false,
-      created_at: profile.created_at
+      created_at: profile.created_at || ''
     }));
     
     return { users: formattedUsers };
@@ -200,7 +250,7 @@ export async function getVehicles() {
     }
     
     // Format vehicles with owner information
-    const formattedVehicles: AdminVehicle[] = vehicles.map(vehicle => {
+    const formattedVehicles: AdminVehicle[] = (vehicles as VehicleWithProfile[]).map(vehicle => {
       const profile = vehicle.profiles || {};
       
       return {
@@ -313,8 +363,8 @@ export async function getAuctions() {
     }
     
     // Format auctions with vehicle and owner information
-    const formattedAuctions: AdminAuction[] = auctions.map(auction => {
-      const vehicle = auction.vehicle || {};
+    const formattedAuctions: AdminAuction[] = (auctions as AuctionWithDetails[]).map(auction => {
+      const vehicle = auction.vehicle || {} as AuctionWithDetails['vehicle'];
       const profile = vehicle.profiles || {};
       
       return {
