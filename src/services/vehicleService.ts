@@ -640,3 +640,327 @@ export async function answerQuestion(questionId: string, answer: string) {
     return { error, success: false };
   }
 }
+
+// Nueva interfaz para ofertas
+export interface BidData {
+  amount: number;
+  holdAmount: number;
+}
+
+// Crear una nueva oferta
+export async function placeBid(auctionId: string, bidData: BidData) {
+  try {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user.user) {
+      toast.error("Debes iniciar sesión para hacer ofertas");
+      return { error: new Error("Usuario no autenticado"), success: false };
+    }
+    
+    // Verificar si el usuario está verificado
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('identity_verified')
+      .eq('id', user.user.id)
+      .single();
+    
+    if (profileError) {
+      toast.error("Error al verificar el estado de tu cuenta");
+      return { error: profileError, success: false };
+    }
+    
+    if (!profile.identity_verified) {
+      toast.error("Necesitas verificar tu cuenta para participar en subastas");
+      return { error: new Error("Usuario no verificado"), success: false, needsVerification: true };
+    }
+
+    // Obtener la subasta para validaciones
+    const { data: auction, error: auctionError } = await supabase
+      .from('auctions')
+      .select('status, start_price, min_increment')
+      .eq('id', auctionId)
+      .single();
+    
+    if (auctionError || !auction) {
+      toast.error("Error al obtener información de la subasta");
+      return { error: auctionError || new Error("Subasta no encontrada"), success: false };
+    }
+    
+    if (auction.status !== 'active') {
+      toast.error("Esta subasta no está activa");
+      return { error: new Error("Subasta inactiva"), success: false };
+    }
+
+    // Obtener la oferta más alta actual
+    const { data: highestBid } = await supabase
+      .from('bids')
+      .select('amount')
+      .eq('auction_id', auctionId)
+      .order('amount', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const minimumBid = highestBid 
+      ? highestBid.amount + auction.min_increment 
+      : auction.start_price + auction.min_increment;
+      
+    if (bidData.amount < minimumBid) {
+      toast.error(`Tu oferta debe ser al menos $${minimumBid.toLocaleString('es-CL')}`);
+      return { error: new Error("Oferta insuficiente"), success: false };
+    }
+
+    // Verificar si el usuario ya tiene una oferta activa y actualizarla
+    const { data: userBids } = await supabase
+      .from('bids')
+      .select('id')
+      .eq('auction_id', auctionId)
+      .eq('user_id', user.user.id)
+      .eq('status', 'active');
+
+    // Calcular el monto de retención (5% de la oferta)
+    const holdAmount = bidData.amount * 0.05;
+    
+    let bidResult;
+    
+    if (userBids && userBids.length > 0) {
+      // Actualizar oferta existente
+      bidResult = await supabase
+        .from('bids')
+        .update({
+          amount: bidData.amount,
+          hold_amount: holdAmount,
+          created_at: new Date().toISOString()
+        })
+        .eq('id', userBids[0].id);
+    } else {
+      // Crear nueva oferta
+      bidResult = await supabase
+        .from('bids')
+        .insert({
+          auction_id: auctionId,
+          user_id: user.user.id,
+          amount: bidData.amount,
+          hold_amount: holdAmount
+        });
+    }
+    
+    if (bidResult.error) {
+      toast.error("Error al registrar tu oferta");
+      return { error: bidResult.error, success: false };
+    }
+
+    // Actualizar el tiempo de la subasta si quedan menos de 2 minutos
+    const { data: auctionData } = await supabase
+      .from('auctions')
+      .select('end_date')
+      .eq('id', auctionId)
+      .single();
+      
+    if (auctionData) {
+      const endDate = new Date(auctionData.end_date);
+      const now = new Date();
+      const timeLeft = endDate.getTime() - now.getTime();
+      
+      // Si quedan menos de 2 minutos, extender 2 minutos más
+      if (timeLeft < 2 * 60 * 1000) {
+        const newEndDate = new Date(endDate.getTime() + 2 * 60 * 1000);
+        await supabase
+          .from('auctions')
+          .update({ end_date: newEndDate.toISOString() })
+          .eq('id', auctionId);
+      }
+    }
+
+    toast.success("¡Oferta registrada exitosamente!");
+    return { error: null, success: true };
+  } catch (error: any) {
+    toast.error("Error al realizar la oferta");
+    console.error("Error al realizar oferta:", error);
+    return { error, success: false };
+  }
+}
+
+// Obtener todas las ofertas de una subasta
+export async function getAuctionBids(auctionId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('bids')
+      .select(`
+        id,
+        amount,
+        created_at,
+        status,
+        user_id,
+        profiles:user_id (
+          first_name,
+          last_name
+        )
+      `)
+      .eq('auction_id', auctionId)
+      .order('amount', { ascending: false });
+      
+    if (error) {
+      console.error("Error al obtener ofertas:", error);
+      return { error, bids: [] };
+    }
+    
+    return { error: null, bids: data || [] };
+  } catch (error: any) {
+    console.error("Error al obtener ofertas:", error);
+    return { error, bids: [] };
+  }
+}
+
+// Finalizar una subasta
+export async function finalizeAuction(auctionId: string) {
+  try {
+    // Obtener la oferta más alta
+    const { data: highestBid } = await supabase
+      .from('bids')
+      .select('id, user_id')
+      .eq('auction_id', auctionId)
+      .order('amount', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+      
+    if (highestBid) {
+      // Marcar esta oferta como ganadora
+      await supabase
+        .from('bids')
+        .update({ status: 'winning' })
+        .eq('id', highestBid.id);
+        
+      // Marcar las demás ofertas como perdidas
+      await supabase
+        .from('bids')
+        .update({ status: 'lost' })
+        .eq('auction_id', auctionId)
+        .neq('id', highestBid.id);
+    }
+    
+    // Actualizar el estado de la subasta
+    await supabase
+      .from('auctions')
+      .update({ status: 'finished' })
+      .eq('id', auctionId);
+      
+    return { error: null, success: true, winnerId: highestBid?.user_id };
+  } catch (error: any) {
+    console.error("Error al finalizar la subasta:", error);
+    return { error, success: false };
+  }
+}
+
+// Verificar identidad del usuario
+export async function uploadIdentityDocument(documentFile: File, isSelfie: boolean) {
+  try {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user.user) {
+      toast.error("Debes iniciar sesión para verificar tu identidad");
+      return { error: new Error("Usuario no autenticado"), url: null };
+    }
+    
+    const fileExt = documentFile.name.split('.').pop();
+    const fileName = `${user.user.id}/${isSelfie ? 'selfie' : 'document'}_${Date.now()}.${fileExt}`;
+    
+    // Subir el archivo a Supabase Storage
+    const { error: uploadError, data } = await supabase.storage
+      .from('identity-documents')
+      .upload(fileName, documentFile);
+      
+    if (uploadError) {
+      toast.error(uploadError.message);
+      return { error: uploadError, url: null };
+    }
+    
+    // Obtener la URL del archivo
+    const { data: urlData } = supabase.storage
+      .from('identity-documents')
+      .getPublicUrl(fileName);
+      
+    // Actualizar el perfil del usuario
+    const updateData = isSelfie 
+      ? { identity_selfie_url: urlData.publicUrl } 
+      : { identity_document_url: urlData.publicUrl };
+      
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update(updateData)
+      .eq('id', user.user.id);
+      
+    if (updateError) {
+      toast.error(updateError.message);
+      return { error: updateError, url: null };
+    }
+    
+    toast.success(`${isSelfie ? 'Selfie' : 'Documento'} subido correctamente`);
+    return { error: null, url: urlData.publicUrl };
+  } catch (error: any) {
+    toast.error(error.message || `Error al subir ${isSelfie ? 'selfie' : 'documento'}`);
+    return { error, url: null };
+  }
+}
+
+// Actualizar información de RUT
+export async function updateRutInfo(rut: string) {
+  try {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user.user) {
+      toast.error("Debes iniciar sesión para actualizar tu información");
+      return { error: new Error("Usuario no autenticado"), success: false };
+    }
+    
+    const { error } = await supabase
+      .from('profiles')
+      .update({ rut })
+      .eq('id', user.user.id);
+      
+    if (error) {
+      toast.error(error.message);
+      return { error, success: false };
+    }
+    
+    toast.success("RUT actualizado correctamente");
+    return { error: null, success: true };
+  } catch (error: any) {
+    toast.error(error.message || "Error al actualizar RUT");
+    return { error, success: false };
+  }
+}
+
+// Obtener estado de verificación
+export async function getVerificationStatus() {
+  try {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user.user) {
+      return { 
+        isVerified: false, 
+        hasDocuments: false, 
+        hasSelfie: false, 
+        hasRut: false,
+        error: null
+      };
+    }
+    
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('identity_verified, identity_document_url, identity_selfie_url, rut')
+      .eq('id', user.user.id)
+      .single();
+      
+    if (error) {
+      console.error("Error al obtener estado de verificación:", error);
+      return { isVerified: false, hasDocuments: false, hasSelfie: false, hasRut: false, error };
+    }
+    
+    return { 
+      isVerified: data.identity_verified || false,
+      hasDocuments: !!data.identity_document_url,
+      hasSelfie: !!data.identity_selfie_url,
+      hasRut: !!data.rut,
+      error: null
+    };
+  } catch (error: any) {
+    console.error("Error al obtener estado de verificación:", error);
+    return { isVerified: false, hasDocuments: false, hasSelfie: false, hasRut: false, error };
+  }
+}

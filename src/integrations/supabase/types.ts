@@ -132,6 +132,44 @@ export type Database = {
           },
         ]
       }
+      bids: {
+        Row: {
+          amount: number
+          auction_id: string
+          created_at: string
+          hold_amount: number
+          id: string
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          auction_id: string
+          created_at?: string
+          hold_amount: number
+          id?: string
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          auction_id?: string
+          created_at?: string
+          hold_amount?: number
+          id?: string
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bids_auction_id_fkey"
+            columns: ["auction_id"]
+            isOneToOne: false
+            referencedRelation: "auctions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       favorites: {
         Row: {
           auction_id: string
@@ -168,8 +206,12 @@ export type Database = {
           created_at: string | null
           first_name: string | null
           id: string
+          identity_document_url: string | null
+          identity_selfie_url: string | null
+          identity_verified: boolean | null
           last_name: string | null
           phone: string | null
+          rut: string | null
           updated_at: string | null
         }
         Insert: {
@@ -178,8 +220,12 @@ export type Database = {
           created_at?: string | null
           first_name?: string | null
           id: string
+          identity_document_url?: string | null
+          identity_selfie_url?: string | null
+          identity_verified?: boolean | null
           last_name?: string | null
           phone?: string | null
+          rut?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -188,8 +234,12 @@ export type Database = {
           created_at?: string | null
           first_name?: string | null
           id?: string
+          identity_document_url?: string | null
+          identity_selfie_url?: string | null
+          identity_verified?: boolean | null
           last_name?: string | null
           phone?: string | null
+          rut?: string | null
           updated_at?: string | null
         }
         Relationships: []

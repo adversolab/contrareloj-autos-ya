@@ -6,12 +6,25 @@ import Footer from '@/components/Footer';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Heart, Share2, ArrowLeft, PlusCircle, MessageSquare } from 'lucide-react';
+import { Heart, Share2, ArrowLeft, PlusCircle, MessageSquare, AlertCircle } from 'lucide-react';
 import CountdownTimer from '@/components/CountdownTimer';
 import QuestionList from '@/components/QuestionList';
 import QuestionForm from '@/components/QuestionForm';
 import AnswerDialog from '@/components/AnswerDialog';
-import { getAuctionById, isFavorite, addToFavorites, removeFromFavorites, getAuctionQuestions } from '@/services/vehicleService';
+import BidHistory from '@/components/BidHistory';
+import BidConfirmationDialog from '@/components/BidConfirmationDialog';
+import VerifyIdentityDialog from '@/components/VerifyIdentityDialog';
+import { 
+  getAuctionById, 
+  isFavorite, 
+  addToFavorites, 
+  removeFromFavorites, 
+  getAuctionQuestions,
+  getAuctionBids,
+  placeBid,
+  finalizeAuction,
+  getVerificationStatus
+} from '@/services/vehicleService';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -27,10 +40,17 @@ const AuctionDetail = () => {
   const [isFavoriteAuction, setIsFavoriteAuction] = useState(false);
   const [isProcessingFavorite, setIsProcessingFavorite] = useState(false);
   const [questions, setQuestions] = useState<any[]>([]);
+  const [bids, setBids] = useState<any[]>([]);
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
+  const [isLoadingBids, setIsLoadingBids] = useState(false);
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
   const [isAnswerDialogOpen, setIsAnswerDialogOpen] = useState(false);
+  const [isBidDialogOpen, setIsBidDialogOpen] = useState(false);
+  const [isVerifyDialogOpen, setIsVerifyDialogOpen] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
+  const [isAuctionEnded, setIsAuctionEnded] = useState(false);
+  const [winner, setWinner] = useState<any>(null);
 
   useEffect(() => {
     const fetchAuctionDetails = async () => {
@@ -58,6 +78,18 @@ const AuctionDetail = () => {
           if (user && auction.vehicles) {
             setIsOwner(user.id === auction.vehicles.user_id);
           }
+
+          // Verificar si la subasta ha finalizado
+          const endDate = new Date(auction.end_date || Date.now());
+          const now = new Date();
+          if (now > endDate || auction.status === 'finished') {
+            setIsAuctionEnded(true);
+            // Aquí podríamos buscar al ganador
+            const highestBid = bids.length > 0 ? bids[0] : null;
+            if (highestBid) {
+              setWinner(highestBid);
+            }
+          }
         }
       } catch (error) {
         console.error("Error fetching auction details:", error);
@@ -69,6 +101,18 @@ const AuctionDetail = () => {
     
     fetchAuctionDetails();
   }, [id, user]);
+
+  // Verificar estado de verificación del usuario
+  useEffect(() => {
+    const checkVerificationStatus = async () => {
+      if (!user) return;
+      
+      const { isVerified } = await getVerificationStatus();
+      setIsVerified(isVerified);
+    };
+    
+    checkVerificationStatus();
+  }, [user]);
 
   // Verificar si la subasta está en favoritos
   useEffect(() => {
@@ -103,20 +147,134 @@ const AuctionDetail = () => {
     loadQuestions();
   }, [id]);
 
+  // Cargar historial de ofertas
+  useEffect(() => {
+    const loadBidHistory = async () => {
+      if (!id) return;
+      
+      setIsLoadingBids(true);
+      try {
+        const { bids: bidData, error } = await getAuctionBids(id);
+        if (!error) {
+          setBids(bidData || []);
+          
+          // Si la subasta ha terminado, identificar al ganador
+          if (isAuctionEnded && bidData && bidData.length > 0) {
+            setWinner(bidData[0]);
+          }
+        }
+      } catch (error) {
+        console.error("Error al cargar ofertas:", error);
+      } finally {
+        setIsLoadingBids(false);
+      }
+    };
+    
+    loadBidHistory();
+  }, [id, isAuctionEnded]);
+
+  // Verificador de tiempo para finalización automática
+  useEffect(() => {
+    if (!auctionData || !auctionData.end_date) return;
+    
+    const checkEndTime = () => {
+      const endDate = new Date(auctionData.end_date);
+      const now = new Date();
+      
+      if (now >= endDate && !isAuctionEnded) {
+        setIsAuctionEnded(true);
+        handleAuctionEnd();
+      }
+    };
+    
+    const timer = setInterval(checkEndTime, 1000);
+    return () => clearInterval(timer);
+  }, [auctionData, isAuctionEnded]);
+
   const handleBid = () => {
-    toast('Esta funcionalidad será implementada próximamente', {
-      description: 'La posibilidad de ofertar está en desarrollo',
-    });
+    if (!user) {
+      toast.error("Debes iniciar sesión para ofertar");
+      return;
+    }
+    
+    if (!isVerified) {
+      setIsVerifyDialogOpen(true);
+      return;
+    }
+    
+    if (isAuctionEnded) {
+      toast.error("Esta subasta ha finalizado");
+      return;
+    }
+    
+    if (!bidAmount) {
+      toast.error("Ingresa un monto para ofertar");
+      return;
+    }
+    
+    const bidValue = parseInt(bidAmount.replace(/\D/g, ''));
+    if (isNaN(bidValue) || bidValue <= 0) {
+      toast.error("Ingresa un monto válido");
+      return;
+    }
+    
+    // Validar monto mínimo
+    const currentHighestBid = bids.length > 0 ? bids[0].amount : auctionData.start_price;
+    const minBid = currentHighestBid + auctionData.min_increment;
+    
+    if (bidValue < minBid) {
+      toast.error(`Tu oferta debe ser al menos $${minBid.toLocaleString('es-CL')}`);
+      return;
+    }
+    
+    // Mostrar diálogo de confirmación
+    setIsBidDialogOpen(true);
   };
 
-  // Group features by category
-  const featuresByCategory = vehicleFeatures?.reduce((acc: any, feature: any) => {
-    if (!acc[feature.category]) {
-      acc[feature.category] = [];
+  const confirmBid = async () => {
+    if (!id) return;
+    
+    const bidValue = parseInt(bidAmount.replace(/\D/g, ''));
+    const holdAmount = Math.round(bidValue * 0.05);
+    
+    const { success, error, needsVerification } = await placeBid(id, {
+      amount: bidValue,
+      holdAmount
+    });
+    
+    if (needsVerification) {
+      setIsVerifyDialogOpen(true);
+    } else if (success) {
+      // Recargar historial de ofertas
+      const { bids: updatedBids } = await getAuctionBids(id);
+      setBids(updatedBids || []);
+      setBidAmount('');
+      setIsBidDialogOpen(false);
     }
-    acc[feature.category].push(feature.feature);
-    return acc;
-  }, {});
+  };
+
+  const handleAuctionEnd = async () => {
+    if (!id) return;
+    
+    try {
+      const { success, winnerId } = await finalizeAuction(id);
+      if (success) {
+        // Recargar datos de la subasta y ofertas
+        const { auction } = await getAuctionById(id);
+        if (auction) setAuctionData(auction);
+        
+        const { bids: updatedBids } = await getAuctionBids(id);
+        setBids(updatedBids || []);
+        
+        // Si hay un ganador y coincide con el usuario actual
+        if (winnerId && user && winnerId === user.id) {
+          toast.success("¡Felicidades! Has ganado esta subasta.");
+        }
+      }
+    } catch (error) {
+      console.error("Error al finalizar la subasta:", error);
+    }
+  };
 
   const handleFavoriteClick = async () => {
     if (!user) {
@@ -168,6 +326,14 @@ const AuctionDetail = () => {
     setIsAnswerDialogOpen(true);
   };
 
+  const formatBidAmount = (value: string) => {
+    // Eliminar caracteres no numéricos
+    const numericValue = value.replace(/\D/g, '');
+    // Formatear con separadores de miles
+    const formattedValue = Number(numericValue).toLocaleString('es-CL');
+    return formattedValue;
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -201,6 +367,7 @@ const AuctionDetail = () => {
 
   const vehicle = auctionData.vehicles;
   const mainImageUrl = vehiclePhotos.length > 0 ? vehiclePhotos[activeImageIndex].url : 'https://images.unsplash.com/photo-1583121274602-3e2820c69888?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80';
+  const highestBid = bids.length > 0 ? bids[0].amount : auctionData.start_price;
   
   return (
     <div className="min-h-screen flex flex-col">
@@ -223,7 +390,7 @@ const AuctionDetail = () => {
               {/* Thumbnails */}
               {vehiclePhotos.length > 1 && (
                 <div className="mt-4 flex overflow-x-auto space-x-2 pb-2">
-                  {vehiclePhotos.map((photo, index) => (
+                  {vehiclePhotos.map((photo: any, index: number) => (
                     <button 
                       key={photo.id} 
                       className={`flex-shrink-0 w-24 h-20 rounded-md overflow-hidden ${activeImageIndex === index ? 'ring-2 ring-contrareloj' : ''}`}
@@ -240,18 +407,31 @@ const AuctionDetail = () => {
             <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-sm">
               <div className="mb-4">
                 <p className="text-gray-500 uppercase text-xs font-medium">OFERTA ACTUAL</p>
-                <h2 className="text-3xl font-bold">${auctionData.start_price?.toLocaleString('es-CL')}</h2>
-                <p className="text-sm text-gray-500">{0} ofertas</p>
+                <h2 className="text-3xl font-bold">${highestBid.toLocaleString('es-CL')}</h2>
+                <p className="text-sm text-gray-500">{bids.length} ofertas</p>
               </div>
               
               <div className="mb-6">
-                <CountdownTimer 
-                  endTime={auctionData.end_date ? new Date(auctionData.end_date) : new Date()} 
-                  detailed={true}
-                />
+                {isAuctionEnded ? (
+                  <div className="bg-gray-100 p-4 rounded-lg text-center">
+                    <p className="text-lg font-medium">Subasta finalizada</p>
+                    {winner ? (
+                      <p className="text-sm text-gray-600">
+                        Ganador: {winner.profiles?.first_name || 'Usuario'} con ${winner.amount?.toLocaleString('es-CL')}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-gray-600">No hubo ofertas en esta subasta</p>
+                    )}
+                  </div>
+                ) : (
+                  <CountdownTimer 
+                    endTime={auctionData.end_date ? new Date(auctionData.end_date) : new Date()} 
+                    detailed={true}
+                  />
+                )}
               </div>
               
-              {user && (
+              {user && !isAuctionEnded && !isOwner && (
                 <>
                   <div className="mb-6">
                     <p className="mb-1 text-sm font-medium">Tu oferta (CLP)</p>
@@ -259,8 +439,8 @@ const AuctionDetail = () => {
                       <Input 
                         type="text"
                         value={bidAmount} 
-                        onChange={(e) => setBidAmount(e.target.value)}
-                        placeholder={`Mín ${(auctionData.start_price + auctionData.min_increment).toLocaleString('es-CL')}`}
+                        onChange={(e) => setBidAmount(formatBidAmount(e.target.value))}
+                        placeholder={`Mín ${(highestBid + auctionData.min_increment).toLocaleString('es-CL')}`}
                         className="flex-grow"
                       />
                       <Button 
@@ -282,7 +462,7 @@ const AuctionDetail = () => {
                       </li>
                       <li className="flex items-start">
                         <PlusCircle className="h-4 w-4 text-gray-400 mr-2 mt-0.5" />
-                        <span>Se aplica un 5% de comisión sobre el monto final.</span>
+                        <span>Se aplica un 5% de comisión sobre el monto ofertado.</span>
                       </li>
                       <li className="flex items-start">
                         <PlusCircle className="h-4 w-4 text-gray-400 mr-2 mt-0.5" />
@@ -291,6 +471,27 @@ const AuctionDetail = () => {
                     </ul>
                   </div>
                 </>
+              )}
+              
+              {!isVerified && user && !isOwner && (
+                <div className="mb-6 bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
+                  <div className="flex items-start">
+                    <AlertCircle className="h-5 w-5 text-yellow-500 mr-2 mt-0.5" />
+                    <div>
+                      <h4 className="font-medium text-yellow-800">Verificación requerida</h4>
+                      <p className="text-sm text-yellow-700">
+                        Para participar en subastas necesitas verificar tu identidad.
+                      </p>
+                      <Button 
+                        variant="outline" 
+                        className="mt-2 bg-white border-yellow-300 text-yellow-700 hover:bg-yellow-50"
+                        onClick={() => setIsVerifyDialogOpen(true)}
+                      >
+                        Verificar identidad
+                      </Button>
+                    </div>
+                  </div>
+                </div>
               )}
               
               <div className="flex space-x-2">
@@ -353,7 +554,14 @@ const AuctionDetail = () => {
           <Tabs defaultValue="details" className="mb-8">
             <TabsList className="w-full border-b">
               <TabsTrigger value="details" className="flex-1">Detalles</TabsTrigger>
-              <TabsTrigger value="history" className="flex-1">Historial</TabsTrigger>
+              <TabsTrigger value="history" className="flex-1">
+                Historial
+                {bids.length > 0 && (
+                  <span className="ml-1.5 bg-gray-200 text-gray-800 rounded-full px-2 py-0.5 text-xs">
+                    {bids.length}
+                  </span>
+                )}
+              </TabsTrigger>
               <TabsTrigger value="questions" className="flex-1">
                 Preguntas
                 {questions.length > 0 && (
@@ -416,10 +624,13 @@ const AuctionDetail = () => {
             </TabsContent>
             
             <TabsContent value="history" className="pt-6">
-              <div className="bg-gray-50 p-6 rounded-lg text-center">
-                <h3 className="text-lg font-medium mb-2">Historial de ofertas</h3>
-                <p className="text-gray-500">Aún no hay ofertas para este vehículo.</p>
-              </div>
+              {isLoadingBids ? (
+                <div className="text-center py-6">
+                  <p>Cargando historial de ofertas...</p>
+                </div>
+              ) : (
+                <BidHistory bids={bids} />
+              )}
             </TabsContent>
             
             <TabsContent value="questions" className="pt-6">
@@ -466,6 +677,20 @@ const AuctionDetail = () => {
             }}
             questionId={selectedQuestionId || ''}
             onAnswerSubmitted={handleQuestionSubmitted}
+          />
+
+          {/* Diálogo para confirmar oferta */}
+          <BidConfirmationDialog
+            isOpen={isBidDialogOpen}
+            onClose={() => setIsBidDialogOpen(false)}
+            bidAmount={bidAmount ? parseInt(bidAmount.replace(/\D/g, '')) : 0}
+            onConfirm={confirmBid}
+          />
+
+          {/* Diálogo para verificar identidad */}
+          <VerifyIdentityDialog
+            isOpen={isVerifyDialogOpen}
+            onClose={() => setIsVerifyDialogOpen(false)}
           />
         </div>
       </main>
