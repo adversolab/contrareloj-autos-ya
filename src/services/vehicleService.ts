@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -499,7 +498,7 @@ export async function getUserFavorites() {
       .from('favorites')
       .select(`
         auction_id,
-        auctions (
+        auctions!favorites_auction_id_fkey (
           id,
           start_price,
           end_date,
@@ -525,6 +524,10 @@ export async function getUserFavorites() {
     // Formatear los datos para que sean compatibles con AuctionCard
     const formattedFavorites = data.map(item => {
       const auction = item.auctions;
+      if (!auction || !auction.vehicles) {
+        return null; // Skip this item if auction or vehicle data is missing
+      }
+      
       const vehicle = auction.vehicles;
       
       const mainPhoto = vehicle.vehicle_photos.find((photo: any) => photo.is_primary) || 
@@ -539,7 +542,7 @@ export async function getUserFavorites() {
         endTime: new Date(auction.end_date),
         bidCount: 0
       };
-    });
+    }).filter(Boolean); // Filter out null values
 
     return { error: null, favorites: formattedFavorites };
   } catch (error: any) {
