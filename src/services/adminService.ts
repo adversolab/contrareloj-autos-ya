@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 
@@ -322,7 +321,7 @@ export async function getAuctions() {
     
     // Process data to match AdminAuction interface with proper type checking
     const auctions: AdminAuction[] = data.map(auction => {
-      // Handle the case where vehicle or user might be a SelectQueryError
+      // Handle the case where vehicle might be a SelectQueryError
       const vehicleInfo = typeof auction.vehicle === 'object' && auction.vehicle && !('error' in auction.vehicle)
         ? auction.vehicle
         : { brand: 'Unknown', model: 'Unknown', year: 0 };
@@ -338,14 +337,18 @@ export async function getAuctions() {
         // Check if it's an error object or if it has the expected user data
         if (auction.user && !('error' in auction.user)) {
           // Try to safely extract user email and name
-          const userData = auction.user;
-          if (userData) {
-            userInfo = {
-              email: typeof userData.email === 'string' ? userData.email : 'unknown@email.com',
-              first_name: userData.first_name || null,
-              last_name: userData.last_name || null
-            };
-          }
+          // Force TypeScript to treat userData as a properly typed object with email and name properties
+          const userData = auction.user as { 
+            email?: string, 
+            first_name?: string | null, 
+            last_name?: string | null 
+          };
+          
+          userInfo = {
+            email: typeof userData.email === 'string' ? userData.email : 'unknown@email.com',
+            first_name: userData.first_name ?? null,
+            last_name: userData.last_name ?? null
+          };
         }
       }
 
