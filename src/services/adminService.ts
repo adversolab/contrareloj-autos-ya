@@ -216,7 +216,30 @@ export async function getVehicles() {
       return { vehicles: [] };
     }
     
-    return { vehicles: data as AdminVehicle[] };
+    // Process and validate the data to ensure it matches our AdminVehicle type
+    const vehicles: AdminVehicle[] = data.map(vehicle => {
+      // Handle case where user might be a SelectQueryError
+      const userInfo = typeof vehicle.user === 'object' && vehicle.user && !('error' in vehicle.user) 
+        ? vehicle.user 
+        : { email: 'unknown@email.com', first_name: null, last_name: null };
+
+      return {
+        id: vehicle.id,
+        brand: vehicle.brand,
+        model: vehicle.model,
+        year: vehicle.year,
+        user_id: vehicle.user_id,
+        is_approved: vehicle.is_approved || false,
+        created_at: vehicle.created_at,
+        user: {
+          email: userInfo.email || 'unknown@email.com',
+          first_name: userInfo.first_name,
+          last_name: userInfo.last_name
+        }
+      };
+    });
+    
+    return { vehicles };
   } catch (error) {
     console.error('Error inesperado:', error);
     toast({ title: "Error", description: "No se pudieron cargar los vehículos", variant: "destructive" });
@@ -295,11 +318,46 @@ export async function getAuctions() {
       return { auctions: [] };
     }
     
-    // Process data to match AdminAuction interface
-    const auctions = data.map(auction => ({
-      ...auction,
-      user: auction.user.user_id
-    })) as unknown as AdminAuction[];
+    // Process data to match AdminAuction interface with proper type checking
+    const auctions: AdminAuction[] = data.map(auction => {
+      // Handle the case where vehicle or user might be a SelectQueryError
+      const vehicleInfo = typeof auction.vehicle === 'object' && auction.vehicle && !('error' in auction.vehicle)
+        ? auction.vehicle
+        : { brand: 'Unknown', model: 'Unknown', year: 0 };
+        
+      // Handle nested user object or create default if not available
+      let userInfo = { email: 'unknown@email.com', first_name: null, last_name: null };
+      
+      if (
+        typeof auction.user === 'object' && 
+        auction.user && 
+        !('error' in auction.user) && 
+        auction.user.user_id && 
+        typeof auction.user.user_id === 'object'
+      ) {
+        userInfo = {
+          email: auction.user.user_id.email || 'unknown@email.com',
+          first_name: auction.user.user_id.first_name,
+          last_name: auction.user.user_id.last_name
+        };
+      }
+
+      return {
+        id: auction.id,
+        start_price: auction.start_price,
+        reserve_price: auction.reserve_price,
+        status: auction.status,
+        vehicle_id: auction.vehicle_id,
+        is_approved: auction.is_approved || false,
+        created_at: auction.created_at,
+        vehicle: {
+          brand: vehicleInfo.brand,
+          model: vehicleInfo.model,
+          year: vehicleInfo.year
+        },
+        user: userInfo
+      };
+    });
     
     return { auctions };
   } catch (error) {
