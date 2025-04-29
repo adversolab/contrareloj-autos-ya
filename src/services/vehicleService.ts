@@ -117,6 +117,82 @@ export async function approveVehicle(vehicleId: string) {
   }
 }
 
+export async function deleteVehicle(vehicleId: string) {
+  try {
+    // First, check if there are auctions related to this vehicle
+    const { data: auctions } = await supabase
+      .from('auctions')
+      .select('id')
+      .eq('vehicle_id', vehicleId);
+
+    // Delete related auctions if they exist
+    if (auctions && auctions.length > 0) {
+      const auctionIds = auctions.map(a => a.id);
+      
+      // Delete auction services
+      await supabase
+        .from('auction_services')
+        .delete()
+        .in('auction_id', auctionIds);
+      
+      // Delete auction questions
+      await supabase
+        .from('auction_questions')
+        .delete()
+        .in('auction_id', auctionIds);
+      
+      // Delete bids
+      await supabase
+        .from('bids')
+        .delete()
+        .in('auction_id', auctionIds);
+      
+      // Delete favorites
+      await supabase
+        .from('favorites')
+        .delete()
+        .in('auction_id', auctionIds);
+      
+      // Delete auctions
+      await supabase
+        .from('auctions')
+        .delete()
+        .in('id', auctionIds);
+    }
+
+    // Delete vehicle features
+    await supabase
+      .from('vehicle_features')
+      .delete()
+      .eq('vehicle_id', vehicleId);
+
+    // Delete vehicle photos
+    await supabase
+      .from('vehicle_photos')
+      .delete()
+      .eq('vehicle_id', vehicleId);
+
+    // Delete the vehicle
+    const { error } = await supabase
+      .from('vehicles')
+      .delete()
+      .eq('id', vehicleId);
+      
+    if (error) {
+      console.error('Error al eliminar vehículo:', error);
+      toast.error('Error al eliminar el vehículo');
+      return false;
+    }
+    
+    toast.success('Vehículo eliminado correctamente');
+    return true;
+  } catch (error) {
+    console.error('Error inesperado:', error);
+    toast.error('Error al eliminar el vehículo');
+    return false;
+  }
+}
+
 // Auction interaction functions
 export async function getAuctionById(auctionId: string) {
   try {

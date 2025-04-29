@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { getVehicles, approveVehicle, AdminVehicle } from '@/services/adminService';
+import { getVehicles, approveVehicle, deleteVehicle, AdminVehicle } from '@/services/adminService';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
@@ -18,12 +18,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { CheckCircle, MoreHorizontal, Eye } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { CheckCircle, MoreHorizontal, Trash } from 'lucide-react';
 
 const VehiclesManagement = () => {
   const [vehicles, setVehicles] = useState<AdminVehicle[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [vehicleToDelete, setVehicleToDelete] = useState<string | null>(null);
 
   const fetchVehicles = async () => {
     setLoading(true);
@@ -37,6 +39,23 @@ const VehiclesManagement = () => {
     if (success) {
       fetchVehicles();
     }
+  };
+
+  const openDeleteDialog = (vehicleId: string) => {
+    setVehicleToDelete(vehicleId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteVehicle = async () => {
+    if (!vehicleToDelete) return;
+    
+    const success = await deleteVehicle(vehicleToDelete);
+    if (success) {
+      fetchVehicles();
+    }
+    
+    setDeleteDialogOpen(false);
+    setVehicleToDelete(null);
   };
 
   useEffect(() => {
@@ -80,6 +99,9 @@ const VehiclesManagement = () => {
                       <div className="font-medium">
                         {vehicle.brand} {vehicle.model} {vehicle.year}
                       </div>
+                      <div className="text-xs text-muted-foreground">
+                        ID: {vehicle.id.substring(0, 8)}...
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="text-sm">
@@ -114,6 +136,10 @@ const VehiclesManagement = () => {
                               <span>Aprobar vehículo</span>
                             </DropdownMenuItem>
                           )}
+                          <DropdownMenuItem className="text-red-600" onClick={() => openDeleteDialog(vehicle.id)}>
+                            <Trash className="mr-2 h-4 w-4" />
+                            <span>Eliminar vehículo</span>
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -124,6 +150,23 @@ const VehiclesManagement = () => {
           </Table>
         </div>
       )}
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará permanentemente el vehículo y todos los datos relacionados. Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteVehicle} className="bg-red-600 hover:bg-red-700">
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

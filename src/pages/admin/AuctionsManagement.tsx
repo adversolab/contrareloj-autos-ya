@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { getAuctions, approveAuction, AdminAuction } from '@/services/adminService';
+import { getAuctions, approveAuction, deleteAuction, pauseAuction, AdminAuction } from '@/services/adminService';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
@@ -18,12 +18,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { CheckCircle, MoreHorizontal, Eye } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { CheckCircle, MoreHorizontal, Eye, Trash, PauseCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const AuctionsManagement = () => {
   const [auctions, setAuctions] = useState<AdminAuction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [auctionToDelete, setAuctionToDelete] = useState<string | null>(null);
 
   const fetchAuctions = async () => {
     setLoading(true);
@@ -37,6 +40,30 @@ const AuctionsManagement = () => {
     if (success) {
       fetchAuctions();
     }
+  };
+
+  const handlePauseAuction = async (auctionId: string) => {
+    const success = await pauseAuction(auctionId);
+    if (success) {
+      fetchAuctions();
+    }
+  };
+
+  const openDeleteDialog = (auctionId: string) => {
+    setAuctionToDelete(auctionId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteAuction = async () => {
+    if (!auctionToDelete) return;
+    
+    const success = await deleteAuction(auctionToDelete);
+    if (success) {
+      fetchAuctions();
+    }
+    
+    setDeleteDialogOpen(false);
+    setAuctionToDelete(null);
   };
 
   useEffect(() => {
@@ -103,10 +130,12 @@ const AuctionsManagement = () => {
                         </Badge>
                         <Badge variant={
                           auction.status === 'active' ? 'default' : 
-                          auction.status === 'finished' ? 'secondary' : 'outline'
-                        }>
+                          auction.status === 'finished' ? 'secondary' :
+                          auction.status === 'paused' ? 'warning' : 'outline'
+                        } className={auction.status === 'paused' ? "bg-yellow-500" : ""}>
                           {auction.status === 'active' ? 'Activa' : 
-                           auction.status === 'finished' ? 'Finalizada' : 'Borrador'}
+                           auction.status === 'finished' ? 'Finalizada' : 
+                           auction.status === 'paused' ? 'Pausada' : 'Borrador'}
                         </Badge>
                       </div>
                     </TableCell>
@@ -124,11 +153,21 @@ const AuctionsManagement = () => {
                               <span>Aprobar subasta</span>
                             </DropdownMenuItem>
                           )}
+                          {auction.status === 'active' && (
+                            <DropdownMenuItem onClick={() => handlePauseAuction(auction.id)}>
+                              <PauseCircle className="mr-2 h-4 w-4" />
+                              <span>Pausar subasta</span>
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem asChild>
                             <Link to={`/subasta/${auction.id}`}>
                               <Eye className="mr-2 h-4 w-4" />
                               <span>Ver subasta</span>
                             </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="text-red-600" onClick={() => openDeleteDialog(auction.id)}>
+                            <Trash className="mr-2 h-4 w-4" />
+                            <span>Eliminar subasta</span>
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -140,6 +179,23 @@ const AuctionsManagement = () => {
           </Table>
         </div>
       )}
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará permanentemente la subasta y todos sus datos relacionados (pujas, preguntas, etc). Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteAuction} className="bg-red-600 hover:bg-red-700">
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

@@ -99,3 +99,6 @@ export async function approveAuction(auctionId: string) {
     return false;
   }
 }
+
+// Export toast to avoid import issues
+export { toast } from "sonner";
