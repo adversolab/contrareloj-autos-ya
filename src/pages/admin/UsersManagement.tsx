@@ -4,10 +4,9 @@ import {
   getUsers, 
   verifyUser, 
   updateUserRole, 
-  getUserDocuments, 
-  UserDocuments, 
-  AdminUser 
-} from '@/services/adminService';
+  getUserDocuments
+} from '@/services/userService';
+import { AdminUser } from '@/services/types/adminTypes';
 import { Button } from '@/components/ui/button';
 import UsersListTable from '@/components/admin/UsersListTable';
 import PendingVerificationsTable from '@/components/admin/PendingVerificationsTable';
@@ -18,7 +17,7 @@ const UsersManagement = () => {
   const [loading, setLoading] = useState(true);
   const [viewingDocuments, setViewingDocuments] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [userDocuments, setUserDocuments] = useState<UserDocuments | null>(null);
+  const [userDocuments, setUserDocuments] = useState<any>(null);
   const [loadingDocuments, setLoadingDocuments] = useState(false);
 
   const fetchUsers = async () => {
@@ -61,12 +60,9 @@ const UsersManagement = () => {
     fetchUsers();
   }, []);
 
-  // Improved filter for users who have submitted documents but are not yet verified
+  // Filter for users who have submitted documents but are not yet verified
   const pendingVerificationUsers = users.filter(user => {
-    // Exclude admins
-    if (user.role === 'admin') return false;
-    
-    // Check if user is not verified but has uploaded any document
+    // Check for users with any documents but not yet verified
     const hasDocuments = user.has_identity_document || user.has_selfie || user.has_rut;
     return !user.identity_verified && hasDocuments;
   });
@@ -74,6 +70,7 @@ const UsersManagement = () => {
   // Get the current user being viewed (if any)
   const currentUserIsVerified = users.find(u => u.id === currentUserId)?.identity_verified || false;
   
+  console.log("All users:", users);
   console.log("Pending verification users:", pendingVerificationUsers);
 
   return (
@@ -95,11 +92,13 @@ const UsersManagement = () => {
       />
 
       {/* Pending verification users section */}
-      <PendingVerificationsTable 
-        pendingUsers={pendingVerificationUsers}
-        onViewDocuments={handleViewDocuments}
-        onVerifyUser={handleVerifyUser}
-      />
+      {pendingVerificationUsers.length > 0 && (
+        <PendingVerificationsTable 
+          pendingUsers={pendingVerificationUsers}
+          onViewDocuments={handleViewDocuments}
+          onVerifyUser={handleVerifyUser}
+        />
+      )}
 
       {/* Dialog for viewing user documents */}
       <UserDocumentsDialog 

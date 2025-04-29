@@ -1,5 +1,13 @@
 
-// Define admin-related types here
+// Common type definitions for admin features
+export interface UserDocuments {
+  rut?: string;
+  identity_document_url?: string;
+  identity_selfie_url?: string;
+  front_url?: string;
+  back_url?: string;
+}
+
 export interface AdminUser {
   id: string;
   email: string;
@@ -7,6 +15,9 @@ export interface AdminUser {
   last_name: string | null;
   role: "user" | "admin" | "moderator";
   identity_verified: boolean;
+  has_identity_document?: boolean;
+  has_selfie?: boolean;
+  has_rut?: boolean;
   created_at: string;
 }
 
