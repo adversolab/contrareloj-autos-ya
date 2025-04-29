@@ -25,7 +25,14 @@ const UsersManagement = () => {
     setLoading(true);
     const { users: fetchedUsers } = await getUsers();
     console.log("Fetched users:", fetchedUsers);
-    setUsers(fetchedUsers);
+    
+    if (fetchedUsers && fetchedUsers.length > 0) {
+      setUsers(fetchedUsers);
+    } else {
+      console.log("No users found or empty array returned");
+      setUsers([]);
+    }
+    
     setLoading(false);
   };
 
@@ -72,6 +79,7 @@ const UsersManagement = () => {
   
   console.log("All users:", users);
   console.log("Pending verification users:", pendingVerificationUsers);
+  console.log("Total user count:", users.length);
 
   return (
     <div>
@@ -82,7 +90,7 @@ const UsersManagement = () => {
         </Button>
       </div>
 
-      {/* Users list table - make sure we're showing ALL users */}
+      {/* Users list table - show ALL users without any filtering */}
       <UsersListTable 
         users={users}
         loading={loading}

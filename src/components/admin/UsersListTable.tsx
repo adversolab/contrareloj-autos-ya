@@ -41,6 +41,7 @@ const UsersListTable: React.FC<UsersListTableProps> = ({
 
   // Log para verificar que recibimos todos los usuarios
   console.log("Rendering UsersListTable with users:", users);
+  console.log("Number of users in table:", users.length);
 
   return (
     <div className="rounded-md border">

@@ -6,6 +6,9 @@ import { AdminUser, UserDocuments } from './types';
 // User management functions
 export async function getUsers() {
   try {
+    console.log('Admin service: Fetching all users from profiles table...');
+    
+    // Obtenemos todos los perfiles sin filtros
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -17,7 +20,7 @@ export async function getUsers() {
       return { users: [] };
     }
     
-    console.log("Raw profiles data:", data);
+    console.log("Admin service: Raw profiles data:", data);
     
     // Process the user data to determine document availability
     const users: AdminUser[] = data.map(user => ({
@@ -27,20 +30,13 @@ export async function getUsers() {
       last_name: user.last_name,
       role: user.role as "user" | "admin" | "moderator",
       identity_verified: user.identity_verified || false,
-      has_identity_document: Boolean(user.identity_document_url), // Convert to boolean
-      has_selfie: Boolean(user.identity_selfie_url), // Convert to boolean
-      has_rut: Boolean(user.rut), // Convert to boolean
+      has_identity_document: Boolean(user.identity_document_url),
+      has_selfie: Boolean(user.identity_selfie_url),
+      has_rut: Boolean(user.rut),
       created_at: user.created_at || new Date().toISOString()
     }));
     
-    console.log("Processed users with document flags:", users.map(u => ({
-      id: u.id,
-      email: u.email,
-      verified: u.identity_verified,
-      has_doc: u.has_identity_document,
-      has_selfie: u.has_selfie,
-      has_rut: u.has_rut
-    })));
+    console.log("Admin service: Total users found:", users.length);
     
     return { users };
   } catch (error) {

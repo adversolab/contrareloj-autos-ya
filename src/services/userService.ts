@@ -7,19 +7,22 @@ export async function getUsers() {
   try {
     console.log('Fetching all users from profiles table...');
     
-    // Obtenemos todos los perfiles sin filtros
-    const { data: profiles, error: profilesError } = await supabase
+    // Obtenemos todos los perfiles sin filtros y aseguramos que sea ordenado por fecha
+    const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .order('created_at', { ascending: false });
       
-    if (profilesError) {
-      console.error('Error al obtener usuarios:', profilesError);
+    if (error) {
+      console.error('Error al obtener usuarios:', error);
       toast.error('Error al cargar los usuarios');
       return { users: [] };
     }
     
-    console.log('Raw profiles data from database:', profiles);
+    console.log('Raw profiles data from database:', data);
+    
+    // Asegurarnos que data es un array
+    const profiles = Array.isArray(data) ? data : [];
     
     // Formatear usuarios asegurándose de que todos sean incluidos
     const formattedUsers: AdminUser[] = profiles.map(profile => ({
@@ -36,6 +39,7 @@ export async function getUsers() {
     }));
     
     console.log('Formatted users (should include all):', formattedUsers);
+    console.log('Total number of users:', formattedUsers.length);
     
     return { users: formattedUsers };
   } catch (error) {
