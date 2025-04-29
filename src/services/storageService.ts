@@ -4,20 +4,20 @@ import { toast } from "sonner";
 
 export async function createIdentityDocumentsBucket() {
   try {
-    // Verifica si el bucket ya existe
+    // Check if the bucket already exists
     const { data: buckets, error } = await supabase
       .storage
       .listBuckets();
     
     if (error) {
-      console.error('Error al listar buckets:', error);
+      console.error('Error listing buckets:', error);
       return { success: false };
     }
     
     const bucketExists = buckets.some(bucket => bucket.name === 'identity_docs');
     
     if (!bucketExists) {
-      // Crea el bucket si no existe
+      // Create the bucket if it doesn't exist
       const { error: createError } = await supabase
         .storage
         .createBucket('identity_docs', {
@@ -27,52 +27,56 @@ export async function createIdentityDocumentsBucket() {
         });
       
       if (createError) {
-        console.error('Error al crear bucket:', createError);
+        console.error('Error creating bucket:', createError);
         return { success: false };
       }
       
-      console.log('Bucket identity_docs creado exitosamente');
+      console.log('Bucket identity_docs created successfully');
     }
     
     return { success: true };
   } catch (error) {
-    console.error('Error inesperado:', error);
+    console.error('Unexpected error:', error);
     return { success: false };
   }
 }
 
-// Función para subir archivos al bucket de documentos de identidad
+// Function to upload files to the identity documents bucket
 export async function uploadIdentityFile(file: File, fileName: string, isSelfie: boolean = false) {
   try {
-    // Asegurar que el bucket existe
+    // Ensure the bucket exists
     const { success: bucketSuccess } = await createIdentityDocumentsBucket();
     if (!bucketSuccess) {
+      console.error("Failed to create or verify bucket");
       toast.error("Error al preparar el almacenamiento");
       return { success: false, url: null };
     }
     
-    // Determinar la ruta dentro del bucket
+    // Determine the path within the bucket
     const folderPath = isSelfie ? 'selfies' : 'documents';
     const filePath = `${folderPath}/${fileName}`;
     
-    // Subir el archivo
+    console.log(`Uploading file to identity_docs/${filePath}`);
+    
+    // Upload the file
     const { data, error } = await supabase.storage
       .from('identity_docs')
       .upload(filePath, file, {
         cacheControl: '3600',
-        upsert: false // No sobrescribir archivos existentes con el mismo nombre
+        upsert: false // Don't overwrite existing files with the same name
       });
     
     if (error) {
-      console.error('Error al subir archivo:', error);
-      toast.error("Error al subir el archivo");
+      console.error('File upload error:', error);
       return { success: false, url: null };
     }
     
-    // Obtener URL pública (o firmada si el bucket es privado)
+    // Get public URL (or signed URL if the bucket is private)
     const { data: urlData } = await supabase.storage
       .from('identity_docs')
-      .createSignedUrl(filePath, 60 * 60 * 24 * 7); // URL válida por 7 días
+      .createSignedUrl(filePath, 60 * 60 * 24 * 7); // URL valid for 7 days
+    
+    console.log("File uploaded successfully, URL:", urlData?.signedUrl);
     
     return { 
       success: true, 
@@ -80,11 +84,10 @@ export async function uploadIdentityFile(file: File, fileName: string, isSelfie:
       path: data?.path || null
     };
   } catch (error) {
-    console.error('Error inesperado:', error);
-    toast.error("Error inesperado al procesar el archivo");
+    console.error('Unexpected error during file upload:', error);
     return { success: false, url: null };
   }
 }
 
-// Llamar a esta función al inicializar la aplicación
+// Call this function when initializing the application
 createIdentityDocumentsBucket().catch(console.error);

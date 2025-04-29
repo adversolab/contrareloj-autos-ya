@@ -31,6 +31,22 @@ const DocumentStep: React.FC<DocumentStepProps> = ({
       return;
     }
     
+    // Check file size (5MB limit)
+    const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+    if (documentFrontFile.size > maxSize || documentBackFile.size > maxSize) {
+      setUploadError("Las imágenes deben ser menores a 5MB");
+      toast.error("Las imágenes deben ser menores a 5MB");
+      return;
+    }
+    
+    // Check file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    if (!allowedTypes.includes(documentFrontFile.type) || !allowedTypes.includes(documentBackFile.type)) {
+      setUploadError("Solo se permiten imágenes en formato JPG o PNG");
+      toast.error("Solo se permiten imágenes en formato JPG o PNG");
+      return;
+    }
+    
     setUploadError(null);
     onSubmit();
   };
@@ -63,14 +79,14 @@ const DocumentStep: React.FC<DocumentStepProps> = ({
         </div>
       </div>
     
-      {/* Frente del documento */}
+      {/* Front of the document */}
       <div className="space-y-2">
         <Label htmlFor="document-front">Frente de tu cédula/carnet</Label>
         <div className="border-2 border-dashed border-gray-300 rounded-md p-6 flex flex-col items-center justify-center">
           <input
             id="document-front"
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/jpg,image/png"
             className="hidden"
             onChange={onDocumentFrontFileChange}
           />
@@ -100,14 +116,14 @@ const DocumentStep: React.FC<DocumentStepProps> = ({
         </div>
       </div>
       
-      {/* Reverso del documento */}
+      {/* Back of the document */}
       <div className="space-y-2">
         <Label htmlFor="document-back">Reverso de tu cédula/carnet</Label>
         <div className="border-2 border-dashed border-gray-300 rounded-md p-6 flex flex-col items-center justify-center">
           <input
             id="document-back"
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/jpg,image/png"
             className="hidden"
             onChange={onDocumentBackFileChange}
           />

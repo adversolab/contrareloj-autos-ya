@@ -81,7 +81,7 @@ export const useIdentityVerification = () => {
       hasSelfie: status.hasSelfie
     });
     
-    // Determinar el paso inicial
+    // Determine initial step
     if (!status.hasRut) {
       setStep(1);
     } else if (!status.hasDocuments) {
@@ -90,6 +90,13 @@ export const useIdentityVerification = () => {
       setStep(3);
     } else {
       setStep(4);
+    }
+  };
+
+  // Add a function to go back to the previous step
+  const goToPreviousStep = () => {
+    if (step > 1) {
+      setStep(step - 1);
     }
   };
 
@@ -127,31 +134,42 @@ export const useIdentityVerification = () => {
       
       const userId = currentUser.id;
       
-      // Generar nombres de archivo únicos
+      // Ensure bucket exists first
+      await uploadIdentityFile(new File(["test"], "test.txt"), "test.txt");
+      
+      // Generate unique filenames with file extensions
       const frontFileName = `${userId}_front_${Date.now()}.${documentFrontFile.name.split('.').pop()}`;
       const backFileName = `${userId}_back_${Date.now()}.${documentBackFile.name.split('.').pop()}`;
       
-      // Primero, subir el frente del documento
+      console.log("Uploading front document:", frontFileName);
+      
+      // First, upload the front of the document
       const frontResponse = await uploadIdentityFile(documentFrontFile, frontFileName);
       
       if (!frontResponse.success) {
+        console.error("Front document upload error:", frontResponse);
         throw new Error("Error al subir el frente del documento");
       }
       
-      // Luego, subir el reverso del documento
+      console.log("Uploading back document:", backFileName);
+      
+      // Then, upload the back of the document
       const backResponse = await uploadIdentityFile(documentBackFile, backFileName);
       
       if (!backResponse.success) {
+        console.error("Back document upload error:", backResponse);
         throw new Error("Error al subir el reverso del documento");
       }
       
-      // Combinar las URLs en un único campo JSON para almacenar en la base de datos
+      // Combine the URLs into a single JSON field to store in the database
       const documentUrls = {
         front: frontResponse.url,
         back: backResponse.url
       };
       
-      // Actualizar perfil con las URLs de los documentos como un único campo JSON
+      console.log("Updating profile with document URLs:", documentUrls);
+      
+      // Update profile with the document URLs as a single JSON field
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
@@ -160,16 +178,17 @@ export const useIdentityVerification = () => {
         .eq('id', userId);
       
       if (updateError) {
+        console.error("Profile update error:", updateError);
         throw new Error("Error al guardar referencias de documentos");
       }
       
-      // Si todo fue exitoso, actualizar el estado y avanzar al siguiente paso
+      // If all was successful, update the state and advance to the next step
       setVerificationStatus(prev => ({ ...prev, hasDocuments: true }));
       setStep(3);
       toast.success("Documentos subidos correctamente");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error al subir documentos:", error);
-      toast.error("Error al subir los documentos");
+      toast.error(error.message || "Error al subir los documentos");
     } finally {
       setIsLoading(false);
     }
@@ -191,17 +210,20 @@ export const useIdentityVerification = () => {
       
       const userId = currentUser.id;
       
-      // Generar nombre de archivo único
+      // Generate unique filename
       const selfieFileName = `${userId}_selfie_${Date.now()}.${selfieFile.name.split('.').pop()}`;
       
-      // Subir la selfie
+      console.log("Uploading selfie:", selfieFileName);
+      
+      // Upload the selfie
       const selfieResponse = await uploadIdentityFile(selfieFile, selfieFileName, true);
       
       if (!selfieResponse.success || !selfieResponse.url) {
+        console.error("Selfie upload error:", selfieResponse);
         throw new Error("Error al subir la selfie");
       }
       
-      // Actualizar perfil con la URL de la selfie
+      // Update profile with the selfie URL
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
@@ -210,16 +232,17 @@ export const useIdentityVerification = () => {
         .eq('id', userId);
       
       if (updateError) {
+        console.error("Profile update error:", updateError);
         throw new Error("Error al guardar referencia de selfie");
       }
       
-      // Si todo fue exitoso, actualizar el estado y avanzar al siguiente paso
+      // If all was successful, update the state and advance to the next step
       setVerificationStatus(prev => ({ ...prev, hasSelfie: true }));
       setStep(4);
       toast.success("Selfie subida correctamente");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error al subir selfie:", error);
-      toast.error("Error al subir la selfie");
+      toast.error(error.message || "Error al subir la selfie");
     } finally {
       setIsLoading(false);
     }
@@ -240,6 +263,7 @@ export const useIdentityVerification = () => {
     handleSubmitRut,
     handleSubmitDocument,
     handleSubmitSelfie,
-    loadVerificationStatus
+    loadVerificationStatus,
+    goToPreviousStep // New function to go back to previous step
   };
 };

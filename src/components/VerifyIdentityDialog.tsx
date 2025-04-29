@@ -10,8 +10,9 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useIdentityVerification } from '@/hooks/useIdentityVerification';
+import { ArrowLeft } from 'lucide-react';
 
-// Componentes refactorizados
+// Refactored components
 import StepsIndicator from '@/components/identity/StepsIndicator';
 import RutStep from '@/components/identity/RutStep';
 import DocumentStep from '@/components/identity/DocumentStep';
@@ -39,10 +40,11 @@ const VerifyIdentityDialog: React.FC<VerifyIdentityDialogProps> = ({ isOpen, onC
     handleSubmitRut,
     handleSubmitDocument,
     handleSubmitSelfie,
-    loadVerificationStatus
+    loadVerificationStatus,
+    goToPreviousStep
   } = useIdentityVerification();
 
-  // Cargar el estado de verificación actual
+  // Load current verification status
   useEffect(() => {
     if (isOpen) {
       loadVerificationStatus();
@@ -50,7 +52,7 @@ const VerifyIdentityDialog: React.FC<VerifyIdentityDialogProps> = ({ isOpen, onC
   }, [isOpen]);
 
   const handleClose = () => {
-    // Confirmar antes de cerrar si el usuario está en medio del proceso
+    // Confirm before closing if the user is in the middle of the process
     if (step > 1 && step < 4) {
       if (window.confirm("¿Estás seguro de que quieres cerrar? Tu progreso no se guardará.")) {
         onClose();
@@ -71,10 +73,10 @@ const VerifyIdentityDialog: React.FC<VerifyIdentityDialogProps> = ({ isOpen, onC
         </DialogHeader>
 
         <div className="py-4">
-          {/* Pasos de verificación */}
+          {/* Verification Steps */}
           <StepsIndicator currentStep={step} />
 
-          {/* Paso 1: Ingresar RUT */}
+          {/* Step 1: Enter RUT */}
           {step === 1 && (
             <RutStep 
               rut={rut}
@@ -84,7 +86,7 @@ const VerifyIdentityDialog: React.FC<VerifyIdentityDialogProps> = ({ isOpen, onC
             />
           )}
 
-          {/* Paso 2: Subir documento de identidad (ambos lados) */}
+          {/* Step 2: Upload ID document (both sides) */}
           {step === 2 && (
             <DocumentStep
               documentFrontFile={documentFrontFile}
@@ -96,7 +98,7 @@ const VerifyIdentityDialog: React.FC<VerifyIdentityDialogProps> = ({ isOpen, onC
             />
           )}
 
-          {/* Paso 3: Subir selfie */}
+          {/* Step 3: Upload selfie */}
           {step === 3 && (
             <SelfieStep 
               selfieFile={selfieFile}
@@ -106,19 +108,29 @@ const VerifyIdentityDialog: React.FC<VerifyIdentityDialogProps> = ({ isOpen, onC
             />
           )}
 
-          {/* Paso 4: Confirmación */}
+          {/* Step 4: Confirmation */}
           {step === 4 && (
             <ConfirmationStep onClose={onClose} />
           )}
         </div>
 
-        {step < 4 && (
-          <DialogFooter className="sm:justify-start">
-            <Button variant="outline" onClick={handleClose}>
-              Cancelar
+        <DialogFooter className="sm:justify-between">
+          {step > 1 && step < 4 && (
+            <Button 
+              variant="outline" 
+              onClick={goToPreviousStep}
+              disabled={isLoading}
+              className="flex items-center gap-1"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Volver
             </Button>
-          </DialogFooter>
-        )}
+          )}
+          
+          <Button variant="outline" onClick={handleClose} className={step > 1 && step < 4 ? "" : "ml-auto"}>
+            Cancelar
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
