@@ -70,7 +70,7 @@ export async function getUsers() {
       return { users: [] };
     }
     
-    // Format users combining data - now email is directly in the profiles table
+    // Format users with email data
     const formattedUsers: AdminUser[] = profiles.map(profile => ({
       id: profile.id,
       email: profile.email || 'Sin correo',
@@ -180,7 +180,7 @@ export async function updateUserRole(userId: string, role: "user" | "admin" | "m
 // Admin functions for vehicles
 export async function getVehicles() {
   try {
-    // First, get all vehicles
+    // First, get all vehicles with user information
     const { data: vehicles, error: vehiclesError } = await supabase
       .from('vehicles')
       .select(`

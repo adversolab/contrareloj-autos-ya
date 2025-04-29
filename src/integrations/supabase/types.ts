@@ -207,6 +207,7 @@ export type Database = {
           avatar_url: string | null
           city: string | null
           created_at: string | null
+          email: string | null
           first_name: string | null
           id: string
           identity_document_url: string | null
@@ -222,6 +223,7 @@ export type Database = {
           avatar_url?: string | null
           city?: string | null
           created_at?: string | null
+          email?: string | null
           first_name?: string | null
           id: string
           identity_document_url?: string | null
@@ -237,6 +239,7 @@ export type Database = {
           avatar_url?: string | null
           city?: string | null
           created_at?: string | null
+          email?: string | null
           first_name?: string | null
           id?: string
           identity_document_url?: string | null
