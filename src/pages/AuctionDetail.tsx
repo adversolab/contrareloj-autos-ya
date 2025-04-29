@@ -25,6 +25,7 @@ import {
   finalizeAuction,
   getVerificationStatus
 } from '@/services/vehicleService';
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 

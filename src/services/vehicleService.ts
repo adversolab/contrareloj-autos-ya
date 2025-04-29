@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { AdminVehicle } from "./types/adminTypes";
@@ -220,7 +221,8 @@ export async function getAuctionById(auctionId: string) {
       
       if (!photosError && photos && photos.length > 0) {
         // Si hay fotos, añadirlas a la respuesta
-        auction.vehicles.vehicle_photos = photos;
+        // Use type assertion to add the new property
+        (auction.vehicles as any).vehicle_photos = photos;
       }
       
       // Obtener características del vehículo
@@ -231,7 +233,8 @@ export async function getAuctionById(auctionId: string) {
       
       if (!featuresError && features && features.length > 0) {
         // Añadir características al vehículo
-        auction.vehicles.vehicle_features = features;
+        // Use type assertion to add the new property
+        (auction.vehicles as any).vehicle_features = features;
       }
     }
     
