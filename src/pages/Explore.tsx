@@ -7,8 +7,10 @@ import FilterSection from '@/components/FilterSection';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 
+// Update this to match the format expected by AuctionCard
 interface Auction {
-  id: string | number;
+  id: string;
+  auctionId?: string;
   title: string;
   description: string;
   imageUrl: string;

@@ -180,7 +180,9 @@ const AuctionDetail = () => {
       return;
     }
 
-    const result = await placeBid(id, bidAmount);
+    // Fix: Send bidAmount as an object with amount and holdAmount properties
+    const holdAmount = Math.round(bidAmount * 0.05);
+    const result = await placeBid(id, { amount: bidAmount, holdAmount: holdAmount });
     if (result.success) {
       fetchBids();
       handleCloseBidDialog();
@@ -429,6 +431,7 @@ const AuctionDetail = () => {
               isOpen={isBidDialogOpen}
               onClose={handleCloseBidDialog}
               onConfirm={handlePlaceBid}
+              bidAmount={bidAmount}
               currentBid={auction.start_price}
               minIncrement={auction.min_increment}
             />
@@ -442,6 +445,8 @@ const AuctionDetail = () => {
               isOpen={!!isAnswering}
               onClose={handleCloseAnswerDialog}
               onSubmit={handleSubmitAnswer}
+              answerText={answerText}
+              questionId={isAnswering || ''}
             />
           </>
         )
