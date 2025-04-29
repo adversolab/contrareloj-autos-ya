@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { UploadCloud, CheckCircle, X } from 'lucide-react';
+import { UploadCloud, CheckCircle, X, AlertCircle } from 'lucide-react';
 import { uploadIdentityDocument, updateRutInfo, getVerificationStatus } from '@/services/vehicleService';
 import { toast } from 'sonner';
 
@@ -23,7 +23,8 @@ interface VerifyIdentityDialogProps {
 const VerifyIdentityDialog: React.FC<VerifyIdentityDialogProps> = ({ isOpen, onClose }) => {
   const [step, setStep] = useState(1);
   const [rut, setRut] = useState('');
-  const [documentFile, setDocumentFile] = useState<File | null>(null);
+  const [documentFrontFile, setDocumentFrontFile] = useState<File | null>(null);
+  const [documentBackFile, setDocumentBackFile] = useState<File | null>(null);
   const [selfieFile, setSelfieFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState({
@@ -82,9 +83,15 @@ const VerifyIdentityDialog: React.FC<VerifyIdentityDialogProps> = ({ isOpen, onC
     setRut(formatRut(e.target.value));
   };
 
-  const handleDocumentFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDocumentFrontFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setDocumentFile(e.target.files[0]);
+      setDocumentFrontFile(e.target.files[0]);
+    }
+  };
+
+  const handleDocumentBackFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setDocumentBackFile(e.target.files[0]);
     }
   };
 
@@ -112,22 +119,27 @@ const VerifyIdentityDialog: React.FC<VerifyIdentityDialogProps> = ({ isOpen, onC
   };
 
   const handleSubmitDocument = async () => {
-    if (!documentFile) {
-      toast.error("Debes seleccionar un archivo");
+    if (!documentFrontFile || !documentBackFile) {
+      toast.error("Debes subir ambos lados del documento");
       return;
     }
     
     setIsLoading(true);
     
     try {
-      const { url, error } = await uploadIdentityDocument(documentFile, false);
-      if (url) {
+      // Subir frente del documento
+      const frontResponse = await uploadIdentityDocument(documentFrontFile, false, 'front');
+      
+      // Subir reverso del documento
+      const backResponse = await uploadIdentityDocument(documentBackFile, false, 'back');
+      
+      if (frontResponse.url && backResponse.url) {
         setVerificationStatus(prev => ({ ...prev, hasDocuments: true }));
         setStep(3);
       }
     } catch (error) {
-      console.error("Error al subir documento:", error);
-      toast.error("Error al subir el documento");
+      console.error("Error al subir documentos:", error);
+      toast.error("Error al subir los documentos");
     } finally {
       setIsLoading(false);
     }
@@ -135,7 +147,7 @@ const VerifyIdentityDialog: React.FC<VerifyIdentityDialogProps> = ({ isOpen, onC
 
   const handleSubmitSelfie = async () => {
     if (!selfieFile) {
-      toast.error("Debes seleccionar un archivo");
+      toast.error("Debes subir una selfie con tu documento");
       return;
     }
     
@@ -216,39 +228,86 @@ const VerifyIdentityDialog: React.FC<VerifyIdentityDialogProps> = ({ isOpen, onC
             </div>
           )}
 
-          {/* Paso 2: Subir documento de identidad */}
+          {/* Paso 2: Subir documento de identidad (ambos lados) */}
           {step === 2 && (
             <div className="space-y-4">
+              <div className="bg-yellow-50 p-4 rounded-md mb-4">
+                <div className="flex items-start">
+                  <AlertCircle className="h-5 w-5 text-yellow-500 mr-2 mt-0.5" />
+                  <p className="text-sm text-yellow-700">
+                    Este paso es obligatorio. Necesitamos fotos de ambos lados de tu documento de identidad.
+                  </p>
+                </div>
+              </div>
+            
+              {/* Frente del documento */}
               <div className="space-y-2">
-                <Label htmlFor="document">Documento de identidad</Label>
+                <Label htmlFor="document-front">Frente de tu cédula/carnet</Label>
                 <div className="border-2 border-dashed border-gray-300 rounded-md p-6 flex flex-col items-center justify-center">
                   <input
-                    id="document"
+                    id="document-front"
                     type="file"
                     accept="image/*"
                     className="hidden"
-                    onChange={handleDocumentFileChange}
+                    onChange={handleDocumentFrontFileChange}
                   />
-                  {documentFile ? (
+                  {documentFrontFile ? (
                     <div className="w-full">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm">{documentFile.name}</span>
-                        <button onClick={() => setDocumentFile(null)}>
+                        <span className="text-sm">{documentFrontFile.name}</span>
+                        <button onClick={() => setDocumentFrontFile(null)}>
                           <X className="h-5 w-5 text-gray-500" />
                         </button>
                       </div>
                       <div className="h-32 bg-gray-100 rounded flex items-center justify-center overflow-hidden">
                         <img 
-                          src={URL.createObjectURL(documentFile)} 
+                          src={URL.createObjectURL(documentFrontFile)} 
                           alt="Vista previa" 
                           className="max-h-full object-contain" 
                         />
                       </div>
                     </div>
                   ) : (
-                    <label htmlFor="document" className="cursor-pointer text-center">
+                    <label htmlFor="document-front" className="cursor-pointer text-center">
                       <UploadCloud className="mx-auto h-12 w-12 text-gray-400" />
-                      <p className="mt-2 text-sm text-gray-600">Haz clic para subir tu cédula o carnet</p>
+                      <p className="mt-2 text-sm text-gray-600">Haz clic para subir el frente de tu cédula</p>
+                      <p className="mt-1 text-xs text-gray-500">JPG o PNG (máx. 5MB)</p>
+                    </label>
+                  )}
+                </div>
+              </div>
+              
+              {/* Reverso del documento */}
+              <div className="space-y-2">
+                <Label htmlFor="document-back">Reverso de tu cédula/carnet</Label>
+                <div className="border-2 border-dashed border-gray-300 rounded-md p-6 flex flex-col items-center justify-center">
+                  <input
+                    id="document-back"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleDocumentBackFileChange}
+                  />
+                  {documentBackFile ? (
+                    <div className="w-full">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm">{documentBackFile.name}</span>
+                        <button onClick={() => setDocumentBackFile(null)}>
+                          <X className="h-5 w-5 text-gray-500" />
+                        </button>
+                      </div>
+                      <div className="h-32 bg-gray-100 rounded flex items-center justify-center overflow-hidden">
+                        <img 
+                          src={URL.createObjectURL(documentBackFile)} 
+                          alt="Vista previa" 
+                          className="max-h-full object-contain" 
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <label htmlFor="document-back" className="cursor-pointer text-center">
+                      <UploadCloud className="mx-auto h-12 w-12 text-gray-400" />
+                      <p className="mt-2 text-sm text-gray-600">Haz clic para subir el reverso de tu cédula</p>
                       <p className="mt-1 text-xs text-gray-500">JPG o PNG (máx. 5MB)</p>
                     </label>
                   )}
@@ -257,23 +316,31 @@ const VerifyIdentityDialog: React.FC<VerifyIdentityDialogProps> = ({ isOpen, onC
               
               <Button 
                 onClick={handleSubmitDocument} 
-                disabled={isLoading || !documentFile}
+                disabled={isLoading || !documentFrontFile || !documentBackFile}
                 className="w-full bg-contrareloj hover:bg-contrareloj-dark"
               >
                 {isLoading ? 'Subiendo...' : 'Siguiente'}
               </Button>
-              
-              {verificationStatus.hasRut && (
-                <Button variant="ghost" onClick={() => setStep(3)} className="w-full">
-                  Omitir este paso
-                </Button>
-              )}
             </div>
           )}
 
           {/* Paso 3: Subir selfie */}
           {step === 3 && (
             <div className="space-y-4">
+              <div className="bg-yellow-50 p-4 rounded-md mb-4">
+                <div className="flex items-start">
+                  <AlertCircle className="h-5 w-5 text-yellow-500 mr-2 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-yellow-700 font-semibold">
+                      Este paso es obligatorio.
+                    </p>
+                    <p className="text-sm text-yellow-700 mt-1">
+                      Para verificar tu identidad, necesitamos una foto tuya sosteniendo tu documento donde se vea tu rostro completamente descubierto.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            
               <div className="space-y-2">
                 <Label htmlFor="selfie">Selfie con tu documento</Label>
                 <div className="border-2 border-dashed border-gray-300 rounded-md p-6 flex flex-col items-center justify-center">
@@ -303,7 +370,7 @@ const VerifyIdentityDialog: React.FC<VerifyIdentityDialogProps> = ({ isOpen, onC
                   ) : (
                     <label htmlFor="selfie" className="cursor-pointer text-center">
                       <UploadCloud className="mx-auto h-12 w-12 text-gray-400" />
-                      <p className="mt-2 text-sm text-gray-600">Haz clic para subir una selfie sosteniendo tu documento</p>
+                      <p className="mt-2 text-sm text-gray-600">Haz clic para subir una selfie con tu rostro descubierto sosteniendo tu documento</p>
                       <p className="mt-1 text-xs text-gray-500">JPG o PNG (máx. 5MB)</p>
                     </label>
                   )}
@@ -317,12 +384,6 @@ const VerifyIdentityDialog: React.FC<VerifyIdentityDialogProps> = ({ isOpen, onC
               >
                 {isLoading ? 'Subiendo...' : 'Finalizar'}
               </Button>
-              
-              {verificationStatus.hasDocuments && (
-                <Button variant="ghost" onClick={() => setStep(4)} className="w-full">
-                  Omitir este paso
-                </Button>
-              )}
             </div>
           )}
 
