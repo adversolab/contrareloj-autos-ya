@@ -1,7 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Bar } from 'recharts';
 import { supabase } from "@/integrations/supabase/client";
 
 interface DashboardStats {
@@ -25,16 +24,22 @@ const AdminDashboard = () => {
 
   const loadStats = async () => {
     try {
+      console.log("Cargando estadísticas del dashboard...");
+      
       // Obtener total de usuarios
       const { count: totalUsers } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true });
       
       // Usuarios pendientes de verificación
+      // Modificado para incluir a usuarios que tienen rut o documentos subidos pero no están verificados
       const { count: pendingVerifications } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
-        .eq('identity_verified', false);
+        .eq('identity_verified', false)
+        .or('identity_document_url.is.not.null,rut.is.not.null,identity_selfie_url.is.not.null');
+      
+      console.log("Usuarios pendientes de verificación:", pendingVerifications);
       
       // Total de vehículos
       const { count: totalVehicles } = await supabase
@@ -88,7 +93,7 @@ const AdminDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalUsers}</div>
-            <p className="text-xs text-muted-foreground">
+            <p className={`text-xs ${stats.pendingVerifications > 0 ? "text-amber-500 font-semibold" : "text-muted-foreground"}`}>
               {stats.pendingVerifications} pendientes de verificación
             </p>
           </CardContent>
@@ -102,7 +107,7 @@ const AdminDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalVehicles}</div>
-            <p className="text-xs text-muted-foreground">
+            <p className={`text-xs ${stats.pendingVehicles > 0 ? "text-amber-500 font-semibold" : "text-muted-foreground"}`}>
               {stats.pendingVehicles} pendientes de aprobación
             </p>
           </CardContent>
@@ -116,7 +121,7 @@ const AdminDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalAuctions}</div>
-            <p className="text-xs text-muted-foreground">
+            <p className={`text-xs ${stats.pendingAuctions > 0 ? "text-amber-500 font-semibold" : "text-muted-foreground"}`}>
               {stats.pendingAuctions} pendientes de aprobación
             </p>
           </CardContent>

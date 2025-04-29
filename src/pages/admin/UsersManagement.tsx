@@ -78,8 +78,10 @@ const UsersManagement = () => {
 
   // Filter users who have submitted documents but are not yet verified
   const pendingVerificationUsers = users.filter(user => {
-    // If the user has submitted documents or selfie but is not verified
-    return !user.identity_verified && user.role !== 'admin'; // No need to verify admins
+    // Si el usuario ha subido documentos o selfie o RUT pero no está verificado
+    return !user.identity_verified && 
+           (user.has_identity_document || user.has_selfie || user.has_rut) && 
+           user.role !== 'admin'; // No need to verify admins
   });
 
   console.log("Pending verification users:", pendingVerificationUsers);
@@ -137,7 +139,11 @@ const UsersManagement = () => {
                       {user.identity_verified ? (
                         <Badge variant="success" className="bg-green-500">Verificado</Badge>
                       ) : (
-                        <Badge variant="outline">Pendiente</Badge>
+                        user.has_identity_document || user.has_selfie || user.has_rut ? (
+                          <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-200">Pendiente</Badge>
+                        ) : (
+                          <Badge variant="outline">No verificado</Badge>
+                        )
                       )}
                     </TableCell>
                     <TableCell>

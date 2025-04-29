@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -11,6 +10,10 @@ export interface AdminUser {
   role: "user" | "admin" | "moderator";
   identity_verified: boolean;
   created_at: string;
+  // Nuevos campos para detectar usuarios pendientes
+  has_identity_document: boolean;
+  has_selfie: boolean;
+  has_rut: boolean;
 }
 
 export interface AdminVehicle {
@@ -110,10 +113,10 @@ export async function getUsers() {
   try {
     console.log("Fetching users from profiles table...");
     
-    // Modified query to include emails directly from profiles table
+    // Modified query to include all verification documents
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
-      .select('id, email, first_name, last_name, role, identity_verified, created_at')
+      .select('id, email, first_name, last_name, role, identity_verified, created_at, rut, identity_document_url, identity_selfie_url')
       .order('created_at', { ascending: false });
       
     if (profilesError) {
@@ -124,7 +127,7 @@ export async function getUsers() {
     
     console.log("Profiles fetched:", profiles);
     
-    // Format users with email data
+    // Format users with email data and verification status
     const formattedUsers: AdminUser[] = (profiles || []).map(profile => ({
       id: profile.id,
       email: profile.email || 'Sin correo',
@@ -132,7 +135,11 @@ export async function getUsers() {
       last_name: profile.last_name,
       role: profile.role as "user" | "admin" | "moderator",
       identity_verified: profile.identity_verified || false,
-      created_at: profile.created_at || ''
+      created_at: profile.created_at || '',
+      // New fields to identify pending verification users
+      has_identity_document: !!profile.identity_document_url,
+      has_selfie: !!profile.identity_selfie_url,
+      has_rut: !!profile.rut
     }));
     
     console.log("Formatted users:", formattedUsers);
