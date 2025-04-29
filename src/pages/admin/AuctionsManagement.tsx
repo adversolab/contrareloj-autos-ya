@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { getAuctions, approveAuction, deleteAuction, pauseAuction, AdminAuction } from '@/services/adminService';
+import { 
+  getAuctions, 
+  approveAuction, 
+  deleteAuction, 
+  pauseAuction, 
+  AdminAuction 
+} from '@/services/adminService';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
