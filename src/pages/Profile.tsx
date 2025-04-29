@@ -11,6 +11,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { getUserVehicles, getUserFavorites } from '@/services/vehicleService';
+import VerifyIdentityDialog from '@/components/VerifyIdentityDialog';
+import { useSearchParams } from 'react-router-dom';
 
 // Types for auctions
 interface Auction {
@@ -198,6 +200,16 @@ const Profile = () => {
     }
     return 'U'; // Default fallback
   };
+
+  const [showVerifyDialog, setShowVerifyDialog] = useState(false);
+  const [searchParams] = useSearchParams();
+  
+  useEffect(() => {
+    // Si el usuario viene de registrarse, mostrar el diálogo de verificación
+    if (searchParams.get('verify') === 'true') {
+      setShowVerifyDialog(true);
+    }
+  }, [searchParams]);
 
   if (isLoading) {
     return (
@@ -518,9 +530,30 @@ const Profile = () => {
             </TabsContent>
           </Tabs>
         </div>
+        
+        {/* Sección de verificación de identidad */}
+        <div className="mt-8">
+          <h2 className="text-xl font-bold mb-4">Verificación de identidad</h2>
+          <p className="mb-4 text-gray-600">
+            Para participar en subastas necesitas verificar tu identidad. Esto nos ayuda a mantener un entorno seguro para todos los usuarios.
+          </p>
+          <Button 
+            onClick={() => setShowVerifyDialog(true)}
+            variant="outline"
+            className="w-full md:w-auto"
+          >
+            {user?.identity_verified ? "Ver estado de verificación" : "Verificar mi identidad"}
+          </Button>
+        </div>
       </main>
       
       <Footer />
+      
+      {/* Diálogo de verificación de identidad */}
+      <VerifyIdentityDialog 
+        isOpen={showVerifyDialog} 
+        onClose={() => setShowVerifyDialog(false)} 
+      />
     </div>
   );
 };

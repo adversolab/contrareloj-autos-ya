@@ -87,11 +87,13 @@ const Auth = () => {
         const { user, error } = await signUp(email, password);
         
         if (user) {
-          toast.success("Registro exitoso. Verifica tu correo electrónico para confirmar tu cuenta.");
+          toast.success("Registro exitoso. Ahora necesitas verificar tu identidad.");
           setIsLogin(true);
           setEmail('');
           setPassword('');
           setConfirmPassword('');
+          // Redirigir al usuario al perfil para completar la verificación de identidad
+          navigate('/perfil?verify=true');
         } else if (error) {
           toast.error(error.message || "Error al registrarse");
         }
