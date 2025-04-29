@@ -1,9 +1,12 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Heart } from 'lucide-react';
 import CountdownTimer from './CountdownTimer';
+import { addToFavorites, removeFromFavorites, isFavorite } from '@/services/vehicleService';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 interface AuctionCardProps {
   id: string | number;
@@ -26,6 +29,48 @@ const AuctionCard: React.FC<AuctionCardProps> = ({
   bidCount,
   onClick,
 }) => {
+  const { user } = useAuth();
+  const [isFavoriteAuction, setIsFavoriteAuction] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    const checkFavoriteStatus = async () => {
+      if (!user || !id) return;
+      
+      const { isFavorite: isFav } = await isFavorite(id.toString());
+      setIsFavoriteAuction(isFav);
+    };
+
+    checkFavoriteStatus();
+  }, [id, user]);
+
+  const handleFavoriteToggle = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!user) {
+      toast.error("Debes iniciar sesión para guardar favoritos");
+      return;
+    }
+
+    if (isProcessing) return;
+    
+    setIsProcessing(true);
+    try {
+      if (isFavoriteAuction) {
+        await removeFromFavorites(id.toString());
+        setIsFavoriteAuction(false);
+      } else {
+        await addToFavorites(id.toString());
+        setIsFavoriteAuction(true);
+      }
+    } catch (error) {
+      console.error("Error al procesar favorito:", error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return (
     <Link to={`/subasta/${id}`} onClick={onClick}>
       <Card className="overflow-hidden hover:shadow-lg transition-shadow">
@@ -37,12 +82,11 @@ const AuctionCard: React.FC<AuctionCardProps> = ({
           />
           <button 
             className="absolute top-2 right-2 bg-white p-1.5 rounded-full shadow"
-            onClick={(e) => {
-              e.preventDefault();
-              console.log("Added to favorites");
-            }}
+            onClick={handleFavoriteToggle}
           >
-            <Heart className="h-5 w-5 text-gray-500 hover:text-contrareloj-red" />
+            <Heart 
+              className={`h-5 w-5 ${isFavoriteAuction ? 'text-red-500 fill-red-500' : 'text-gray-500'} transition-colors`}
+            />
           </button>
         </div>
         <CardContent className="p-4">

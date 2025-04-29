@@ -6,9 +6,12 @@ import Footer from '@/components/Footer';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Heart, Share2, ArrowLeft, PlusCircle } from 'lucide-react';
+import { Heart, Share2, ArrowLeft, PlusCircle, MessageSquare } from 'lucide-react';
 import CountdownTimer from '@/components/CountdownTimer';
-import { getAuctionById } from '@/services/vehicleService';
+import QuestionList from '@/components/QuestionList';
+import QuestionForm from '@/components/QuestionForm';
+import AnswerDialog from '@/components/AnswerDialog';
+import { getAuctionById, isFavorite, addToFavorites, removeFromFavorites, getAuctionQuestions } from '@/services/vehicleService';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -21,6 +24,13 @@ const AuctionDetail = () => {
   const [auctionData, setAuctionData] = useState<any>(null);
   const [vehiclePhotos, setVehiclePhotos] = useState<any[]>([]);
   const [vehicleFeatures, setVehicleFeatures] = useState<any[]>([]);
+  const [isFavoriteAuction, setIsFavoriteAuction] = useState(false);
+  const [isProcessingFavorite, setIsProcessingFavorite] = useState(false);
+  const [questions, setQuestions] = useState<any[]>([]);
+  const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
+  const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
+  const [isAnswerDialogOpen, setIsAnswerDialogOpen] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
 
   useEffect(() => {
     const fetchAuctionDetails = async () => {
@@ -43,6 +53,11 @@ const AuctionDetail = () => {
           if (auction.vehicles && auction.vehicles.vehicle_features) {
             setVehicleFeatures(auction.vehicles.vehicle_features);
           }
+
+          // Verificar si el usuario es dueño de esta subasta
+          if (user && auction.vehicles) {
+            setIsOwner(user.id === auction.vehicles.user_id);
+          }
         }
       } catch (error) {
         console.error("Error fetching auction details:", error);
@@ -53,6 +68,39 @@ const AuctionDetail = () => {
     };
     
     fetchAuctionDetails();
+  }, [id, user]);
+
+  // Verificar si la subasta está en favoritos
+  useEffect(() => {
+    const checkFavoriteStatus = async () => {
+      if (!id || !user) return;
+      
+      const { isFavorite: isFav } = await isFavorite(id);
+      setIsFavoriteAuction(isFav);
+    };
+    
+    checkFavoriteStatus();
+  }, [id, user]);
+
+  // Cargar preguntas
+  useEffect(() => {
+    const loadQuestions = async () => {
+      if (!id) return;
+      
+      setIsLoadingQuestions(true);
+      try {
+        const { questions: questionData, error } = await getAuctionQuestions(id);
+        if (!error) {
+          setQuestions(questionData || []);
+        }
+      } catch (error) {
+        console.error("Error al cargar preguntas:", error);
+      } finally {
+        setIsLoadingQuestions(false);
+      }
+    };
+    
+    loadQuestions();
   }, [id]);
 
   const handleBid = () => {
@@ -70,13 +118,54 @@ const AuctionDetail = () => {
     return acc;
   }, {});
 
-  const handleFavoriteClick = () => {
-    toast('Añadido a favoritos');
+  const handleFavoriteClick = async () => {
+    if (!user) {
+      toast.error("Debes iniciar sesión para guardar favoritos");
+      return;
+    }
+    
+    if (!id || isProcessingFavorite) return;
+    
+    setIsProcessingFavorite(true);
+    try {
+      if (isFavoriteAuction) {
+        await removeFromFavorites(id);
+        setIsFavoriteAuction(false);
+      } else {
+        await addToFavorites(id);
+        setIsFavoriteAuction(true);
+      }
+    } catch (error) {
+      console.error("Error al procesar favorito:", error);
+    } finally {
+      setIsProcessingFavorite(false);
+    }
   };
 
   const handleShareClick = () => {
     navigator.clipboard.writeText(window.location.href);
     toast('Enlace copiado al portapapeles');
+  };
+
+  const handleQuestionSubmitted = async () => {
+    if (!id) return;
+    
+    setIsLoadingQuestions(true);
+    try {
+      const { questions: questionData, error } = await getAuctionQuestions(id);
+      if (!error) {
+        setQuestions(questionData || []);
+      }
+    } catch (error) {
+      console.error("Error al recargar preguntas:", error);
+    } finally {
+      setIsLoadingQuestions(false);
+    }
+  };
+
+  const handleAnswerQuestion = (questionId: string) => {
+    setSelectedQuestionId(questionId);
+    setIsAnswerDialogOpen(true);
   };
 
   if (isLoading) {
@@ -210,8 +299,10 @@ const AuctionDetail = () => {
                   className="flex-1"
                   onClick={handleFavoriteClick}
                 >
-                  <Heart className="mr-2 h-4 w-4" />
-                  Guardar
+                  <Heart 
+                    className={`mr-2 h-4 w-4 ${isFavoriteAuction ? 'text-red-500 fill-red-500' : ''}`} 
+                  />
+                  {isFavoriteAuction ? 'Guardado' : 'Guardar'}
                 </Button>
                 <Button 
                   variant="outline" 
@@ -263,7 +354,14 @@ const AuctionDetail = () => {
             <TabsList className="w-full border-b">
               <TabsTrigger value="details" className="flex-1">Detalles</TabsTrigger>
               <TabsTrigger value="history" className="flex-1">Historial</TabsTrigger>
-              <TabsTrigger value="questions" className="flex-1">Preguntas</TabsTrigger>
+              <TabsTrigger value="questions" className="flex-1">
+                Preguntas
+                {questions.length > 0 && (
+                  <span className="ml-1.5 bg-gray-200 text-gray-800 rounded-full px-2 py-0.5 text-xs">
+                    {questions.length}
+                  </span>
+                )}
+              </TabsTrigger>
             </TabsList>
             
             <TabsContent value="details" className="pt-6">
@@ -325,16 +423,50 @@ const AuctionDetail = () => {
             </TabsContent>
             
             <TabsContent value="questions" className="pt-6">
-              <div className="bg-gray-50 p-6 rounded-lg text-center">
-                <h3 className="text-lg font-medium mb-2">Preguntas y respuestas</h3>
-                <p className="text-gray-500">Todavía no hay preguntas.</p>
-                <Button className="mt-4 bg-contrareloj hover:bg-contrareloj-dark">
-                  Hacer una pregunta
-                </Button>
-              </div>
+              {isLoadingQuestions ? (
+                <div className="text-center py-6">
+                  <p>Cargando preguntas...</p>
+                </div>
+              ) : (
+                <div className="space-y-8">
+                  <QuestionList 
+                    questions={questions} 
+                    isOwner={isOwner}
+                    onAnswer={handleAnswerQuestion}
+                  />
+                  
+                  {user && !isOwner ? (
+                    <div className="mt-8 pt-6 border-t">
+                      <QuestionForm 
+                        auctionId={id || ''} 
+                        onQuestionSubmitted={handleQuestionSubmitted}
+                      />
+                    </div>
+                  ) : !user ? (
+                    <div className="mt-8 pt-6 border-t text-center">
+                      <MessageSquare className="mx-auto h-12 w-12 text-gray-400 mb-2" />
+                      <h3 className="text-lg font-medium mb-2">¿Tienes preguntas sobre este vehículo?</h3>
+                      <p className="text-gray-500 mb-4">Inicia sesión para hacer preguntas al vendedor.</p>
+                      <Button className="bg-contrareloj hover:bg-contrareloj-dark" onClick={() => window.location.href = '/auth?redirect=' + encodeURIComponent(window.location.pathname)}>
+                        Iniciar sesión
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
+              )}
             </TabsContent>
           </Tabs>
-          
+
+          {/* Diálogo para responder preguntas */}
+          <AnswerDialog 
+            isOpen={isAnswerDialogOpen}
+            onClose={() => {
+              setIsAnswerDialogOpen(false);
+              setSelectedQuestionId(null);
+            }}
+            questionId={selectedQuestionId || ''}
+            onAnswerSubmitted={handleQuestionSubmitted}
+          />
         </div>
       </main>
       

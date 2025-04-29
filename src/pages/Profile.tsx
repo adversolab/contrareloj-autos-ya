@@ -11,7 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { getUserVehicles } from '@/services/vehicleService';
+import { getUserVehicles, getUserFavorites } from '@/services/vehicleService';
 
 // Tipos para las subastas
 interface Auction {
@@ -45,6 +45,7 @@ const Profile = () => {
   const [sellingAuctions, setSellingAuctions] = useState<Auction[]>([]);
   const [wonAuctions, setWonAuctions] = useState<Auction[]>([]);
   const [isLoadingVehicles, setIsLoadingVehicles] = useState(false);
+  const [isLoadingFavorites, setIsLoadingFavorites] = useState(false);
 
   // Cargar datos del perfil
   useEffect(() => {
@@ -77,7 +78,6 @@ const Profile = () => {
           
           // Por ahora, dejamos las otras listas vacías ya que no tenemos datos reales
           setBiddingAuctions([]);
-          setFavoriteAuctions([]);
           setWonAuctions([]);
         } catch (error) {
           console.error("Error al cargar vehículos del usuario", error);
@@ -89,6 +89,29 @@ const Profile = () => {
     };
 
     loadUserVehicles();
+  }, [user]);
+
+  // Cargar favoritos
+  useEffect(() => {
+    const loadUserFavorites = async () => {
+      if (user) {
+        setIsLoadingFavorites(true);
+        try {
+          const { favorites, error } = await getUserFavorites();
+          if (error) {
+            console.error("Error al cargar favoritos:", error);
+          } else {
+            setFavoriteAuctions(favorites);
+          }
+        } catch (error) {
+          console.error("Error al cargar favoritos:", error);
+        } finally {
+          setIsLoadingFavorites(false);
+        }
+      }
+    };
+
+    loadUserFavorites();
   }, [user]);
 
   const handleSaveProfile = async () => {
@@ -357,7 +380,11 @@ const Profile = () => {
             </TabsContent>
             
             <TabsContent value="favorites">
-              {favoriteAuctions.length > 0 ? (
+              {isLoadingFavorites ? (
+                <div className="flex justify-center py-10">
+                  <p>Cargando tus favoritos...</p>
+                </div>
+              ) : favoriteAuctions.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {favoriteAuctions.map((auction) => (
                     <AuctionCard key={auction.id} {...auction} />

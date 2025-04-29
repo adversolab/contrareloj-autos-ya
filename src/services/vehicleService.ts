@@ -398,3 +398,242 @@ export async function getAuctionById(auctionId: string) {
     return { error, auction: null };
   }
 }
+
+// Funciones para favoritos
+
+// Verificar si una subasta es favorita para el usuario actual
+export async function isFavorite(auctionId: string) {
+  try {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user.user) return { isFavorite: false, error: null };
+
+    const { data, error } = await supabase
+      .from('favorites')
+      .select('id')
+      .eq('user_id', user.user.id)
+      .eq('auction_id', auctionId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      console.error("Error al verificar favorito:", error);
+      return { isFavorite: false, error };
+    }
+
+    return { isFavorite: !!data, error: null };
+  } catch (error) {
+    console.error("Error al verificar favorito:", error);
+    return { isFavorite: false, error };
+  }
+}
+
+// Añadir subasta a favoritos
+export async function addToFavorites(auctionId: string) {
+  try {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user.user) {
+      toast.error("Debes iniciar sesión para añadir a favoritos");
+      return { error: new Error("Usuario no autenticado"), success: false };
+    }
+
+    const { error } = await supabase
+      .from('favorites')
+      .insert({
+        user_id: user.user.id,
+        auction_id: auctionId
+      });
+
+    if (error) {
+      if (error.code === '23505') {
+        toast.info("Esta subasta ya está en tus favoritos");
+        return { error: null, success: true };
+      }
+      toast.error("Error al añadir a favoritos");
+      return { error, success: false };
+    }
+
+    toast.success("Añadido a favoritos");
+    return { error: null, success: true };
+  } catch (error: any) {
+    toast.error("Error al añadir a favoritos");
+    return { error, success: false };
+  }
+}
+
+// Eliminar subasta de favoritos
+export async function removeFromFavorites(auctionId: string) {
+  try {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user.user) {
+      toast.error("Debes iniciar sesión para gestionar favoritos");
+      return { error: new Error("Usuario no autenticado"), success: false };
+    }
+
+    const { error } = await supabase
+      .from('favorites')
+      .delete()
+      .eq('user_id', user.user.id)
+      .eq('auction_id', auctionId);
+
+    if (error) {
+      toast.error("Error al eliminar de favoritos");
+      return { error, success: false };
+    }
+
+    toast.success("Eliminado de favoritos");
+    return { error: null, success: true };
+  } catch (error: any) {
+    toast.error("Error al eliminar de favoritos");
+    return { error, success: false };
+  }
+}
+
+// Obtener favoritos del usuario
+export async function getUserFavorites() {
+  try {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user.user) {
+      return { error: new Error("Usuario no autenticado"), favorites: [] };
+    }
+
+    const { data, error } = await supabase
+      .from('favorites')
+      .select(`
+        auction_id,
+        auctions (
+          id,
+          start_price,
+          end_date,
+          vehicles (
+            brand,
+            model,
+            year,
+            description,
+            vehicle_photos (
+              url,
+              is_primary
+            )
+          )
+        )
+      `)
+      .eq('user_id', user.user.id);
+
+    if (error) {
+      console.error("Error al obtener favoritos:", error);
+      return { error, favorites: [] };
+    }
+
+    // Formatear los datos para que sean compatibles con AuctionCard
+    const formattedFavorites = data.map(item => {
+      const auction = item.auctions;
+      const vehicle = auction.vehicles;
+      
+      const mainPhoto = vehicle.vehicle_photos.find((photo: any) => photo.is_primary) || 
+                      (vehicle.vehicle_photos.length > 0 ? vehicle.vehicle_photos[0] : null);
+
+      return {
+        id: auction.id,
+        title: `${vehicle.brand} ${vehicle.model} ${vehicle.year}`,
+        description: vehicle.description || `${vehicle.brand} ${vehicle.model} ${vehicle.year}`,
+        imageUrl: mainPhoto ? mainPhoto.url : 'https://images.unsplash.com/photo-1583121274602-3e2820c69888?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80',
+        currentBid: auction.start_price,
+        endTime: new Date(auction.end_date),
+        bidCount: 0
+      };
+    });
+
+    return { error: null, favorites: formattedFavorites };
+  } catch (error: any) {
+    console.error("Error al obtener favoritos:", error);
+    return { error, favorites: [] };
+  }
+}
+
+// Funciones para preguntas
+
+// Obtener preguntas de una subasta
+export async function getAuctionQuestions(auctionId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('auction_questions')
+      .select(`
+        id,
+        question,
+        answer,
+        is_answered,
+        created_at,
+        answered_at,
+        user_id,
+        profiles:user_id (
+          first_name,
+          last_name
+        )
+      `)
+      .eq('auction_id', auctionId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error("Error al obtener preguntas:", error);
+      return { error, questions: [] };
+    }
+
+    return { error: null, questions: data };
+  } catch (error: any) {
+    console.error("Error al obtener preguntas:", error);
+    return { error, questions: [] };
+  }
+}
+
+// Enviar una pregunta
+export async function submitQuestion(auctionId: string, question: string) {
+  try {
+    const { data: user } = await supabase.auth.getUser();
+    if (!user.user) {
+      toast.error("Debes iniciar sesión para hacer una pregunta");
+      return { error: new Error("Usuario no autenticado"), success: false };
+    }
+
+    const { error } = await supabase
+      .from('auction_questions')
+      .insert({
+        auction_id: auctionId,
+        user_id: user.user.id,
+        question: question
+      });
+
+    if (error) {
+      toast.error("Error al enviar la pregunta");
+      return { error, success: false };
+    }
+
+    toast.success("Pregunta enviada correctamente");
+    return { error: null, success: true };
+  } catch (error: any) {
+    toast.error("Error al enviar la pregunta");
+    return { error, success: false };
+  }
+}
+
+// Responder a una pregunta
+export async function answerQuestion(questionId: string, answer: string) {
+  try {
+    const { error } = await supabase
+      .from('auction_questions')
+      .update({
+        answer: answer,
+        is_answered: true,
+        answered_at: new Date().toISOString()
+      })
+      .eq('id', questionId);
+
+    if (error) {
+      toast.error("Error al responder la pregunta");
+      return { error, success: false };
+    }
+
+    toast.success("Respuesta enviada correctamente");
+    return { error: null, success: true };
+  } catch (error: any) {
+    toast.error("Error al responder la pregunta");
+    return { error, success: false };
+  }
+}
