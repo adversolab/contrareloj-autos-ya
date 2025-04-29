@@ -131,7 +131,7 @@ const AuctionsManagement = () => {
                         <Badge variant={
                           auction.status === 'active' ? 'default' : 
                           auction.status === 'finished' ? 'secondary' :
-                          auction.status === 'paused' ? 'warning' : 'outline'
+                          auction.status === 'paused' ? 'secondary' : 'outline'
                         } className={auction.status === 'paused' ? "bg-yellow-500" : ""}>
                           {auction.status === 'active' ? 'Activa' : 
                            auction.status === 'finished' ? 'Finalizada' : 
