@@ -9,6 +9,7 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { AuctionInfo } from '@/services/vehicleService';
+import { toast } from 'sonner';
 
 interface AuctionConditionsFormProps {
   auctionInfo: AuctionInfo;
@@ -27,6 +28,16 @@ const AuctionConditionsForm: React.FC<AuctionConditionsFormProps> = ({
   onSubmit,
   isProcessing
 }) => {
+  const handleDurationChange = (value: string) => {
+    const days = parseInt(value);
+    if (days < 7) {
+      toast.info("La duración mínima de la subasta es de 7 días");
+      onAuctionInfoChange('durationDays', 7);
+    } else {
+      onAuctionInfoChange('durationDays', days);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -65,20 +76,20 @@ const AuctionConditionsForm: React.FC<AuctionConditionsFormProps> = ({
         </div>
         
         <div>
-          <label className="block text-sm font-medium mb-2">Duración de la subasta*</label>
+          <label className="block text-sm font-medium mb-2">Duración de la subasta* (mínimo 7 días)</label>
           <Select
             value={auctionInfo.durationDays.toString()}
-            onValueChange={(value) => onAuctionInfoChange('durationDays', parseInt(value))}
+            onValueChange={handleDurationChange}
           >
             <SelectTrigger>
               <SelectValue placeholder="Selecciona duración" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="3">3 días</SelectItem>
-              <SelectItem value="5">5 días</SelectItem>
               <SelectItem value="7">7 días</SelectItem>
               <SelectItem value="10">10 días</SelectItem>
               <SelectItem value="14">14 días</SelectItem>
+              <SelectItem value="21">21 días</SelectItem>
+              <SelectItem value="30">30 días</SelectItem>
             </SelectContent>
           </Select>
         </div>

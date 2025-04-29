@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -90,17 +91,51 @@ const SellCar = () => {
       const reader = new FileReader();
       
       reader.onloadend = () => {
-        setUploadedPhotos(prev => 
-          prev.map(photo => 
-            photo.id === index 
-              ? { ...photo, file, preview: reader.result as string } 
-              : photo
-          )
-        );
+        setUploadedPhotos(prev => {
+          // Si el índice es mayor que la longitud actual, agregamos un nuevo elemento
+          if (index >= prev.length) {
+            return [
+              ...prev,
+              { id: prev.length, file, preview: reader.result as string, isMain: prev.length === 0 }
+            ];
+          } else {
+            // Si no, actualizamos el elemento existente
+            return prev.map(photo => 
+              photo.id === index 
+                ? { ...photo, file, preview: reader.result as string } 
+                : photo
+            );
+          }
+        });
       };
       
       reader.readAsDataURL(file);
+    } else if (!e.target.files && index >= uploadedPhotos.length) {
+      // Agregar un nuevo espacio para foto
+      setUploadedPhotos(prev => [
+        ...prev, 
+        { 
+          id: prev.length, 
+          file: null, 
+          preview: null, 
+          isMain: prev.length === 0 
+        }
+      ]);
     }
+  }, [uploadedPhotos.length]);
+
+  // Manejar eliminación de fotos
+  const handleDeletePhoto = useCallback((index: number) => {
+    setUploadedPhotos(prev => {
+      // No permitir eliminar la foto principal
+      if (index === 0) return prev;
+      
+      // Filtrar la foto a eliminar
+      return prev.filter(photo => photo.id !== index).map((photo, i) => ({
+        ...photo,
+        id: i
+      }));
+    });
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -155,6 +190,15 @@ const SellCar = () => {
   };
 
   const handleAuctionInfoChange = (name: string, value: string | number) => {
+    // Asegurar que la duración mínima es de 7 días
+    if (name === 'durationDays' && typeof value === 'number' && value < 7) {
+      value = 7;
+      toast.info("La duración mínima de la subasta es de 7 días");
+    } else if (name === 'durationDays' && typeof value === 'string' && parseInt(value) < 7) {
+      value = '7';
+      toast.info("La duración mínima de la subasta es de 7 días");
+    }
+    
     setAuctionInfo(prev => ({
       ...prev,
       [name]: typeof value === 'string' ? parseFloat(value) : value
@@ -205,6 +249,13 @@ const SellCar = () => {
       return;
     }
 
+    // Verificar si hay al menos una foto
+    const hasPhotos = uploadedPhotos.some(photo => photo.file !== null);
+    if (!hasPhotos) {
+      toast.error("Debes subir al menos una foto principal");
+      return;
+    }
+
     setIsProcessing(true);
 
     try {
@@ -248,6 +299,13 @@ const SellCar = () => {
     // Validar campos
     if (auctionInfo.reservePrice <= 0 || auctionInfo.startPrice <= 0) {
       toast.error("Por favor ingresa precios válidos");
+      return;
+    }
+
+    // Verificar duración mínima
+    if (auctionInfo.durationDays < 7) {
+      setAuctionInfo(prev => ({ ...prev, durationDays: 7 }));
+      toast.info("La duración mínima de la subasta es de 7 días");
       return;
     }
 
@@ -396,6 +454,7 @@ const SellCar = () => {
                   onImageUpload={handleImageUpload}
                   onFeatureChange={handleFeatureChange}
                   onAdditionalDetailsChange={handleAdditionalDetailsChange}
+                  onDeletePhoto={handleDeletePhoto}
                   onPrevStep={prevStep}
                   onSubmit={saveStep2}
                   isProcessing={isProcessing}

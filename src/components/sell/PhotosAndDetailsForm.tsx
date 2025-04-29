@@ -7,6 +7,7 @@ import {
   TabsList,
   TabsTrigger
 } from '@/components/ui/tabs';
+import { Trash2, Image, Plus } from 'lucide-react';
 
 interface PhotoPreview {
   id: number;
@@ -22,6 +23,7 @@ interface PhotosAndDetailsFormProps {
   onImageUpload: (e: React.ChangeEvent<HTMLInputElement>, index: number) => void;
   onFeatureChange: (category: string, feature: string, checked: boolean) => void;
   onAdditionalDetailsChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  onDeletePhoto: (index: number) => void;
   onPrevStep: () => void;
   onSubmit: () => void;
   isProcessing: boolean;
@@ -34,6 +36,7 @@ const PhotosAndDetailsForm: React.FC<PhotosAndDetailsFormProps> = ({
   onImageUpload,
   onFeatureChange,
   onAdditionalDetailsChange,
+  onDeletePhoto,
   onPrevStep,
   onSubmit,
   isProcessing
@@ -59,7 +62,7 @@ const PhotosAndDetailsForm: React.FC<PhotosAndDetailsFormProps> = ({
                     alt="Preview" 
                     className="absolute inset-0 w-full h-full object-cover"
                   />
-                  <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                  <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center space-x-2">
                     <label className="cursor-pointer bg-white text-black px-3 py-1 rounded-md text-sm">
                       Cambiar
                       <input
@@ -69,11 +72,21 @@ const PhotosAndDetailsForm: React.FC<PhotosAndDetailsFormProps> = ({
                         onChange={(e) => onImageUpload(e, photo.id)}
                       />
                     </label>
+                    {!photo.isMain && (
+                      <button 
+                        className="bg-red-600 text-white p-1 rounded-md"
+                        onClick={() => onDeletePhoto(photo.id)}
+                        type="button"
+                        title="Eliminar foto"
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </button>
+                    )}
                   </div>
                 </>
               ) : (
                 <>
-                  <span className="text-4xl text-gray-300 mb-2">+</span>
+                  {photo.id === 0 ? <Image className="h-8 w-8 text-gray-300 mb-2" /> : <Plus className="h-8 w-8 text-gray-300 mb-2" />}
                   <span className="text-sm text-gray-500 mb-2">
                     {photo.id === 0 ? 'Foto principal*' : 
                      photo.id === 1 ? 'Lateral' :
@@ -94,7 +107,21 @@ const PhotosAndDetailsForm: React.FC<PhotosAndDetailsFormProps> = ({
               )}
             </div>
           ))}
+          
+          {uploadedPhotos.length < 20 && (
+            <button
+              type="button"
+              className="border-2 border-dashed border-gray-300 rounded-lg aspect-video flex flex-col items-center justify-center p-4 bg-gray-50 hover:bg-gray-100 transition-colors"
+              onClick={() => onImageUpload({ target: { files: [null] } } as any, uploadedPhotos.length)}
+            >
+              <Plus className="h-8 w-8 text-gray-400 mb-2" />
+              <span className="text-sm text-gray-500">Agregar foto</span>
+            </button>
+          )}
         </div>
+        <p className="text-xs text-gray-500 mt-2">
+          Puedes subir hasta 20 fotos. La primera foto será la principal y no se puede eliminar.
+        </p>
       </div>
       
       <div className="border-t border-gray-200 pt-6">
