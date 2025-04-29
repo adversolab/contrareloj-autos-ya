@@ -778,3 +778,25 @@ export async function getVerificationStatus() {
     };
   }
 }
+
+export async function deleteAuction(auctionId: string) {
+  try {
+    const { error } = await supabase
+      .from('auctions')
+      .delete()
+      .eq('id', auctionId);
+      
+    if (error) {
+      console.error('Error al eliminar la subasta:', error);
+      toast.error('Error al eliminar la subasta');
+      return false;
+    }
+    
+    toast.success('Subasta eliminada correctamente');
+    return true;
+  } catch (error) {
+    console.error('Error inesperado:', error);
+    toast.error('Error al eliminar la subasta');
+    return false;
+  }
+}
