@@ -39,6 +39,9 @@ const UsersListTable: React.FC<UsersListTableProps> = ({
     return <div className="text-center py-8">Cargando usuarios...</div>;
   }
 
+  // Log para verificar que recibimos todos los usuarios
+  console.log("Rendering UsersListTable with users:", users);
+
   return (
     <div className="rounded-md border">
       <Table>

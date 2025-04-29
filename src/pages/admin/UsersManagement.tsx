@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { 
   getUsers, 
@@ -81,7 +82,7 @@ const UsersManagement = () => {
         </Button>
       </div>
 
-      {/* Users list table */}
+      {/* Users list table - make sure we're showing ALL users */}
       <UsersListTable 
         users={users}
         loading={loading}

@@ -5,10 +5,12 @@ import { AdminUser } from "./types/adminTypes";
 
 export async function getUsers() {
   try {
-    // Obtenemos todos los perfiles con emails
+    console.log('Fetching all users from profiles table...');
+    
+    // Obtenemos todos los perfiles sin filtros
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
-      .select('id, first_name, last_name, role, identity_verified, identity_document_url, identity_selfie_url, rut, created_at, email')
+      .select('*')
       .order('created_at', { ascending: false });
       
     if (profilesError) {
@@ -17,9 +19,9 @@ export async function getUsers() {
       return { users: [] };
     }
     
-    console.log('Profiles from database:', profiles);
+    console.log('Raw profiles data from database:', profiles);
     
-    // Formatear usuarios
+    // Formatear usuarios asegurándose de que todos sean incluidos
     const formattedUsers: AdminUser[] = profiles.map(profile => ({
       id: profile.id,
       email: profile.email || 'Sin correo',
@@ -30,10 +32,10 @@ export async function getUsers() {
       has_identity_document: Boolean(profile.identity_document_url),
       has_selfie: Boolean(profile.identity_selfie_url),
       has_rut: Boolean(profile.rut),
-      created_at: profile.created_at
+      created_at: profile.created_at || new Date().toISOString()
     }));
     
-    console.log('Formatted users:', formattedUsers);
+    console.log('Formatted users (should include all):', formattedUsers);
     
     return { users: formattedUsers };
   } catch (error) {
