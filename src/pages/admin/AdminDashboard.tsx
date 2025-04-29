@@ -32,32 +32,24 @@ const AdminDashboard = () => {
         .from('profiles')
         .select('*', { count: 'exact', head: true });
       
-      // Usuarios pendientes de verificación
-      // Modificado para incluir a usuarios que tienen rut o documentos subidos pero no están verificados
-      const { data: pendingVerificationProfiles, error: pendingError } = await supabase
+      // Obtener usuarios pendientes de verificación
+      // Enfoque más sencillo - buscar usuarios con documentos pero sin verificar
+      const { data: pendingProfiles, error: pendingError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('identity_verified', false)
-        .or('rut.is.not.null,identity_document_url.is.not.null,identity_selfie_url.is.not.null');
-        
-      console.log("Query for pending verifications:", pendingVerificationProfiles);
+        .eq('identity_verified', false);
+      
+      // Filtrar manualmente los usuarios con documentos pero sin verificar
+      const pendingVerifications = pendingProfiles?.filter(profile => 
+        !profile.identity_verified && 
+        (profile.rut || profile.identity_document_url || profile.identity_selfie_url)
+      ).length || 0;
+      
+      console.log("Total de usuarios pendientes de verificación:", pendingVerifications);
       
       if (pendingError) {
         console.error("Error fetching pending verifications:", pendingError);
       }
-      
-      // Alternative approach to count pending verifications
-      const { data: allProfiles } = await supabase
-        .from('profiles')
-        .select('id, identity_verified, rut, identity_document_url, identity_selfie_url');
-      
-      // Count users with any verification document but not yet verified
-      const pendingVerifications = (allProfiles || []).filter(profile => 
-        !profile.identity_verified && 
-        (profile.rut || profile.identity_document_url || profile.identity_selfie_url)
-      ).length;
-      
-      console.log("Usuarios pendientes de verificación (computed):", pendingVerifications);
       
       // Total de vehículos
       const { count: totalVehicles } = await supabase

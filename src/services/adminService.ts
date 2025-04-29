@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -72,42 +71,6 @@ interface ProfileWithEmail {
   rut?: string | null;
   identity_document_url?: string | null;
   identity_selfie_url?: string | null;
-}
-
-interface VehicleWithProfile {
-  id: string;
-  brand: string;
-  model: string;
-  year: number;
-  user_id: string;
-  is_approved: boolean | null;
-  created_at: string;
-  profiles: {
-    email?: string | null;
-    first_name?: string | null;
-    last_name?: string | null;
-  } | null;
-}
-
-interface AuctionWithDetails {
-  id: string;
-  start_price: number;
-  reserve_price: number;
-  status: string;
-  vehicle_id: string;
-  is_approved: boolean | null;
-  created_at: string;
-  vehicle: {
-    brand: string;
-    model: string;
-    year: number;
-    user_id: string;
-    profiles: {
-      email?: string | null;
-      first_name?: string | null;
-      last_name?: string | null;
-    } | null;
-  } | null;
 }
 
 export async function getUsers() {
@@ -254,17 +217,10 @@ export async function updateUserRole(userId: string, role: "user" | "admin" | "m
 // Admin functions for vehicles
 export async function getVehicles() {
   try {
-    // First, get all vehicles with user information
+    // Modified query that doesn't use profiles join as it's failing
     const { data: vehicles, error: vehiclesError } = await supabase
       .from('vehicles')
-      .select(`
-        *,
-        profiles:user_id (
-          first_name, 
-          last_name,
-          email
-        )
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
       
     if (vehiclesError) {
@@ -275,25 +231,32 @@ export async function getVehicles() {
     
     console.log("Vehicles fetched:", vehicles);
     
-    // Format vehicles with owner information
-    const formattedVehicles: AdminVehicle[] = (vehicles as unknown as VehicleWithProfile[]).map(vehicle => {
-      const profile = vehicle.profiles || {};
-      
-      return {
-        id: vehicle.id,
-        brand: vehicle.brand,
-        model: vehicle.model,
-        year: vehicle.year,
-        user_id: vehicle.user_id,
-        is_approved: vehicle.is_approved || false,
-        created_at: vehicle.created_at,
-        user: {
-          email: profile.email || 'Sin correo',
-          first_name: profile.first_name || null,
-          last_name: profile.last_name || null
-        }
-      };
-    });
+    // Get user profiles separately for each vehicle
+    const formattedVehicles: AdminVehicle[] = await Promise.all(
+      (vehicles || []).map(async (vehicle) => {
+        // Get user profile for this vehicle
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('email, first_name, last_name')
+          .eq('id', vehicle.user_id)
+          .single();
+        
+        return {
+          id: vehicle.id,
+          brand: vehicle.brand,
+          model: vehicle.model,
+          year: vehicle.year,
+          user_id: vehicle.user_id,
+          is_approved: vehicle.is_approved || false,
+          created_at: vehicle.created_at,
+          user: {
+            email: profileData?.email || 'Sin correo',
+            first_name: profileData?.first_name || null,
+            last_name: profileData?.last_name || null
+          }
+        };
+      })
+    );
     
     return { vehicles: formattedVehicles };
   } catch (error) {
@@ -363,23 +326,10 @@ export async function deleteVehicle(vehicleId: string) {
 // Admin functions for auctions
 export async function getAuctions() {
   try {
-    // Get all auctions with vehicle and user information in a single query
+    // Modified query to avoid foreign key relationships that are failing
     const { data: auctions, error: auctionsError } = await supabase
       .from('auctions')
-      .select(`
-        *,
-        vehicle:vehicle_id (
-          brand, 
-          model, 
-          year,
-          user_id,
-          profiles:user_id (
-            first_name,
-            last_name,
-            email
-          )
-        )
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
       
     if (auctionsError) {
@@ -388,31 +338,49 @@ export async function getAuctions() {
       return { auctions: [] };
     }
     
-    // Format auctions with vehicle and owner information
-    const formattedAuctions: AdminAuction[] = (auctions as unknown as AuctionWithDetails[]).map(auction => {
-      const vehicle = auction.vehicle || {} as AuctionWithDetails['vehicle'];
-      const profile = vehicle.profiles || {};
-      
-      return {
-        id: auction.id,
-        start_price: auction.start_price,
-        reserve_price: auction.reserve_price,
-        status: auction.status,
-        vehicle_id: auction.vehicle_id,
-        is_approved: auction.is_approved || false,
-        created_at: auction.created_at,
-        vehicle: {
-          brand: vehicle.brand || 'Desconocida',
-          model: vehicle.model || 'Desconocido',
-          year: vehicle.year || 0
-        },
-        user: {
-          email: profile.email || 'Sin correo',
-          first_name: profile.first_name || null,
-          last_name: profile.last_name || null
+    // Fetch vehicles and users separately to avoid relationship issues
+    const formattedAuctions: AdminAuction[] = await Promise.all(
+      (auctions || []).map(async (auction) => {
+        // Get vehicle info
+        const { data: vehicleData } = await supabase
+          .from('vehicles')
+          .select('brand, model, year, user_id')
+          .eq('id', auction.vehicle_id)
+          .single();
+        
+        // Get user profile if we have the vehicle
+        let profileData = null;
+        if (vehicleData && vehicleData.user_id) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('email, first_name, last_name')
+            .eq('id', vehicleData.user_id)
+            .single();
+          
+          profileData = profile;
         }
-      };
-    });
+        
+        return {
+          id: auction.id,
+          start_price: auction.start_price,
+          reserve_price: auction.reserve_price,
+          status: auction.status,
+          vehicle_id: auction.vehicle_id,
+          is_approved: auction.is_approved || false,
+          created_at: auction.created_at,
+          vehicle: {
+            brand: vehicleData?.brand || 'Desconocida',
+            model: vehicleData?.model || 'Desconocido',
+            year: vehicleData?.year || 0
+          },
+          user: {
+            email: profileData?.email || 'Sin correo',
+            first_name: profileData?.first_name || null,
+            last_name: profileData?.last_name || null
+          }
+        };
+      })
+    );
     
     return { auctions: formattedAuctions };
   } catch (error) {
