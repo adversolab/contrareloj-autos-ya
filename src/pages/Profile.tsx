@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -71,7 +70,7 @@ const Profile = () => {
         setIsLoadingVehicles(true);
         try {
           // Cargar los vehículos publicados por el usuario
-          const { vehicles } = await getUserVehicles(user.id);
+          const { vehicles } = await getUserVehicles();
           if (vehicles && vehicles.length > 0) {
             setSellingAuctions(vehicles);
           }

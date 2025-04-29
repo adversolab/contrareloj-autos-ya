@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { AdminVehicle } from "./types/adminTypes";
@@ -228,28 +227,28 @@ export async function getAuctionBids(auctionId: string) {
   }
 }
 
-export async function placeBid(auctionId: string, amount: number) {
+export async function placeBid(auctionId: string, bidInfo: { amount: number, holdAmount: number }) {
   try {
     const { error } = await supabase
       .from('bids')
       .insert({
         auction_id: auctionId,
-        amount,
+        amount: bidInfo.amount,
         user_id: (await supabase.auth.getUser()).data.user?.id,
-        hold_amount: amount
+        hold_amount: bidInfo.holdAmount
       });
       
     if (error) {
       toast.error('Error al realizar la oferta');
-      return { success: false };
+      return { success: false, error, needsVerification: false };
     }
     
     toast.success('Oferta realizada correctamente');
-    return { success: true };
+    return { success: true, error: null, needsVerification: false };
   } catch (error) {
     console.error('Error al realizar oferta:', error);
     toast.error('Error al realizar la oferta');
-    return { success: false };
+    return { success: false, error, needsVerification: false };
   }
 }
 
@@ -265,8 +264,18 @@ export async function finalizeAuction(auctionId: string) {
       return { success: false };
     }
     
+    // Get the highest bid to determine winner
+    const { data: bids } = await supabase
+      .from('bids')
+      .select('user_id')
+      .eq('auction_id', auctionId)
+      .order('amount', { ascending: false })
+      .limit(1);
+    
+    const winnerId = bids && bids.length > 0 ? bids[0].user_id : null;
+    
     toast.success('Subasta finalizada correctamente');
-    return { success: true };
+    return { success: true, winnerId };
   } catch (error) {
     console.error('Error al finalizar subasta:', error);
     toast.error('Error al finalizar la subasta');
@@ -368,8 +377,34 @@ export async function getUserVehicles() {
     if (error) {
       throw error;
     }
+
+    // Transform data to match the Auction type expected by the components
+    const formattedVehicles = data.map(vehicle => {
+      // Get the auction ID if available
+      const auctionId = vehicle.auctions && vehicle.auctions.length > 0 
+        ? vehicle.auctions[0].id 
+        : null;
+      
+      return {
+        id: vehicle.id,
+        title: `${vehicle.brand} ${vehicle.model} ${vehicle.year}`,
+        description: vehicle.description || '',
+        imageUrl: '', // This would ideally come from vehicle_photos
+        currentBid: vehicle.auctions && vehicle.auctions.length > 0 
+          ? vehicle.auctions[0].start_price 
+          : 0,
+        endTime: vehicle.auctions && vehicle.auctions.length > 0 && vehicle.auctions[0].end_date
+          ? new Date(vehicle.auctions[0].end_date)
+          : new Date(),
+        bidCount: 0,
+        status: vehicle.auctions && vehicle.auctions.length > 0 
+          ? vehicle.auctions[0].status 
+          : 'draft',
+        auctionId
+      };
+    });
     
-    return { vehicles: data };
+    return { vehicles: formattedVehicles };
   } catch (error) {
     console.error('Error al obtener vehículos del usuario:', error);
     return { vehicles: [] };
@@ -380,7 +415,7 @@ export async function getUserFavorites() {
   try {
     const { data: user } = await supabase.auth.getUser();
     if (!user.user) {
-      return { favorites: [] };
+      return { favorites: [], error: null };
     }
     
     const { data, error } = await supabase
@@ -395,13 +430,31 @@ export async function getUserFavorites() {
       .eq('user_id', user.user.id);
       
     if (error) {
-      throw error;
+      return { favorites: [], error };
     }
+
+    // Transform data to match the Auction type
+    const formattedFavorites = data.map(favorite => {
+      const auction = favorite.auctions;
+      const vehicle = auction?.vehicles;
+      
+      return {
+        id: favorite.id,
+        title: vehicle ? `${vehicle.brand} ${vehicle.model} ${vehicle.year}` : 'Subasta',
+        description: vehicle?.description || '',
+        imageUrl: '', // This would come from vehicle_photos
+        currentBid: auction?.start_price || 0,
+        endTime: auction?.end_date ? new Date(auction.end_date) : new Date(),
+        bidCount: 0,
+        status: auction?.status || 'active',
+        auctionId: auction?.id
+      };
+    });
     
-    return { favorites: data };
+    return { favorites: formattedFavorites, error: null };
   } catch (error) {
     console.error('Error al obtener favoritos del usuario:', error);
-    return { favorites: [] };
+    return { favorites: [], error };
   }
 }
 
