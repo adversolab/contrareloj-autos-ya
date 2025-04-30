@@ -13,6 +13,7 @@ export interface AdminUser {
   email: string;
   first_name: string | null;
   last_name: string | null;
+  phone: string | null;
   role: "user" | "admin" | "moderator";
   identity_verified: boolean;
   has_identity_document: boolean;
@@ -29,6 +30,7 @@ export interface AdminVehicle {
   user_id: string;
   is_approved: boolean;
   created_at: string;
+  autofact_report_url?: string;
   user: {
     email: string;
     first_name?: string | null;
@@ -48,6 +50,7 @@ export interface AdminAuction {
     brand: string;
     model: string;
     year: number;
+    autofact_report_url?: string;
   };
   user: {
     email: string;

@@ -7,7 +7,7 @@ import {
   TabsList,
   TabsTrigger
 } from '@/components/ui/tabs';
-import { Trash2, Image, Plus } from 'lucide-react';
+import { Trash2, Image, Plus, Upload, File } from 'lucide-react';
 
 interface PhotoPreview {
   id: number;
@@ -20,9 +20,11 @@ interface PhotosAndDetailsFormProps {
   uploadedPhotos: PhotoPreview[];
   features: {[key: string]: string[]};
   additionalDetails: string;
+  autofactReport: File | null;
   onImageUpload: (e: React.ChangeEvent<HTMLInputElement>, index: number) => void;
   onFeatureChange: (category: string, feature: string, checked: boolean) => void;
   onAdditionalDetailsChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  onAutofactReportChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onDeletePhoto: (index: number) => void;
   onPrevStep: () => void;
   onSubmit: () => void;
@@ -33,9 +35,11 @@ const PhotosAndDetailsForm: React.FC<PhotosAndDetailsFormProps> = ({
   uploadedPhotos,
   features,
   additionalDetails,
+  autofactReport,
   onImageUpload,
   onFeatureChange,
   onAdditionalDetailsChange,
+  onAutofactReportChange,
   onDeletePhoto,
   onPrevStep,
   onSubmit,
@@ -129,6 +133,64 @@ const PhotosAndDetailsForm: React.FC<PhotosAndDetailsFormProps> = ({
         <p className="text-xs text-gray-500 mt-2">
           Puedes subir hasta 20 fotos. La primera foto será la principal y no se puede eliminar.
         </p>
+      </div>
+      
+      {/* Nuevo campo para Autofact Report */}
+      <div className="border-t border-gray-200 pt-6">
+        <h3 className="font-medium mb-3">Informe Autofact</h3>
+        <p className="text-sm text-gray-500 mb-4">
+          Por favor, sube un informe Autofact Full en formato PDF (Obligatorio).
+        </p>
+        
+        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center bg-gray-50">
+          {autofactReport ? (
+            <div className="w-full text-center">
+              <div className="mb-2 flex items-center justify-center">
+                <File className="h-12 w-12 text-green-600" />
+              </div>
+              <p className="text-sm font-medium mb-1 truncate">{autofactReport.name}</p>
+              <p className="text-xs text-gray-500 mb-3">
+                {(autofactReport.size / 1024 / 1024).toFixed(2)} MB
+              </p>
+              <Button 
+                variant="outline" 
+                type="button"
+                onClick={() => {
+                  const input = document.createElement('input');
+                  input.type = 'file';
+                  input.accept = 'application/pdf';
+                  input.onchange = onAutofactReportChange;
+                  input.click();
+                }}
+                className="text-sm"
+              >
+                Cambiar archivo
+              </Button>
+            </div>
+          ) : (
+            <>
+              <Upload className="h-12 w-12 text-gray-400 mb-3" />
+              <p className="text-sm font-medium mb-1">Sube tu informe Autofact</p>
+              <p className="text-xs text-gray-500 mb-4">
+                Archivo PDF, tamaño máximo 10MB
+              </p>
+              <Button 
+                variant="outline" 
+                type="button"
+                onClick={() => {
+                  const input = document.createElement('input');
+                  input.type = 'file';
+                  input.accept = 'application/pdf';
+                  input.onchange = onAutofactReportChange;
+                  input.click();
+                }}
+                className="text-sm"
+              >
+                Seleccionar archivo
+              </Button>
+            </>
+          )}
+        </div>
       </div>
       
       <div className="border-t border-gray-200 pt-6">
@@ -229,7 +291,7 @@ const PhotosAndDetailsForm: React.FC<PhotosAndDetailsFormProps> = ({
         <Button 
           className="bg-contrareloj hover:bg-contrareloj-dark text-white"
           onClick={onSubmit}
-          disabled={isProcessing}
+          disabled={isProcessing || !autofactReport}
         >
           {isProcessing ? "Guardando..." : "Continuar"}
         </Button>

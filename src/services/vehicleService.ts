@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getCurrentUser } from "@/services/authService";
@@ -45,6 +44,7 @@ export interface VehicleWithPhoto {
   created_at: string;
   updated_at: string;
   photo_url?: string;
+  autofact_report_url?: string;
   auctions: any[];
 }
 
@@ -203,6 +203,57 @@ export async function uploadVehiclePhoto(
   }
 }
 
+// Nueva función para subir informe Autofact
+export async function uploadAutofactReport(
+  vehicleId: string, 
+  file: File
+): Promise<{ success: boolean; url?: string }> {
+  try {
+    const timestamp = new Date().getTime();
+    const fileName = `autofact_${vehicleId}_${timestamp}.pdf`;
+    const filePath = `vehicles/${vehicleId}/autofact/${fileName}`;
+
+    // Upload the file to storage
+    const { error: uploadError } = await supabase.storage
+      .from('vehicle_photos')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: true
+      });
+
+    if (uploadError) {
+      console.error('Error al subir informe Autofact:', uploadError);
+      toast.error('Error al subir el informe Autofact');
+      return { success: false };
+    }
+
+    // Get the public URL
+    const { data: publicUrlData } = supabase.storage
+      .from('vehicle_photos')
+      .getPublicUrl(filePath);
+
+    const url = publicUrlData?.publicUrl || '';
+
+    // Update the vehicle with the Autofact report URL
+    const { error: updateError } = await supabase
+      .from('vehicles')
+      .update({ autofact_report_url: url })
+      .eq('id', vehicleId);
+
+    if (updateError) {
+      console.error('Error al actualizar vehículo con URL de informe Autofact:', updateError);
+      toast.error('Error al registrar el informe Autofact');
+      return { success: false, url };
+    }
+
+    return { success: true, url };
+  } catch (error) {
+    console.error('Error inesperado:', error);
+    toast.error('Error al procesar el informe Autofact');
+    return { success: false };
+  }
+}
+
 export async function saveAuctionInfo(vehicleId: string, info: AuctionInfo): Promise<{ success: boolean; auctionId?: string }> {
   try {
     // Calculate end date based on duration
@@ -220,7 +271,8 @@ export async function saveAuctionInfo(vehicleId: string, info: AuctionInfo): Pro
         min_increment: info.minIncrement,
         start_date: startDate.toISOString(),
         end_date: endDate.toISOString(),
-        status: 'draft',
+        status: 'draft',  // Todas las subastas comienzan como borrador
+        is_approved: false, // Requiere aprobación del admin
         duration_days: info.durationDays
       })
       .select()
@@ -261,14 +313,15 @@ export async function saveAuctionInfo(vehicleId: string, info: AuctionInfo): Pro
 
 export async function activateAuction(auctionId: string): Promise<{ success: boolean }> {
   try {
+    // Cambiamos a "pending_approval" para indicar que está lista para revisión
     const { error } = await supabase
       .from('auctions')
-      .update({ status: 'active' })
+      .update({ status: 'pending_approval' })
       .eq('id', auctionId);
 
     if (error) {
       console.error('Error al activar subasta:', error);
-      toast.error('Error al activar la subasta');
+      toast.error('Error al enviar la subasta para aprobación');
       return { success: false };
     }
 
@@ -276,7 +329,7 @@ export async function activateAuction(auctionId: string): Promise<{ success: boo
     return { success: true };
   } catch (error) {
     console.error('Error inesperado:', error);
-    toast.error('Error al activar la subasta');
+    toast.error('Error al enviar la subasta para aprobación');
     return { success: false };
   }
 }

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -11,6 +12,7 @@ import {
   updateVehicleBasicInfo,
   saveVehicleFeatures,
   uploadVehiclePhoto,
+  uploadAutofactReport,
   saveAuctionInfo,
   activateAuction,
   VehicleBasicInfo,
@@ -35,6 +37,7 @@ const SellCar = () => {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [userProfile, setUserProfile] = useState<{first_name: string | null, last_name: string | null, phone: string | null} | null>(null);
   
   const [carInfo, setCarInfo] = useState<VehicleBasicInfo>({
     brand: '',
@@ -63,6 +66,7 @@ const SellCar = () => {
   );
 
   const [additionalDetails, setAdditionalDetails] = useState('');
+  const [autofactReport, setAutofactReport] = useState<File | null>(null);
   
   const [auctionInfo, setAuctionInfo] = useState<AuctionInfo>({
     reservePrice: 0,
@@ -72,11 +76,23 @@ const SellCar = () => {
     services: []
   });
 
-  // Verificar autenticación al cargar
+  // Verificar autenticación y perfil del usuario al cargar
   useEffect(() => {
     const checkAuth = async () => {
       const user = await getCurrentUser();
       setIsLoggedIn(!!user);
+      
+      if (user) {
+        // Obtener información del perfil
+        const { data } = await supabase
+          .from('profiles')
+          .select('first_name, last_name, phone')
+          .eq('id', user.id)
+          .single();
+          
+        setUserProfile(data);
+      }
+      
       setIsCheckingAuth(false);
     };
 
@@ -122,6 +138,24 @@ const SellCar = () => {
       ]);
     }
   }, [uploadedPhotos.length]);
+
+  // Manejar subida de informe Autofact
+  const handleAutofactReportChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (file.type !== 'application/pdf') {
+        toast.error('El archivo debe ser un PDF');
+        return;
+      }
+      
+      if (file.size > 10 * 1024 * 1024) { // 10MB max
+        toast.error('El archivo es demasiado grande. El tamaño máximo es de 10MB');
+        return;
+      }
+      
+      setAutofactReport(file);
+    }
+  };
 
   // Manejar eliminación de fotos
   const handleDeletePhoto = useCallback((index: number) => {
@@ -204,9 +238,24 @@ const SellCar = () => {
     }));
   };
 
+  // Verificar que el usuario tiene perfil completo
+  const checkProfileComplete = () => {
+    if (!userProfile?.first_name || !userProfile?.last_name || !userProfile?.phone) {
+      toast.error("Debes completar tu perfil antes de continuar");
+      navigate('/perfil?redirect=/vender');
+      return false;
+    }
+    return true;
+  };
+
   const saveStep1 = async () => {
     if (!isLoggedIn) {
       setIsAuthDialogOpen(true);
+      return;
+    }
+    
+    // Verificar perfil completo
+    if (!checkProfileComplete()) {
       return;
     }
 
@@ -257,6 +306,12 @@ const SellCar = () => {
       toast.error("Debes subir al menos una foto principal");
       return;
     }
+    
+    // Verificar que se subió el informe Autofact
+    if (!autofactReport) {
+      toast.error("Debes subir el informe Autofact (PDF)");
+      return;
+    }
 
     setIsProcessing(true);
 
@@ -270,6 +325,11 @@ const SellCar = () => {
             position: photo.id
           });
         }
+      }
+      
+      // Upload Autofact report
+      if (autofactReport) {
+        await uploadAutofactReport(vehicleId, autofactReport);
       }
 
       // Save features
@@ -339,25 +399,22 @@ const SellCar = () => {
     setIsProcessing(true);
 
     try {
-      // Simular procesamiento de pago
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Activate the auction (which now defaults to a draft)
+      // Activar la subasta (quedará en draft hasta aprobación por admin)
       const result = await activateAuction(auctionId);
       
       if (result.success) {
-        toast.success("¡Felicidades! Tu vehículo ha sido enviado para aprobación");
+        toast.success("¡Tu vehículo ha sido enviado para aprobación! Un administrador revisará la información pronto.");
         
         // Wait a second before redirecting to show the message
         setTimeout(() => {
-          // Redirect to the auction details page
-          navigate(`/subasta/${auctionId}`);
-        }, 1000);
+          // Redirect to the profile page to see draft auctions
+          navigate(`/perfil`);
+        }, 2000);
       } else {
         toast.error("Ocurrió un error al finalizar el proceso");
       }
     } catch (error) {
-      toast.error("Ocurrió un error al procesar el pago");
+      toast.error("Ocurrió un error al procesar la solicitud");
       console.error(error);
     } finally {
       setIsProcessing(false);
@@ -411,6 +468,45 @@ const SellCar = () => {
       </div>
     );
   }
+  
+  // Mostrar mensaje de completar perfil si está logueado pero no tiene perfil completo
+  if (!isCheckingAuth && isLoggedIn && userProfile && 
+      (!userProfile.first_name || !userProfile.last_name || !userProfile.phone)) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-grow container mx-auto px-4 py-8">
+          <Card className="max-w-md mx-auto">
+            <CardHeader>
+              <CardTitle>Completa tu perfil</CardTitle>
+              <CardDescription>
+                Debes completar tu perfil para publicar un vehículo
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <p>Para publicar un vehículo, es necesario que completes tu información de perfil:</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  {!userProfile.first_name && <li>Nombre</li>}
+                  {!userProfile.last_name && <li>Apellido</li>}
+                  {!userProfile.phone && <li>Teléfono</li>}
+                </ul>
+                <div className="flex justify-end">
+                  <Button 
+                    onClick={() => navigate('/perfil?redirect=/vender')}
+                    className="bg-contrareloj hover:bg-contrareloj-dark text-white"
+                  >
+                    Completar perfil
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   const stepLabels = [
     'Información básica',
@@ -461,9 +557,11 @@ const SellCar = () => {
                   uploadedPhotos={uploadedPhotos}
                   features={features}
                   additionalDetails={additionalDetails}
+                  autofactReport={autofactReport}
                   onImageUpload={handleImageUpload}
                   onFeatureChange={handleFeatureChange}
                   onAdditionalDetailsChange={handleAdditionalDetailsChange}
+                  onAutofactReportChange={handleAutofactReportChange}
                   onDeletePhoto={handleDeletePhoto}
                   onPrevStep={prevStep}
                   onSubmit={saveStep2}
