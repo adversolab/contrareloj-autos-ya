@@ -8,10 +8,13 @@ export async function getVehicles() {
   try {
     console.log('Admin service: Fetching all vehicles...');
     
-    // First get all vehicles
+    // First get all vehicles that either:
+    // 1. Have an associated auction with status 'pending_approval' or
+    // 2. Have been previously approved
     const { data: vehiclesData, error: vehiclesError } = await supabase
       .from('vehicles')
-      .select('*')
+      .select('*, auctions(*)')
+      .or('is_approved.eq.true,auctions.status.eq.pending_approval')
       .order('created_at', { ascending: false });
       
     if (vehiclesError) {
