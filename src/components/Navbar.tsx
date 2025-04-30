@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -16,7 +17,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { isAdmin } from '@/integrations/supabase/client';
 import { useMobile } from '@/hooks/use-mobile';
 import { Menu } from 'lucide-react';
-import NotificationBell from './NotificationBell'; // Import the NotificationBell component
+import NotificationBell from './NotificationBell';
 
 interface NavLinkProps {
   href: string;
@@ -75,26 +76,27 @@ export default function Navbar() {
         </Link>
         <NavLinks />
       
-      <div className="flex items-center space-x-2 ml-auto">
-        {/* Add the NotificationBell component before the SignInButton */}
-        {isLoggedIn && <NotificationBell />}
-        <SignInButton />
-        {isMobile && (
-          <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-            <Menu className="h-6 w-6" />
-          </Button>
+        <div className="flex items-center space-x-2 ml-auto">
+          {/* Add the NotificationBell component before the SignInButton */}
+          {isLoggedIn && <NotificationBell />}
+          <SignInButton />
+          {isMobile && (
+            <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+              <Menu className="h-6 w-6" />
+            </Button>
+          )}
+        </div>
+        
+        {isMobile && mobileMenuOpen && (
+          <div className="absolute top-full left-0 w-full bg-white shadow-md rounded-md py-2 z-50">
+            <div className="flex flex-col items-center space-y-3">
+              <NavLink href="/">Inicio</NavLink>
+              <NavLink href="/explorar">Explorar</NavLink>
+              <NavLink href="/vender">Vender</NavLink>
+            </div>
+          </div>
         )}
       </div>
-      
-      {isMobile && mobileMenuOpen && (
-        <div className="absolute top-full left-0 w-full bg-white shadow-md rounded-md py-2 z-50">
-          <div className="flex flex-col items-center space-y-3">
-            <NavLink href="/">Inicio</NavLink>
-            <NavLink href="/explorar">Explorar</NavLink>
-            <NavLink href="/vender">Vender</NavLink>
-          </div>
-        </div>
-      )}
     </header>
   );
 }
@@ -146,7 +148,7 @@ function SignInButton() {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-    )
+    );
   } else {
     return (
       <Link to="/auth">
@@ -154,6 +156,6 @@ function SignInButton() {
           Iniciar sesión
         </Button>
       </Link>
-    )
+    );
   }
 }
