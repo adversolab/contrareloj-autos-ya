@@ -51,7 +51,7 @@ const Navbar = () => {
             <img 
               src="https://qwtevsnsivmpmikhtdmh.supabase.co/storage/v1/object/public/logos//CONTRARELOJ_LOGO.png" 
               alt="Contrareloj Logo" 
-              className="h-10" 
+              className="h-16 md:h-20" 
             />
           </Link>
           
