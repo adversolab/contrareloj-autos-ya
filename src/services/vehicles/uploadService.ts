@@ -78,6 +78,44 @@ export async function uploadVehiclePhotos(vehicleId: string, files: File[]) {
 }
 
 /**
+ * Uploads a photo for a vehicle
+ * 
+ * @param vehicleId The ID of the vehicle
+ * @param photoData Object with file, isMain flag and position
+ * @returns Object with success status, URL and error if any
+ */
+export async function uploadVehiclePhoto(vehicleId: string, photoData: { 
+  file: File, 
+  isMain?: boolean, 
+  position: number 
+}) {
+  try {
+    const { file, isMain = false, position } = photoData;
+    const { url, error } = await uploadPhoto(file, `${vehicleId}/${UUID()}`);
+    
+    if (error) throw new Error(error);
+    
+    // Save photo record to the database
+    const { data, error: insertError } = await supabase
+      .from('vehicle_photos')
+      .insert({
+        vehicle_id: vehicleId,
+        url: url,
+        is_primary: isMain,
+        position: position
+      })
+      .select();
+    
+    if (insertError) throw insertError;
+    
+    return { success: true, url, error: null, data };
+  } catch (error: any) {
+    console.error("Error uploading vehicle photo:", error);
+    return { success: false, url: null, error: error.message || 'Error al subir la foto del vehículo' };
+  }
+}
+
+/**
  * Uploads a report document (like Autofact) for a vehicle
  * 
  * @param vehicleId The ID of the vehicle
@@ -98,7 +136,6 @@ export async function uploadVehicleReport(vehicleId: string, file: File) {
     const { error: updateError } = await supabase
       .from('vehicles')
       .update({
-        // Instead of modifying the type, we'll use a valid approach here
         updated_at: new Date().toISOString()
       })
       .eq('id', vehicleId);
@@ -109,5 +146,44 @@ export async function uploadVehicleReport(vehicleId: string, file: File) {
   } catch (error: any) {
     console.error("Error uploading vehicle report:", error);
     return { url: null, error: error.message || 'Error al subir el informe' };
+  }
+}
+
+/**
+ * Uploads an Autofact report for a vehicle
+ * 
+ * @param vehicleId The ID of the vehicle
+ * @param file The report file 
+ * @returns Object with success status, URL and error if any
+ */
+export async function uploadAutofactReport(vehicleId: string, file: File) {
+  try {
+    if (file.type !== 'application/pdf') {
+      throw new Error('El archivo debe ser un PDF');
+    }
+    
+    const { url, error: uploadError } = await uploadPhoto(
+      file,
+      `${vehicleId}/autofact/${UUID()}_${file.name}`,
+      'reports'
+    );
+    
+    if (uploadError) throw new Error(uploadError);
+    
+    // Update the vehicle with the Autofact report URL
+    const { error: updateError } = await supabase
+      .from('vehicles')
+      .update({
+        autofact_report_url: url,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', vehicleId);
+    
+    if (updateError) throw updateError;
+    
+    return { success: true, url, error: null };
+  } catch (error: any) {
+    console.error("Error uploading Autofact report:", error);
+    return { success: false, url: null, error: error.message || 'Error al subir el informe Autofact' };
   }
 }

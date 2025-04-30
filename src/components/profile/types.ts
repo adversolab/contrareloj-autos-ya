@@ -23,3 +23,15 @@ export interface Vehicle {
   auctions?: any[];
   // Add other vehicle fields as needed
 }
+
+// Extended vehicle interface to match what's expected by other components
+export interface ExtendedVehicle extends Vehicle {
+  vehicles?: {
+    id?: string;
+    brand?: string;
+    model?: string;
+    year?: number;
+    description?: string;
+    photo_url?: string;
+  }
+}

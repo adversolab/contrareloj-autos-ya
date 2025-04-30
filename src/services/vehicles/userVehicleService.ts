@@ -64,6 +64,7 @@ export async function getUserFavorites() {
           start_price,
           end_date,
           vehicles(
+            id,
             brand,
             model,
             year,
@@ -82,15 +83,12 @@ export async function getUserFavorites() {
     const favoritesWithPhotos = await Promise.all(
       data.map(async (fav) => {
         // Fix: Check if auctions and vehicles exist and have an id property
-        if (!fav.auctions?.vehicles) {
+        if (!fav.auctions?.vehicles?.id) {
           return fav;
         }
         
-        // We need to safely access the vehicle id if it exists
+        // We need to safely access the vehicle id
         const vehicleId = fav.auctions.vehicles.id;
-        if (!vehicleId) {
-          return fav;
-        }
 
         const { data: photos } = await supabase
           .from('vehicle_photos')
