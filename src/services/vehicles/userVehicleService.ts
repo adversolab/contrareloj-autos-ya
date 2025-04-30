@@ -84,7 +84,9 @@ export async function getUserFavorites() {
       data.map(async (fav) => {
         // Fix: Check if auctions and vehicles exist and have an id property
         const vehicle = fav.auctions?.vehicles || {};
-        const vehicleId = vehicle.id;
+        // Explicitly type the vehicle properties to avoid TypeScript errors
+        const vehicleId: string | undefined = typeof vehicle === 'object' && vehicle !== null ? 
+          (vehicle as any).id : undefined;
         
         // Only proceed if we have a valid vehicle ID
         if (!vehicleId) {
@@ -123,11 +125,14 @@ export async function getUserFavorites() {
         
         // Fix: Use type-safe access to vehicle properties with defaults
         const vehicle = fav.auctions.vehicles || {};
-        const photoUrl = vehicle.photo_url || '';
-        const brand = vehicle.brand || '';
-        const model = vehicle.model || '';
-        const year = vehicle.year || '';
-        const description = vehicle.description || '';
+        
+        // Explicitly cast vehicle to any type to avoid TypeScript errors
+        const vehicleAny = vehicle as any;
+        const photoUrl = vehicleAny.photo_url || '';
+        const brand = vehicleAny.brand || '';
+        const model = vehicleAny.model || '';
+        const year = vehicleAny.year || '';
+        const description = vehicleAny.description || '';
         
         return {
           id: fav.auctions.id,
