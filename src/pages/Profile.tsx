@@ -11,21 +11,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { getUserVehicles, getUserFavorites } from '@/services/vehicleService';
-import { deleteAuctionDraft } from '@/services/auctionService';
 import VerifyIdentityDialog from '@/components/VerifyIdentityDialog';
 import { useSearchParams } from 'react-router-dom';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { getUserNotifications, Notification } from '@/services/notificationService';
-import { Trash2 } from 'lucide-react';
 
 // Types for auctions
 interface Auction {
@@ -70,16 +57,9 @@ const Profile = () => {
   const [biddingAuctions, setBiddingAuctions] = useState<Auction[]>([]);
   const [favoriteAuctions, setFavoriteAuctions] = useState<Auction[]>([]);
   const [sellingAuctions, setSellingAuctions] = useState<Auction[]>([]);
-  const [draftAuctions, setDraftAuctions] = useState<Auction[]>([]);
   const [wonAuctions, setWonAuctions] = useState<Auction[]>([]);
   const [isLoadingVehicles, setIsLoadingVehicles] = useState(false);
   const [isLoadingFavorites, setIsLoadingFavorites] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
-  
-  // Delete dialog
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [draftToDelete, setDraftToDelete] = useState<string | null>(null);
 
   // Load profile data
   useEffect(() => {
@@ -105,10 +85,9 @@ const Profile = () => {
         setIsLoadingVehicles(true);
         try {
           // Load user vehicles
-          const { vehicles, drafts } = await getUserVehicles();
-          
-          // Format active vehicles
+          const { vehicles } = await getUserVehicles();
           if (vehicles && vehicles.length > 0) {
+            // Transform vehicles to Auction format
             const formattedVehicles: Auction[] = vehicles.map((vehicle: Vehicle) => ({
               id: vehicle.id,
               title: `${vehicle.brand} ${vehicle.model} ${vehicle.year}`,
@@ -122,25 +101,6 @@ const Profile = () => {
             }));
             
             setSellingAuctions(formattedVehicles);
-          }
-          
-          // Format draft vehicles
-          if (drafts && drafts.length > 0) {
-            const formattedDrafts: Auction[] = drafts.map((vehicle: Vehicle) => ({
-              id: vehicle.id,
-              title: `${vehicle.brand} ${vehicle.model} ${vehicle.year}`,
-              description: vehicle.description || '',
-              imageUrl: vehicle.photo_url || '/placeholder.svg',
-              currentBid: vehicle.auctions?.length > 0 ? vehicle.auctions[0].start_price : 0,
-              endTime: vehicle.auctions?.length > 0 ? new Date(vehicle.auctions[0].end_date) : new Date(),
-              bidCount: 0, // Default value
-              status: 'draft',
-              auctionId: vehicle.auctions?.length > 0 ? vehicle.auctions[0].id : null
-            }));
-            
-            setDraftAuctions(formattedDrafts);
-          } else {
-            setDraftAuctions([]);
           }
           
           // For now, leave other lists empty since we don't have real data
@@ -192,25 +152,6 @@ const Profile = () => {
     loadUserFavorites();
   }, [user]);
 
-  // Load notifications
-  useEffect(() => {
-    const loadNotifications = async () => {
-      if (user) {
-        setIsLoadingNotifications(true);
-        try {
-          const { notifications } = await getUserNotifications();
-          setNotifications(notifications);
-        } catch (error) {
-          console.error("Error al cargar notificaciones:", error);
-        } finally {
-          setIsLoadingNotifications(false);
-        }
-      }
-    };
-    
-    loadNotifications();
-  }, [user]);
-
   const handleSaveProfile = async () => {
     // Validar contraseña si se está cambiando
     if (newPassword && newPassword !== confirmPassword) {
@@ -258,29 +199,6 @@ const Profile = () => {
       return user.email[0].toUpperCase();
     }
     return 'U'; // Default fallback
-  };
-
-  const handleDeleteDraft = (auctionId: string | null) => {
-    if (!auctionId) {
-      toast.error("No se pudo identificar el borrador a eliminar");
-      return;
-    }
-    
-    setDraftToDelete(auctionId);
-    setDeleteDialogOpen(true);
-  };
-  
-  const confirmDeleteDraft = async () => {
-    if (!draftToDelete) return;
-    
-    const success = await deleteAuctionDraft(draftToDelete);
-    if (success) {
-      // Remove from state
-      setDraftAuctions(draftAuctions.filter(draft => draft.auctionId !== draftToDelete));
-    }
-    
-    setDeleteDialogOpen(false);
-    setDraftToDelete(null);
   };
 
   const [showVerifyDialog, setShowVerifyDialog] = useState(false);
@@ -481,9 +399,6 @@ const Profile = () => {
               <TabsTrigger value="selling" className="flex-1">
                 Mis ventas ({sellingAuctions.length})
               </TabsTrigger>
-              <TabsTrigger value="drafts" className="flex-1">
-                Borradores ({draftAuctions.length})
-              </TabsTrigger>
               <TabsTrigger value="won" className="flex-1">
                 Ganados ({wonAuctions.length})
               </TabsTrigger>
@@ -599,53 +514,6 @@ const Profile = () => {
               )}
             </TabsContent>
             
-            <TabsContent value="drafts">
-              {isLoadingVehicles ? (
-                <div className="flex justify-center py-10">
-                  <p>Cargando tus borradores...</p>
-                </div>
-              ) : draftAuctions.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {draftAuctions.map((draft) => (
-                    <div key={draft.id} className="relative">
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        className="absolute top-2 right-2 z-10 bg-red-500 hover:bg-red-600"
-                        onClick={() => handleDeleteDraft(draft.auctionId)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                      <AuctionCard 
-                        id={draft.id} 
-                        title={draft.title} 
-                        description={draft.description} 
-                        imageUrl={draft.imageUrl || '/placeholder.svg'} 
-                        currentBid={draft.currentBid} 
-                        endTime={draft.endTime} 
-                        bidCount={draft.bidCount}
-                        status="Borrador"
-                        onClick={() => toast.info('Los borradores no se pueden ver. Por favor completa el proceso de venta.')}
-                      />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                    <span className="text-3xl">📝</span>
-                  </div>
-                  <h3 className="text-xl font-medium mb-2">No tienes borradores</h3>
-                  <p className="text-gray-500 mb-6">
-                    Los borradores son publicaciones que has iniciado pero no has completado.
-                  </p>
-                  <Button className="bg-contrareloj hover:bg-contrareloj-dark text-white" onClick={() => navigate('/vender')}>
-                    Vender mi auto
-                  </Button>
-                </div>
-              )}
-            </TabsContent>
-            
             <TabsContent value="won">
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
@@ -677,40 +545,6 @@ const Profile = () => {
             {profile?.identity_verified ? "Ver estado de verificación" : "Verificar mi identidad"}
           </Button>
         </div>
-        
-        {/* Notifications section */}
-        <div className="mt-8">
-          <h2 className="text-xl font-bold mb-4">Notificaciones</h2>
-          <div className="bg-white shadow rounded-lg p-6">
-            {isLoadingNotifications ? (
-              <div className="text-center py-4">Cargando notificaciones...</div>
-            ) : notifications.length === 0 ? (
-              <div className="text-center py-4 text-gray-500">No tienes notificaciones por ahora</div>
-            ) : (
-              <div className="space-y-4">
-                {notifications.map(notification => (
-                  <div 
-                    key={notification.id} 
-                    className={`p-4 border rounded-md ${notification.is_read ? 'bg-white' : 'bg-blue-50'}`}
-                  >
-                    <div className="flex justify-between items-start">
-                      <h3 className="font-medium">{notification.title}</h3>
-                      <span className="text-xs text-gray-500">
-                        {new Date(notification.created_at).toLocaleDateString('es-ES', {
-                          day: 'numeric',
-                          month: 'short',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </span>
-                    </div>
-                    <p className="text-gray-600 mt-1">{notification.message}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
       </main>
       
       <Footer />
@@ -720,28 +554,6 @@ const Profile = () => {
         isOpen={showVerifyDialog} 
         onClose={() => setShowVerifyDialog(false)} 
       />
-      
-      {/* Delete Draft Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar borrador?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción no se puede deshacer. Eliminarás permanentemente este borrador
-              y todos sus datos asociados.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmDeleteDraft}
-              className="bg-red-500 hover:bg-red-600 text-white"
-            >
-              Eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 };

@@ -12,11 +12,10 @@ interface AuctionCardProps {
   id: string | number;
   title: string;
   description: string;
-  imageUrl?: string;
+  imageUrl?: string; // Make this optional
   currentBid: number;
   endTime: Date;
   bidCount: number;
-  status?: string; // Added status prop to the interface
   onClick?: (e: React.MouseEvent) => void;
 }
 
@@ -24,11 +23,10 @@ const AuctionCard: React.FC<AuctionCardProps> = ({
   id,
   title,
   description,
-  imageUrl = '',
+  imageUrl = '', // Provide default empty string
   currentBid,
   endTime,
   bidCount,
-  status, // Added status to the destructuring
   onClick,
 }) => {
   const { user } = useAuth();
@@ -90,12 +88,6 @@ const AuctionCard: React.FC<AuctionCardProps> = ({
               className={`h-5 w-5 ${isFavoriteAuction ? 'text-red-500 fill-red-500' : 'text-gray-500'} transition-colors`}
             />
           </button>
-          {/* Show status badge if provided */}
-          {status && (
-            <div className="absolute bottom-2 left-2 bg-white px-2 py-0.5 rounded text-xs font-medium">
-              {status}
-            </div>
-          )}
         </div>
         <CardContent className="p-4">
           <div className="flex justify-between items-start mb-2">
