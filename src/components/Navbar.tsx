@@ -1,10 +1,6 @@
-
-import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Search, User, LogOut, Shield } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,109 +8,152 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 
-const Navbar = () => {
-  const { user, profile, signOut } = useAuth();
-  const navigate = useNavigate();
+import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { isAdmin } from '@/integrations/supabase/client';
+import { useMobile } from '@/hooks/use-mobile';
+import { Menu } from 'lucide-react';
+import NotificationBell from './NotificationBell'; // Import the NotificationBell component
 
-  const getInitials = () => {
-    if (profile?.first_name && profile?.last_name) {
-      return `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase();
-    } else if (profile?.first_name) {
-      return profile.first_name[0].toUpperCase();
-    } else if (user?.email) {
-      return user.email[0].toUpperCase();
-    }
-    return 'U';
-  };
+interface NavLinkProps {
+  href: string;
+  children: React.ReactNode;
+}
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
-  };
-
-  const isAdmin = profile?.role === 'admin';
+function NavLink({ href, children }: NavLinkProps) {
+  const location = useLocation();
+  const isActive = location.pathname === href;
 
   return (
-    <nav className="bg-white shadow-sm sticky top-0 z-50">
-      <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center space-x-8">
-          <Link to="/" className="flex items-center">
-            <span className="text-2xl font-bold text-contrareloj">
-              CONTRA<span className="text-contrareloj-black">RELOJ</span>
-            </span>
-          </Link>
-          
-          <div className="hidden md:flex space-x-6">
-            <Link to="/explorar" className="text-gray-700 hover:text-contrareloj font-medium">
-              Explorar subastas
-            </Link>
-            <Link to="/vender" className="text-gray-700 hover:text-contrareloj font-medium">
-              Vender un auto
-            </Link>
-            <Link to="/ayuda" className="text-gray-700 hover:text-contrareloj font-medium">
-              Centro de ayuda
-            </Link>
-            {isAdmin && (
-              <Link to="/admin" className="text-contrareloj hover:text-contrareloj-dark font-medium flex items-center">
-                <Shield className="h-4 w-4 mr-1" />
-                Administración
-              </Link>
-            )}
+    <Link to={href} className={cn(
+      "text-sm font-medium transition-colors hover:text-foreground/80",
+      isActive ? "text-foreground" : "text-foreground/60"
+    )}>
+      {children}
+    </Link>
+  );
+}
+
+function NavLinks() {
+  return (
+    <div className="hidden md:flex items-center space-x-4">
+      <NavLink href="/">Inicio</NavLink>
+      <NavLink href="/explorar">Explorar</NavLink>
+      <NavLink href="/vender">Vender</NavLink>
+    </div>
+  );
+}
+
+export default function Navbar() {
+  const { user, signOut } = useAuth();
+  const [isAdminUser, setIsAdminUser] = useState(false);
+  const isLoggedIn = !!user;
+  const isMobile = useMobile();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      if (user) {
+        const adminStatus = await isAdmin();
+        setIsAdminUser(adminStatus);
+      } else {
+        setIsAdminUser(false);
+      }
+    };
+
+    checkAdminStatus();
+  }, [user]);
+
+  return (
+    <header className="bg-white shadow-sm border-b sticky top-0 z-50">
+      <div className="container flex h-16 items-center">
+        <Link to="/" className="mr-4 font-bold text-xl">
+          Contrareloj
+        </Link>
+        <NavLinks />
+      
+      <div className="flex items-center space-x-2 ml-auto">
+        {/* Add the NotificationBell component before the SignInButton */}
+        {isLoggedIn && <NotificationBell />}
+        <SignInButton />
+        {isMobile && (
+          <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+            <Menu className="h-6 w-6" />
+          </Button>
+        )}
+      </div>
+      
+      {isMobile && mobileMenuOpen && (
+        <div className="absolute top-full left-0 w-full bg-white shadow-md rounded-md py-2 z-50">
+          <div className="flex flex-col items-center space-y-3">
+            <NavLink href="/">Inicio</NavLink>
+            <NavLink href="/explorar">Explorar</NavLink>
+            <NavLink href="/vender">Vender</NavLink>
           </div>
         </div>
-        
-        <div className="flex items-center space-x-4">
-          <Button variant="ghost" size="icon">
-            <Search className="h-5 w-5" />
-          </Button>
-          
-          {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" className="rounded-full">
-                  <Avatar>
-                    <AvatarFallback>{getInitials()}</AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Mi cuenta</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate('/perfil')}>
-                  <User className="mr-2 h-4 w-4" />
-                  <span>Perfil</span>
-                </DropdownMenuItem>
-                {isAdmin && (
-                  <DropdownMenuItem onClick={() => navigate('/admin')}>
-                    <Shield className="mr-2 h-4 w-4" />
-                    <span>Administración</span>
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem onClick={handleSignOut}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Cerrar sesión</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Link to="/auth">
-              <Button variant="outline" size="icon">
-                <User className="h-5 w-5" />
-              </Button>
-            </Link>
-          )}
-          
-          <Link to="/vender">
-            <Button className="bg-contrareloj hover:bg-contrareloj-dark text-white">
-              Publicar auto
-            </Button>
-          </Link>
-        </div>
-      </div>
-    </nav>
+      )}
+    </header>
   );
-};
+}
 
-export default Navbar;
+function SignInButton() {
+  const { user, signOut } = useAuth();
+  const isLoggedIn = !!user;
+
+  if (isLoggedIn) {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="h-8 w-8 p-0 rounded-full">
+            <Avatar className="h-8 w-8">
+              <AvatarFallback>CN</AvatarFallback>
+            </Avatar>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-56" align="end" forceMount>
+          <DropdownMenuLabel className="font-normal">
+            <div className="flex flex-col space-y-1">
+              <p className="text-sm font-medium leading-none">
+                {user?.email}
+              </p>
+              <p className="text-xs leading-none text-muted-foreground">
+                {user?.email}
+              </p>
+            </div>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <Link to="/perfil">
+              Perfil
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link to="/vender">
+              Vender vehículo
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link to="/auth/update-password">
+              Cambiar contraseña
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => signOut()} className="cursor-pointer">
+            Cerrar sesión
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    )
+  } else {
+    return (
+      <Link to="/auth">
+        <Button>
+          Iniciar sesión
+        </Button>
+      </Link>
+    )
+  }
+}

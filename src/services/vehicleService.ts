@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getCurrentUser } from "@/services/authService";
+import { createNotification } from './notificationService';
 
 // Types definitions
 export interface VehicleBasicInfo {
@@ -443,6 +444,18 @@ export async function submitQuestion(auctionId: string, questionText: string) {
       return { success: false };
     }
 
+    // Get auction information to find the vehicle owner
+    const { data: auctionData, error: auctionError } = await supabase
+      .from('auctions')
+      .select('vehicles!inner(user_id)')
+      .eq('id', auctionId)
+      .single();
+      
+    if (auctionError) {
+      console.error('Error al obtener información de la subasta:', auctionError);
+    }
+    
+    // Insert the question
     const { error } = await supabase
       .from('auction_questions')
       .insert({
@@ -456,6 +469,17 @@ export async function submitQuestion(auctionId: string, questionText: string) {
       toast.error('Error al enviar la pregunta');
       return { success: false };
     }
+    
+    // Create a notification for the vehicle owner if we have their ID
+    if (auctionData?.vehicles?.user_id && auctionData.vehicles.user_id !== user.id) {
+      await createNotification({
+        userId: auctionData.vehicles.user_id,
+        type: 'new_question',
+        title: 'Nueva pregunta en tu subasta',
+        message: 'Alguien ha hecho una pregunta en tu subasta. Revisa tu publicación para responder.',
+        relatedId: auctionId
+      });
+    }
 
     toast.success('Tu pregunta ha sido enviada');
     return { success: true };
@@ -468,11 +492,24 @@ export async function submitQuestion(auctionId: string, questionText: string) {
 
 export async function answerQuestion(questionId: string, answerText: string) {
   try {
+    // First get the question to find the asker
+    const { data: questionData, error: questionError } = await supabase
+      .from('auction_questions')
+      .select('user_id, auction_id')
+      .eq('id', questionId)
+      .single();
+      
+    if (questionError) {
+      console.error('Error al obtener información de la pregunta:', questionError);
+    }
+    
+    // Update the question with the answer
     const { error } = await supabase
       .from('auction_questions')
       .update({
         answer: answerText,
-        answered_at: new Date().toISOString()
+        answered_at: new Date().toISOString(),
+        is_answered: true
       })
       .eq('id', questionId);
 
@@ -480,6 +517,17 @@ export async function answerQuestion(questionId: string, answerText: string) {
       console.error('Error al responder pregunta:', error);
       toast.error('Error al enviar la respuesta');
       return { success: false };
+    }
+    
+    // Create a notification for the user who asked the question
+    if (questionData?.user_id) {
+      await createNotification({
+        userId: questionData.user_id,
+        type: 'question_answered',
+        title: 'Tu pregunta ha sido respondida',
+        message: 'Han respondido a una pregunta que hiciste en una subasta.',
+        relatedId: questionData.auction_id
+      });
     }
 
     toast.success('Respuesta enviada correctamente');
@@ -505,6 +553,17 @@ export async function placeBid(auctionId: string, { amount, holdAmount }: { amou
       toast.error('Debes verificar tu identidad para ofertar');
       return { success: false, needsVerification: true };
     }
+    
+    // Get auction information to find the vehicle owner
+    const { data: auctionData, error: auctionError } = await supabase
+      .from('auctions')
+      .select('vehicles!inner(user_id)')
+      .eq('id', auctionId)
+      .single();
+      
+    if (auctionError) {
+      console.error('Error al obtener información de la subasta:', auctionError);
+    }
 
     // Place the bid
     const { error } = await supabase
@@ -520,6 +579,17 @@ export async function placeBid(auctionId: string, { amount, holdAmount }: { amou
       console.error('Error al realizar oferta:', error);
       toast.error('Error al procesar tu oferta');
       return { success: false, needsVerification: false };
+    }
+    
+    // Create a notification for the auction owner
+    if (auctionData?.vehicles?.user_id && auctionData.vehicles.user_id !== user.id) {
+      await createNotification({
+        userId: auctionData.vehicles.user_id,
+        type: 'new_bid',
+        title: 'Nueva oferta en tu subasta',
+        message: `Han realizado una oferta de $${amount.toLocaleString('es-CL')} en tu subasta.`,
+        relatedId: auctionId
+      });
     }
 
     toast.success('¡Oferta realizada con éxito!');

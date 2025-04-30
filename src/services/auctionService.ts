@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { AdminAuction } from "./admin/types";
+import { createNotification } from "./notificationService";
 
 export async function getAuctions() {
   try {
@@ -85,7 +86,7 @@ export async function approveAuction(auctionId: string) {
     // Obtener información de la subasta
     const { data: auction, error: fetchError } = await supabase
       .from('auctions')
-      .select('duration_days')
+      .select('duration_days, vehicles!inner(user_id)')
       .eq('id', auctionId)
       .single();
       
@@ -115,6 +116,17 @@ export async function approveAuction(auctionId: string) {
       console.error('Error al aprobar subasta:', error);
       toast.error('Error al aprobar la subasta');
       return false;
+    }
+    
+    // Create a notification for the user
+    if (auction.vehicles && auction.vehicles.user_id) {
+      await createNotification({
+        userId: auction.vehicles.user_id,
+        type: 'auction_approved',
+        title: '¡Tu subasta ha sido aprobada!',
+        message: 'Tu vehículo ha sido aprobado y la subasta está ahora activa.',
+        relatedId: auctionId
+      });
     }
     
     toast.success('Subasta aprobada y activada correctamente');
@@ -203,6 +215,71 @@ export async function deleteAuction(auctionId: string) {
   } catch (error) {
     console.error('Error inesperado:', error);
     toast.error('Error al eliminar la subasta');
+    return false;
+  }
+}
+
+export async function deleteAuctionDraft(auctionId: string) {
+  try {
+    // Verificar que la subasta esté en estado draft
+    const { data: auction, error: fetchError } = await supabase
+      .from('auctions')
+      .select('status, vehicle_id')
+      .eq('id', auctionId)
+      .single();
+      
+    if (fetchError) {
+      console.error('Error al obtener información de la subasta:', fetchError);
+      toast.error('Error al obtener información de la subasta');
+      return false;
+    }
+    
+    // Solo permitir eliminar borradores
+    if (auction?.status !== 'draft') {
+      toast.error('Solo se pueden eliminar subastas en estado borrador');
+      return false;
+    }
+    
+    const vehicleId = auction?.vehicle_id;
+    
+    // Eliminar la subasta
+    const { error: deleteAuctionError } = await supabase
+      .from('auctions')
+      .delete()
+      .eq('id', auctionId);
+      
+    if (deleteAuctionError) {
+      console.error('Error al eliminar subasta:', deleteAuctionError);
+      toast.error('Error al eliminar la subasta');
+      return false;
+    }
+    
+    // Si hay vehículo asociado, también lo eliminamos
+    if (vehicleId) {
+      // Eliminar características del vehículo
+      await supabase
+        .from('vehicle_features')
+        .delete()
+        .eq('vehicle_id', vehicleId);
+        
+      // Eliminar fotos del vehículo
+      await supabase
+        .from('vehicle_photos')
+        .delete()
+        .eq('vehicle_id', vehicleId);
+        
+      // Finalmente eliminar el vehículo
+      await supabase
+        .from('vehicles')
+        .delete()
+        .eq('id', vehicleId);
+    }
+    
+    toast.success('Borrador eliminado correctamente');
+    return true;
+  } catch (error) {
+    console.error('Error inesperado:', error);
+    toast.error('Error al eliminar el borrador');
     return false;
   }
 }
