@@ -8,21 +8,41 @@ export async function getVehicles() {
   try {
     console.log('Admin service: Fetching all vehicles...');
     
-    // First get all vehicles that either:
-    // 1. Have an associated auction with status 'pending_approval' or
-    // 2. Have been previously approved
-    const { data: vehiclesData, error: vehiclesError } = await supabase
+    // First get all approved vehicles
+    const { data: approvedVehicles, error: approvedError } = await supabase
       .from('vehicles')
       .select('*, auctions(*)')
-      .or('is_approved.eq.true,auctions.status.eq.pending_approval')
+      .eq('is_approved', true)
       .order('created_at', { ascending: false });
       
-    if (vehiclesError) {
-      console.error('Error fetching vehicles:', vehiclesError);
-      toast.error('Failed to load vehicles');
+    if (approvedError) {
+      console.error('Error fetching approved vehicles:', approvedError);
       return { vehicles: [] };
     }
-
+    
+    // Then get all vehicles with pending approval auctions
+    const { data: pendingVehicles, error: pendingError } = await supabase
+      .from('vehicles')
+      .select('*, auctions(*)')
+      .eq('auctions.status', 'pending_approval')
+      .order('created_at', { ascending: false });
+    
+    if (pendingError) {
+      console.error('Error fetching pending vehicles:', pendingError);
+      return { vehicles: [] };
+    }
+    
+    // Combine both results, removing duplicates (a vehicle might be approved AND have a pending auction)
+    const allVehiclesData = [...(approvedVehicles || []), ...(pendingVehicles || [])];
+    
+    // Remove duplicates by using Map with vehicle id as key
+    const uniqueVehiclesMap = new Map();
+    allVehiclesData.forEach(vehicle => {
+      uniqueVehiclesMap.set(vehicle.id, vehicle);
+    });
+    
+    const vehiclesData = Array.from(uniqueVehiclesMap.values());
+    
     console.log('Admin service: Number of vehicles returned:', vehiclesData ? vehiclesData.length : 0);
 
     // Then get user information for each vehicle
