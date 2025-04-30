@@ -32,6 +32,6 @@ export interface ExtendedVehicle extends Vehicle {
     model?: string;
     year?: number;
     description?: string;
-    photo_url?: string;
+    photo_url?: string; // Explicitly marking this as optional to match union type
   }
 }

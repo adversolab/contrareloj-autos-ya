@@ -111,24 +111,29 @@ export async function getUserFavorites() {
     );
 
     // Format favorites data
-    const formattedFavorites = favoritesWithPhotos.map(fav => {
-      if (!fav.auctions) {
-        return null;
-      }
-      
-      // Fix: Safely access photo_url property with optional chaining
-      const photoUrl = fav.auctions.vehicles?.photo_url;
-      
-      return {
-        id: fav.auctions.id,
-        title: `${fav.auctions.vehicles?.brand || ''} ${fav.auctions.vehicles?.model || ''} ${fav.auctions.vehicles?.year || ''}`.trim(),
-        description: fav.auctions.vehicles?.description || '',
-        imageUrl: photoUrl || '/placeholder.svg',
-        currentBid: fav.auctions.start_price || 0,
-        endTime: fav.auctions.end_date ? new Date(fav.auctions.end_date) : new Date(),
-        bidCount: 0, // Default since we don't have this info
-      };
-    }).filter(Boolean);
+    const formattedFavorites = favoritesWithPhotos
+      .map(fav => {
+        if (!fav.auctions) {
+          return null;
+        }
+        
+        // Fix: Use optional chaining and provide default values to handle possible undefined properties
+        const photoUrl = fav.auctions.vehicles?.photo_url;
+        const brand = fav.auctions.vehicles?.brand || '';
+        const model = fav.auctions.vehicles?.model || '';
+        const year = fav.auctions.vehicles?.year || '';
+        
+        return {
+          id: fav.auctions.id,
+          title: `${brand} ${model} ${year}`.trim(),
+          description: fav.auctions.vehicles?.description || '',
+          imageUrl: photoUrl || '/placeholder.svg',
+          currentBid: fav.auctions.start_price || 0,
+          endTime: fav.auctions.end_date ? new Date(fav.auctions.end_date) : new Date(),
+          bidCount: 0, // Default since we don't have this info
+        };
+      })
+      .filter(Boolean);
 
     return { favorites: formattedFavorites, error: null };
   } catch (error) {
