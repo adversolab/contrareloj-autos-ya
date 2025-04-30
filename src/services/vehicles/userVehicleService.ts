@@ -83,12 +83,13 @@ export async function getUserFavorites() {
     const favoritesWithPhotos = await Promise.all(
       data.map(async (fav) => {
         // Fix: Check if auctions and vehicles exist and have an id property
-        if (!fav.auctions?.vehicles?.id) {
+        const vehicle = fav.auctions?.vehicles || {};
+        const vehicleId = vehicle.id;
+        
+        // Only proceed if we have a valid vehicle ID
+        if (!vehicleId) {
           return fav;
         }
-        
-        // We need to safely access the vehicle id
-        const vehicleId = fav.auctions.vehicles.id;
 
         const { data: photos } = await supabase
           .from('vehicle_photos')
@@ -99,7 +100,7 @@ export async function getUserFavorites() {
 
         // Create a properly typed vehicle object with photo_url
         const vehicleWithPhoto = {
-          ...fav.auctions.vehicles,
+          ...vehicle,
           photo_url: photos && photos.length > 0 ? photos[0].url : undefined
         };
 
@@ -120,17 +121,18 @@ export async function getUserFavorites() {
           return null;
         }
         
-        // Fix: Use safely typed vehicle object
+        // Fix: Use type-safe access to vehicle properties with defaults
         const vehicle = fav.auctions.vehicles || {};
-        const photoUrl = vehicle.photo_url;
+        const photoUrl = vehicle.photo_url || '';
         const brand = vehicle.brand || '';
         const model = vehicle.model || '';
         const year = vehicle.year || '';
+        const description = vehicle.description || '';
         
         return {
           id: fav.auctions.id,
           title: `${brand} ${model} ${year}`.trim(),
-          description: vehicle.description || '',
+          description: description,
           imageUrl: photoUrl || '/placeholder.svg',
           currentBid: fav.auctions.start_price || 0,
           endTime: fav.auctions.end_date ? new Date(fav.auctions.end_date) : new Date(),
