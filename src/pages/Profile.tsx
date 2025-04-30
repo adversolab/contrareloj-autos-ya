@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -10,7 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { getUserVehicles, getUserFavorites } from '@/services/vehicleService';
+import { getUserVehicles, getUserFavorites, deleteVehicleWithAuction } from '@/services/vehicleService';
 import VerifyIdentityDialog from '@/components/VerifyIdentityDialog';
 import { useSearchParams } from 'react-router-dom';
 
@@ -25,6 +26,7 @@ interface Auction {
   bidCount: number;
   status?: string;
   auctionId?: string | null;
+  vehicleId?: string;
 }
 
 // Type for vehicle data from API
@@ -57,6 +59,7 @@ const Profile = () => {
   const [biddingAuctions, setBiddingAuctions] = useState<Auction[]>([]);
   const [favoriteAuctions, setFavoriteAuctions] = useState<Auction[]>([]);
   const [sellingAuctions, setSellingAuctions] = useState<Auction[]>([]);
+  const [draftAuctions, setDraftAuctions] = useState<Auction[]>([]);
   const [wonAuctions, setWonAuctions] = useState<Auction[]>([]);
   const [isLoadingVehicles, setIsLoadingVehicles] = useState(false);
   const [isLoadingFavorites, setIsLoadingFavorites] = useState(false);
@@ -87,20 +90,39 @@ const Profile = () => {
           // Load user vehicles
           const { vehicles } = await getUserVehicles();
           if (vehicles && vehicles.length > 0) {
-            // Transform vehicles to Auction format
-            const formattedVehicles: Auction[] = vehicles.map((vehicle: Vehicle) => ({
-              id: vehicle.id,
-              title: `${vehicle.brand} ${vehicle.model} ${vehicle.year}`,
-              description: vehicle.description || '',
-              imageUrl: vehicle.photo_url || '/placeholder.svg',
-              currentBid: vehicle.auctions?.length > 0 ? vehicle.auctions[0].start_price : 0,
-              endTime: vehicle.auctions?.length > 0 ? new Date(vehicle.auctions[0].end_date) : new Date(),
-              bidCount: 0, // Default value
-              status: vehicle.auctions?.length > 0 ? vehicle.auctions[0].status : 'draft',
-              auctionId: vehicle.auctions?.length > 0 ? vehicle.auctions[0].id : null
-            }));
+            const activeVehicles: Auction[] = [];
+            const draftVehicles: Auction[] = [];
             
-            setSellingAuctions(formattedVehicles);
+            // Transform vehicles to Auction format
+            vehicles.forEach((vehicle: Vehicle) => {
+              const formattedVehicle: Auction = {
+                id: vehicle.id,
+                title: `${vehicle.brand} ${vehicle.model} ${vehicle.year}`,
+                description: vehicle.description || '',
+                imageUrl: vehicle.photo_url || '/placeholder.svg',
+                currentBid: vehicle.auctions?.[0]?.start_price || 0,
+                endTime: vehicle.auctions?.[0]?.end_date ? new Date(vehicle.auctions[0].end_date) : new Date(),
+                bidCount: 0, // Default value
+                status: vehicle.auctions?.[0]?.status || 'draft',
+                auctionId: vehicle.auctions?.[0]?.id || null,
+                vehicleId: vehicle.id
+              };
+              
+              // Separate active auctions from drafts
+              if (vehicle.auctions && vehicle.auctions.length > 0) {
+                if (vehicle.auctions[0].status === 'draft') {
+                  draftVehicles.push(formattedVehicle);
+                } else {
+                  activeVehicles.push(formattedVehicle);
+                }
+              } else {
+                // If no auction is associated with the vehicle, it's a draft
+                draftVehicles.push(formattedVehicle);
+              }
+            });
+            
+            setSellingAuctions(activeVehicles);
+            setDraftAuctions(draftVehicles);
           }
           
           // For now, leave other lists empty since we don't have real data
@@ -187,6 +209,64 @@ const Profile = () => {
     } catch (error: any) {
       toast.error(error.message || 'Error al actualizar el perfil');
     }
+  };
+  
+  const handleDeleteDraft = () => {
+    // Refresh the vehicles list
+    const loadUserVehicles = async () => {
+      if (user) {
+        setIsLoadingVehicles(true);
+        try {
+          // Load user vehicles
+          const { vehicles } = await getUserVehicles();
+          if (vehicles && vehicles.length > 0) {
+            const activeVehicles: Auction[] = [];
+            const draftVehicles: Auction[] = [];
+            
+            // Transform vehicles to Auction format
+            vehicles.forEach((vehicle: Vehicle) => {
+              const formattedVehicle: Auction = {
+                id: vehicle.id,
+                title: `${vehicle.brand} ${vehicle.model} ${vehicle.year}`,
+                description: vehicle.description || '',
+                imageUrl: vehicle.photo_url || '/placeholder.svg',
+                currentBid: vehicle.auctions?.[0]?.start_price || 0,
+                endTime: vehicle.auctions?.[0]?.end_date ? new Date(vehicle.auctions[0].end_date) : new Date(),
+                bidCount: 0, // Default value
+                status: vehicle.auctions?.[0]?.status || 'draft',
+                auctionId: vehicle.auctions?.[0]?.id || null,
+                vehicleId: vehicle.id
+              };
+              
+              // Separate active auctions from drafts
+              if (vehicle.auctions && vehicle.auctions.length > 0) {
+                if (vehicle.auctions[0].status === 'draft') {
+                  draftVehicles.push(formattedVehicle);
+                } else {
+                  activeVehicles.push(formattedVehicle);
+                }
+              } else {
+                // If no auction is associated with the vehicle, it's a draft
+                draftVehicles.push(formattedVehicle);
+              }
+            });
+            
+            setSellingAuctions(activeVehicles);
+            setDraftAuctions(draftVehicles);
+          } else {
+            setSellingAuctions([]);
+            setDraftAuctions([]);
+          }
+        } catch (error) {
+          console.error("Error al cargar vehículos del usuario", error);
+          toast.error("Error al cargar tus vehículos");
+        } finally {
+          setIsLoadingVehicles(false);
+        }
+      }
+    };
+    
+    loadUserVehicles();
   };
 
   // Helper function to safely get the user's initials
@@ -379,6 +459,7 @@ const Profile = () => {
                     <p>
                       {biddingAuctions.length} ofertas • 
                       {sellingAuctions.length} ventas • 
+                      {draftAuctions.length} borradores • 
                       {favoriteAuctions.length} favoritos •
                       {wonAuctions.length} ganados
                     </p>
@@ -399,6 +480,9 @@ const Profile = () => {
               <TabsTrigger value="selling" className="flex-1">
                 Mis ventas ({sellingAuctions.length})
               </TabsTrigger>
+              <TabsTrigger value="drafts" className="flex-1">
+                Borradores ({draftAuctions.length})
+              </TabsTrigger>
               <TabsTrigger value="won" className="flex-1">
                 Ganados ({wonAuctions.length})
               </TabsTrigger>
@@ -417,6 +501,7 @@ const Profile = () => {
                       currentBid={auction.currentBid} 
                       endTime={auction.endTime} 
                       bidCount={auction.bidCount} 
+                      status={auction.status}
                     />
                   ))}
                 </div>
@@ -482,19 +567,14 @@ const Profile = () => {
                   {sellingAuctions.map((auction) => (
                     <AuctionCard 
                       key={auction.id} 
-                      id={auction.id} 
+                      id={auction.auctionId || auction.id}
                       title={auction.title} 
                       description={auction.description} 
                       imageUrl={auction.imageUrl || '/placeholder.svg'} 
                       currentBid={auction.currentBid} 
                       endTime={auction.endTime} 
                       bidCount={auction.bidCount} 
-                      onClick={(e) => {
-                        if (auction.auctionId) {
-                          e.preventDefault();
-                          navigate(`/subasta/${auction.auctionId}`);
-                        }
-                      }} 
+                      status={auction.status}
                     />
                   ))}
                 </div>
@@ -506,6 +586,46 @@ const Profile = () => {
                   <h3 className="text-xl font-medium mb-2">No tienes autos a la venta</h3>
                   <p className="text-gray-500 mb-6">
                     Publica tu auto y véndelo al mejor precio en nuestra plataforma.
+                  </p>
+                  <Button className="bg-contrareloj hover:bg-contrareloj-dark text-white" onClick={() => navigate('/vender')}>
+                    Vender mi auto
+                  </Button>
+                </div>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="drafts">
+              {isLoadingVehicles ? (
+                <div className="flex justify-center py-10">
+                  <p>Cargando tus borradores...</p>
+                </div>
+              ) : draftAuctions.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {draftAuctions.map((draft) => (
+                    <AuctionCard 
+                      key={draft.id} 
+                      id={draft.id}
+                      title={draft.title} 
+                      description={draft.description} 
+                      imageUrl={draft.imageUrl || '/placeholder.svg'} 
+                      currentBid={draft.currentBid} 
+                      endTime={draft.endTime} 
+                      bidCount={draft.bidCount} 
+                      status="draft"
+                      isDraft={true}
+                      vehicleId={draft.vehicleId}
+                      onDelete={handleDeleteDraft}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                    <span className="text-3xl">📝</span>
+                  </div>
+                  <h3 className="text-xl font-medium mb-2">No tienes borradores guardados</h3>
+                  <p className="text-gray-500 mb-6">
+                    Tus publicaciones incompletas aparecerán aquí para que puedas continuar con ellas más tarde.
                   </p>
                   <Button className="bg-contrareloj hover:bg-contrareloj-dark text-white" onClick={() => navigate('/vender')}>
                     Vender mi auto

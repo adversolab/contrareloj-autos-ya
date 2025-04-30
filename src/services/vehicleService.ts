@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getCurrentUser } from "@/services/authService";
@@ -235,12 +236,11 @@ export async function uploadAutofactReport(
     const url = publicUrlData?.publicUrl || '';
 
     // Update the vehicle with the Autofact report URL
-    // Using explicit casting to add the autofact_report_url property
     const { error: updateError } = await supabase
       .from('vehicles')
       .update({ 
         autofact_report_url: url 
-      } as any) // Using 'as any' to bypass type checking for this specific update
+      })
       .eq('id', vehicleId);
 
     if (updateError) {
@@ -337,6 +337,79 @@ export async function activateAuction(auctionId: string): Promise<{ success: boo
   }
 }
 
+// New function to delete a vehicle and its associated auction
+export async function deleteVehicleWithAuction(vehicleId: string): Promise<{ success: boolean }> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      toast.error('Debes iniciar sesión para eliminar un vehículo');
+      return { success: false };
+    }
+
+    // First, check if the vehicle belongs to the user
+    const { data: vehicle, error: vehicleError } = await supabase
+      .from('vehicles')
+      .select()
+      .eq('id', vehicleId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (vehicleError || !vehicle) {
+      console.error('Error al verificar propiedad del vehículo:', vehicleError);
+      toast.error('No tienes permiso para eliminar este vehículo');
+      return { success: false };
+    }
+
+    // Delete auction first (foreign key constraint)
+    const { error: auctionError } = await supabase
+      .from('auctions')
+      .delete()
+      .eq('vehicle_id', vehicleId);
+
+    if (auctionError) {
+      console.error('Error al eliminar subasta:', auctionError);
+    }
+
+    // Delete vehicle features
+    const { error: featuresError } = await supabase
+      .from('vehicle_features')
+      .delete()
+      .eq('vehicle_id', vehicleId);
+
+    if (featuresError) {
+      console.error('Error al eliminar características:', featuresError);
+    }
+
+    // Delete vehicle photos
+    const { error: photosError } = await supabase
+      .from('vehicle_photos')
+      .delete()
+      .eq('vehicle_id', vehicleId);
+
+    if (photosError) {
+      console.error('Error al eliminar fotos:', photosError);
+    }
+
+    // Finally delete the vehicle
+    const { error: deleteError } = await supabase
+      .from('vehicles')
+      .delete()
+      .eq('id', vehicleId);
+
+    if (deleteError) {
+      console.error('Error al eliminar vehículo:', deleteError);
+      toast.error('Error al eliminar el vehículo');
+      return { success: false };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error inesperado:', error);
+    toast.error('Error al eliminar el vehículo');
+    return { success: false };
+  }
+}
+
 // Auction viewing and participation functions
 export async function getAuctionById(id: string) {
   try {
@@ -372,7 +445,7 @@ export async function getAuctionQuestions(auctionId: string) {
 
     if (error) {
       console.error('Error al obtener preguntas:', error);
-      return { questions: null, error };
+      return { questions: [], error };
     }
 
     // Then get user profiles for each question
@@ -394,7 +467,7 @@ export async function getAuctionQuestions(auctionId: string) {
     return { questions: questionsWithProfiles, error: null };
   } catch (error) {
     console.error('Error inesperado:', error);
-    return { questions: null, error };
+    return { questions: [], error };
   }
 }
 
@@ -409,7 +482,7 @@ export async function getAuctionBids(auctionId: string) {
 
     if (error) {
       console.error('Error al obtener pujas:', error);
-      return { bids: null, error };
+      return { bids: [], error };
     }
 
     // Then get user profiles for each bid
@@ -431,7 +504,7 @@ export async function getAuctionBids(auctionId: string) {
     return { bids: bidsWithProfiles, error: null };
   } catch (error) {
     console.error('Error inesperado:', error);
-    return { bids: null, error };
+    return { bids: [], error };
   }
 }
 
@@ -491,7 +564,7 @@ export async function answerQuestion(questionId: string, answerText: string) {
   }
 }
 
-export async function placeBid(auctionId: string, { amount, holdAmount }: { amount: number, holdAmount: number }) {
+export async function placeBid(auctionId: string, bidData: { amount: number, holdAmount: number }) {
   try {
     const user = await getCurrentUser();
     if (!user) {
@@ -512,8 +585,8 @@ export async function placeBid(auctionId: string, { amount, holdAmount }: { amou
       .insert({
         auction_id: auctionId,
         user_id: user.id,
-        amount,
-        hold_amount: holdAmount
+        amount: bidData.amount,
+        hold_amount: bidData.holdAmount
       });
 
     if (error) {
@@ -679,7 +752,8 @@ export async function getUserFavorites() {
             brand,
             model,
             year,
-            description
+            description,
+            photo_url
           )
         )
       `)
@@ -691,13 +765,20 @@ export async function getUserFavorites() {
     }
 
     // Format favorites data
-    const formattedFavorites = data.map(fav => ({
-      id: fav.auctions?.id,
-      title: `${fav.auctions?.vehicles?.brand} ${fav.auctions?.vehicles?.model} ${fav.auctions?.vehicles?.year}`,
-      description: fav.auctions?.vehicles?.description,
-      currentBid: fav.auctions?.start_price,
-      endTime: fav.auctions?.end_date ? new Date(fav.auctions.end_date) : new Date(),
-    }));
+    const formattedFavorites = data.map(fav => {
+      if (!fav.auctions) {
+        return null;
+      }
+      return {
+        id: fav.auctions.id,
+        title: `${fav.auctions.vehicles?.brand || ''} ${fav.auctions.vehicles?.model || ''} ${fav.auctions.vehicles?.year || ''}`.trim(),
+        description: fav.auctions.vehicles?.description || '',
+        imageUrl: fav.auctions.vehicles?.photo_url || '/placeholder.svg',
+        currentBid: fav.auctions.start_price || 0,
+        endTime: fav.auctions.end_date ? new Date(fav.auctions.end_date) : new Date(),
+        bidCount: 0, // Default since we don't have this info
+      };
+    }).filter(Boolean);
 
     return { favorites: formattedFavorites, error: null };
   } catch (error) {
@@ -748,6 +829,52 @@ export async function getUserVehicles() {
   } catch (error) {
     console.error('Error inesperado:', error);
     return { vehicles: [], error: 'Error al cargar vehículos' };
+  }
+}
+
+export async function getVehicleDetails(vehicleId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('vehicles')
+      .select(`
+        *,
+        auctions(*)
+      `)
+      .eq('id', vehicleId)
+      .single();
+
+    if (error) {
+      console.error('Error al obtener detalles del vehículo:', error);
+      return { vehicle: null, error };
+    }
+
+    // Get photos
+    const { data: photos } = await supabase
+      .from('vehicle_photos')
+      .select('*')
+      .eq('vehicle_id', vehicleId)
+      .order('position', { ascending: true });
+
+    // Get features
+    const { data: features } = await supabase
+      .from('vehicle_features')
+      .select('*')
+      .eq('vehicle_id', vehicleId);
+
+    return { 
+      vehicle: data, 
+      photos: photos || [],
+      features: features || [],
+      error: null 
+    };
+  } catch (error) {
+    console.error('Error inesperado:', error);
+    return { 
+      vehicle: null, 
+      photos: [],
+      features: [],
+      error 
+    };
   }
 }
 
