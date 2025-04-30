@@ -116,7 +116,7 @@ export async function getUserFavorites() {
         return null;
       }
       
-      // Fix: Safely access photo_url property
+      // Fix: Safely access photo_url property with optional chaining
       const photoUrl = fav.auctions.vehicles?.photo_url;
       
       return {
