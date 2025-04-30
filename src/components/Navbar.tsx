@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { isAdmin } from '@/integrations/supabase/client';
-import { useMobile } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/use-mobile'; // Fixed import name
 import { Menu } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 
@@ -52,7 +52,7 @@ export default function Navbar() {
   const { user, signOut } = useAuth();
   const [isAdminUser, setIsAdminUser] = useState(false);
   const isLoggedIn = !!user;
-  const isMobile = useMobile();
+  const isMobile = useIsMobile(); // Updated to match the hook name
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
