@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { getCurrentUser } from '@/services/authService';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   saveVehicleBasicInfo, 
   updateVehicleBasicInfo,

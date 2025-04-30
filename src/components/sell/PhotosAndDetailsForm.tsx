@@ -121,7 +121,11 @@ const PhotosAndDetailsForm: React.FC<PhotosAndDetailsFormProps> = ({
                 const input = document.createElement('input');
                 input.type = 'file';
                 input.accept = 'image/*';
-                input.onchange = (e) => onImageUpload(e as any, uploadedPhotos.length);
+                input.onchange = (e) => {
+                  // Cast the event to the right type
+                  const inputEvent = e as unknown as React.ChangeEvent<HTMLInputElement>;
+                  onImageUpload(inputEvent, uploadedPhotos.length);
+                };
                 input.click();
               }}
             >
@@ -159,7 +163,11 @@ const PhotosAndDetailsForm: React.FC<PhotosAndDetailsFormProps> = ({
                   const input = document.createElement('input');
                   input.type = 'file';
                   input.accept = 'application/pdf';
-                  input.onchange = onAutofactReportChange;
+                  input.onchange = (e) => {
+                    // Cast the event to the right type
+                    const inputEvent = e as unknown as React.ChangeEvent<HTMLInputElement>;
+                    onAutofactReportChange(inputEvent);
+                  };
                   input.click();
                 }}
                 className="text-sm"
@@ -181,7 +189,11 @@ const PhotosAndDetailsForm: React.FC<PhotosAndDetailsFormProps> = ({
                   const input = document.createElement('input');
                   input.type = 'file';
                   input.accept = 'application/pdf';
-                  input.onchange = onAutofactReportChange;
+                  input.onchange = (e) => {
+                    // Cast the event to the right type
+                    const inputEvent = e as unknown as React.ChangeEvent<HTMLInputElement>;
+                    onAutofactReportChange(inputEvent);
+                  };
                   input.click();
                 }}
                 className="text-sm"

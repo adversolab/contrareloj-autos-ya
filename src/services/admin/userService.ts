@@ -35,6 +35,7 @@ export async function getUsers() {
       email: user.email || '',
       first_name: user.first_name,
       last_name: user.last_name,
+      phone: user.phone,
       role: user.role as "user" | "admin" | "moderator",
       identity_verified: user.identity_verified || false,
       has_identity_document: Boolean(user.identity_document_url),

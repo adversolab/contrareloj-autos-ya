@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { AdminAuction } from "./admin/types";
@@ -44,7 +43,7 @@ export async function getAuctions() {
       });
     }
     
-    // Formatear subastas
+    // Format auctions to include autofact_report_url property
     const formattedAuctions: AdminAuction[] = auctions.map(auction => {
       const vehicle = auction.vehicles;
       const profile = vehicle ? profileMap.get(vehicle.user_id) : null;
@@ -61,7 +60,7 @@ export async function getAuctions() {
           brand: vehicle ? vehicle.brand || 'Desconocida' : 'Desconocida',
           model: vehicle ? vehicle.model || 'Desconocido' : 'Desconocido',
           year: vehicle ? vehicle.year || 0 : 0,
-          autofact_report_url: vehicle ? vehicle.autofact_report_url : undefined
+          autofact_report_url: vehicle && (vehicle as any).autofact_report_url // Using casting to get the property
         },
         user: {
           email: profile ? (profile.email || 'Sin correo') : 'Sin correo',
