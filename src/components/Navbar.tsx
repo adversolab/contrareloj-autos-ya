@@ -49,7 +49,7 @@ const Navbar = () => {
         <div className="flex items-center space-x-8">
           <Link to="/" className="flex items-center">
             <img 
-              src="/lovable-uploads/ba5224a3-5b08-4b12-bd86-35917d058623.png" 
+              src="https://qwtevsnsivmpmikhtdmh.supabase.co/storage/v1/object/public/logos//CONTRARELOJ_LOGO.png" 
               alt="Contrareloj Logo" 
               className="h-10" 
             />
