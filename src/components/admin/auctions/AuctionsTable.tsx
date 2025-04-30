@@ -38,18 +38,18 @@ const AuctionsTable: React.FC<AuctionsTableProps> = ({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Vehículo</TableHead>
-            <TableHead>Propietario</TableHead>
-            <TableHead>Precio inicial</TableHead>
-            <TableHead>Estado</TableHead>
-            <TableHead className="text-right">Acciones</TableHead>
+            <TableHead>Vehicle</TableHead>
+            <TableHead>Owner</TableHead>
+            <TableHead>Starting Price</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {auctions.length === 0 ? (
             <TableRow>
               <TableCell colSpan={5} className="text-center py-8">
-                No se encontraron subastas
+                No auctions found
               </TableCell>
             </TableRow>
           ) : (
@@ -66,28 +66,28 @@ const AuctionsTable: React.FC<AuctionsTableProps> = ({
                 <TableCell>
                   <div className="text-sm">
                     {auction.user.first_name || ''} {auction.user.last_name || ''}
-                    {!auction.user.first_name && !auction.user.last_name && 'Usuario'}
+                    {!auction.user.first_name && !auction.user.last_name && 'User'}
                     <div className="text-xs text-muted-foreground">
                       {auction.user.email}
                     </div>
                   </div>
                 </TableCell>
                 <TableCell>
-                  ${auction.start_price.toLocaleString('es-CL')}
+                  ${auction.start_price.toLocaleString('en-US')}
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-col gap-1">
                     <Badge variant={auction.is_approved ? "success" : "outline"} className={auction.is_approved ? "bg-green-500" : ""}>
-                      {auction.is_approved ? 'Aprobado' : 'Pendiente'}
+                      {auction.is_approved ? 'Approved' : 'Pending'}
                     </Badge>
                     <Badge variant={
                       auction.status === 'active' ? 'default' : 
                       auction.status === 'finished' ? 'secondary' :
                       auction.status === 'paused' ? 'secondary' : 'outline'
                     } className={auction.status === 'paused' ? "bg-yellow-500" : ""}>
-                      {auction.status === 'active' ? 'Activa' : 
-                       auction.status === 'finished' ? 'Finalizada' : 
-                       auction.status === 'paused' ? 'Pausada' : 'Borrador'}
+                      {auction.status === 'active' ? 'Active' : 
+                       auction.status === 'finished' ? 'Finished' : 
+                       auction.status === 'paused' ? 'Paused' : 'Draft'}
                     </Badge>
                   </div>
                 </TableCell>
@@ -102,24 +102,24 @@ const AuctionsTable: React.FC<AuctionsTableProps> = ({
                       {!auction.is_approved && (
                         <DropdownMenuItem onClick={() => onApprove(auction.id)}>
                           <CheckCircle className="mr-2 h-4 w-4" />
-                          <span>Aprobar subasta</span>
+                          <span>Approve auction</span>
                         </DropdownMenuItem>
                       )}
                       {auction.status === 'active' && (
                         <DropdownMenuItem onClick={() => onPause(auction.id)}>
                           <PauseCircle className="mr-2 h-4 w-4" />
-                          <span>Pausar subasta</span>
+                          <span>Pause auction</span>
                         </DropdownMenuItem>
                       )}
                       <DropdownMenuItem asChild>
                         <Link to={`/subasta/${auction.id}`}>
                           <Eye className="mr-2 h-4 w-4" />
-                          <span>Ver subasta</span>
+                          <span>View auction</span>
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem className="text-red-600" onClick={() => onOpenDeleteDialog(auction.id)}>
                         <Trash className="mr-2 h-4 w-4" />
-                        <span>Eliminar subasta</span>
+                        <span>Delete auction</span>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

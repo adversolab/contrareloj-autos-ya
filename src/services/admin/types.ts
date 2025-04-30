@@ -1,5 +1,5 @@
 
-// Common type definitions for admin features
+// Consolidated type definitions for admin features
 export interface UserDocuments {
   rut?: string;
   identity_document_url?: string;

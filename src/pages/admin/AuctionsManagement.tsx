@@ -22,14 +22,14 @@ const AuctionsManagement: React.FC = () => {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Gestión de Subastas</h1>
+        <h1 className="text-2xl font-bold">Auctions Management</h1>
         <Button onClick={fetchAuctions} variant="outline">
-          Actualizar
+          Refresh
         </Button>
       </div>
 
       {loading ? (
-        <div className="text-center py-8">Cargando subastas...</div>
+        <div className="text-center py-8">Loading auctions...</div>
       ) : (
         <AuctionsTable 
           auctions={auctions}

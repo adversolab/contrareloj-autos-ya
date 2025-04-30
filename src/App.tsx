@@ -35,7 +35,7 @@ const App = () => (
             <Route path="/perfil" element={<Profile />} />
             <Route path="/auth" element={<Auth />} />
             
-            {/* Rutas de administración */}
+            {/* Admin routes */}
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />
               <Route path="usuarios" element={<UsersManagement />} />

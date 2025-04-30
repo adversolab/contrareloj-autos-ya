@@ -1,10 +1,11 @@
+
 import React, { useEffect, useState } from 'react';
 import { 
   getVehicles, 
   approveVehicle, 
-  deleteVehicle, 
-  AdminVehicle 
-} from '@/services/adminService';
+  deleteVehicle 
+} from '@/services/admin/vehicleService';
+import { AdminVehicle } from '@/services/admin/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
@@ -74,31 +75,31 @@ const VehiclesManagement = () => {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Gestión de Vehículos</h1>
+        <h1 className="text-2xl font-bold">Vehicle Management</h1>
         <Button onClick={fetchVehicles} variant="outline">
-          Actualizar
+          Refresh
         </Button>
       </div>
 
       {loading ? (
-        <div className="text-center py-8">Cargando vehículos...</div>
+        <div className="text-center py-8">Loading vehicles...</div>
       ) : (
         <div className="rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Vehículo</TableHead>
-                <TableHead>Propietario</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Fecha de registro</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
+                <TableHead>Vehicle</TableHead>
+                <TableHead>Owner</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Registration Date</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {vehicles.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-8">
-                    No se encontraron vehículos
+                    No vehicles found
                   </TableCell>
                 </TableRow>
               ) : (
@@ -115,7 +116,7 @@ const VehiclesManagement = () => {
                     <TableCell>
                       <div className="text-sm">
                         {vehicle.user.first_name || ''} {vehicle.user.last_name || ''}
-                        {!vehicle.user.first_name && !vehicle.user.last_name && 'Usuario'}
+                        {!vehicle.user.first_name && !vehicle.user.last_name && 'User'}
                         <div className="text-xs text-muted-foreground">
                           {vehicle.user.email}
                         </div>
@@ -123,9 +124,9 @@ const VehiclesManagement = () => {
                     </TableCell>
                     <TableCell>
                       {vehicle.is_approved ? (
-                        <Badge variant="success" className="bg-green-500">Aprobado</Badge>
+                        <Badge variant="success" className="bg-green-500">Approved</Badge>
                       ) : (
-                        <Badge variant="outline">Pendiente</Badge>
+                        <Badge variant="outline">Pending</Badge>
                       )}
                     </TableCell>
                     <TableCell>
@@ -142,12 +143,12 @@ const VehiclesManagement = () => {
                           {!vehicle.is_approved && (
                             <DropdownMenuItem onClick={() => handleApproveVehicle(vehicle.id)}>
                               <CheckCircle className="mr-2 h-4 w-4" />
-                              <span>Aprobar vehículo</span>
+                              <span>Approve vehicle</span>
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuItem className="text-red-600" onClick={() => openDeleteDialog(vehicle.id)}>
                             <Trash className="mr-2 h-4 w-4" />
-                            <span>Eliminar vehículo</span>
+                            <span>Delete vehicle</span>
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -163,15 +164,15 @@ const VehiclesManagement = () => {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción eliminará permanentemente el vehículo y todos los datos relacionados. Esta acción no se puede deshacer.
+              This action will permanently delete the vehicle and all related data. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleCancelDelete}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel onClick={handleCancelDelete}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteVehicle} className="bg-red-600 hover:bg-red-700">
-              Eliminar
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

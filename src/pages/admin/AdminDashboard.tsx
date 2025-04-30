@@ -25,14 +25,14 @@ const AdminDashboard = () => {
 
   const loadStats = async () => {
     try {
-      console.log("Cargando estadísticas del dashboard...");
+      console.log("Loading dashboard statistics...");
       
-      // Obtener total de usuarios
+      // Get total users
       const { count: totalUsers } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true });
       
-      // Obtener usuarios con documentos pero no verificados
+      // Get users with documents but not verified
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('id, identity_verified, rut, identity_document_url, identity_selfie_url')
@@ -42,7 +42,7 @@ const AdminDashboard = () => {
         console.error("Error fetching profiles:", profilesError);
       }
       
-      // Mejorado: usar Boolean para asegurar la conversión a booleano
+      // Improved: use Boolean to ensure conversion to boolean
       const pendingVerifications = profiles?.filter(profile => 
         !profile.identity_verified && 
         (Boolean(profile.rut) || Boolean(profile.identity_document_url) || Boolean(profile.identity_selfie_url))
@@ -56,25 +56,25 @@ const AdminDashboard = () => {
         hasSelfie: Boolean(p.identity_selfie_url)
       })));
       
-      console.log("Total de usuarios pendientes de verificación:", pendingVerifications);
+      console.log("Total pending verification users:", pendingVerifications);
       
-      // Total de vehículos
+      // Total vehicles
       const { count: totalVehicles } = await supabase
         .from('vehicles')
         .select('*', { count: 'exact', head: true });
       
-      // Vehículos pendientes de aprobación
+      // Vehicles pending approval
       const { count: pendingVehicles } = await supabase
         .from('vehicles')
         .select('*', { count: 'exact', head: true })
         .eq('is_approved', false);
       
-      // Total de subastas
+      // Total auctions
       const { count: totalAuctions } = await supabase
         .from('auctions')
         .select('*', { count: 'exact', head: true });
       
-      // Subastas pendientes de aprobación
+      // Auctions pending approval
       const { count: pendingAuctions } = await supabase
         .from('auctions')
         .select('*', { count: 'exact', head: true })
@@ -89,7 +89,7 @@ const AdminDashboard = () => {
         pendingAuctions: pendingAuctions || 0,
       });
     } catch (error) {
-      console.error("Error al cargar estadísticas:", error);
+      console.error("Error loading statistics:", error);
     }
   };
 
@@ -105,18 +105,18 @@ const AdminDashboard = () => {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">
-              Usuarios Totales
+              Total Users
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalUsers}</div>
             {stats.pendingVerifications > 0 ? (
               <Link to="/admin/usuarios#pending-verifications" className="text-xs text-amber-500 font-semibold hover:underline">
-                {stats.pendingVerifications} pendientes de verificación
+                {stats.pendingVerifications} pending verification
               </Link>
             ) : (
               <p className="text-xs text-muted-foreground">
-                {stats.pendingVerifications} pendientes de verificación
+                {stats.pendingVerifications} pending verification
               </p>
             )}
           </CardContent>
@@ -125,13 +125,13 @@ const AdminDashboard = () => {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">
-              Vehículos Registrados
+              Registered Vehicles
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalVehicles}</div>
             <p className={`text-xs ${stats.pendingVehicles > 0 ? "text-amber-500 font-semibold" : "text-muted-foreground"}`}>
-              {stats.pendingVehicles} pendientes de aprobación
+              {stats.pendingVehicles} pending approval
             </p>
           </CardContent>
         </Card>
@@ -139,22 +139,22 @@ const AdminDashboard = () => {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">
-              Subastas Creadas
+              Created Auctions
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalAuctions}</div>
             <p className={`text-xs ${stats.pendingAuctions > 0 ? "text-amber-500 font-semibold" : "text-muted-foreground"}`}>
-              {stats.pendingAuctions} pendientes de aprobación
+              {stats.pendingAuctions} pending approval
             </p>
           </CardContent>
         </Card>
       </div>
       
       <div className="bg-white rounded-md p-6 shadow">
-        <h2 className="font-semibold text-lg mb-4">Actividad Reciente</h2>
+        <h2 className="font-semibold text-lg mb-4">Recent Activity</h2>
         <p className="text-muted-foreground">
-          Panel de administración implementado. Ahora puedes verificar usuarios, aprobar vehículos y subastas desde las pestañas correspondientes.
+          Admin panel implemented. You can now verify users, approve vehicles and auctions from their respective tabs.
         </p>
       </div>
     </div>

@@ -1,11 +1,13 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 import { AdminAuction } from './types';
 
 // Auction management functions
 export async function getAuctions() {
   try {
+    console.log('Admin service: Fetching all auctions...');
+    
     // First get all auctions
     const { data: auctionsData, error: auctionsError } = await supabase
       .from('auctions')
@@ -13,17 +15,19 @@ export async function getAuctions() {
       .order('created_at', { ascending: false });
       
     if (auctionsError) {
-      console.error('Error al obtener subastas:', auctionsError);
-      toast({ title: "Error", description: "No se pudieron cargar las subastas", variant: "destructive" });
+      console.error('Error fetching auctions:', auctionsError);
+      toast.error('Failed to load auctions');
       return { auctions: [] };
     }
+
+    console.log('Admin service: Number of auctions returned:', auctionsData ? auctionsData.length : 0);
 
     // Then get vehicle and user information for each auction
     const auctions: AdminAuction[] = [];
     
     for (const auction of auctionsData) {
       // Get vehicle info if vehicle_id exists
-      let vehicleInfo = { brand: 'Desconocido', model: 'Desconocido', year: 0 };
+      let vehicleInfo = { brand: 'Unknown', model: 'Unknown', year: 0 };
       let userInfo = { email: 'unknown@email.com', first_name: null, last_name: null };
       
       if (auction.vehicle_id) {
@@ -72,10 +76,11 @@ export async function getAuctions() {
       });
     }
     
+    console.log("Admin service: Total auctions found:", auctions.length);
     return { auctions };
   } catch (error) {
-    console.error('Error inesperado:', error);
-    toast({ title: "Error", description: "No se pudieron cargar las subastas", variant: "destructive" });
+    console.error('Unexpected error:', error);
+    toast.error('Failed to load auctions');
     return { auctions: [] };
   }
 }
@@ -88,16 +93,16 @@ export async function approveAuction(auctionId: string) {
       .eq('id', auctionId);
       
     if (error) {
-      console.error('Error al aprobar subasta:', error);
-      toast({ title: "Error", description: "No se pudo aprobar la subasta", variant: "destructive" });
+      console.error('Error approving auction:', error);
+      toast.error('Failed to approve the auction');
       return false;
     }
     
-    toast({ title: "Éxito", description: "Subasta aprobada correctamente" });
+    toast.success('Auction approved successfully');
     return true;
   } catch (error) {
-    console.error('Error inesperado:', error);
-    toast({ title: "Error", description: "No se pudo aprobar la subasta", variant: "destructive" });
+    console.error('Unexpected error:', error);
+    toast.error('Failed to approve the auction');
     return false;
   }
 }
@@ -110,16 +115,16 @@ export async function pauseAuction(auctionId: string) {
       .eq('id', auctionId);
       
     if (error) {
-      console.error('Error al pausar subasta:', error);
-      toast({ title: "Error", description: "No se pudo pausar la subasta", variant: "destructive" });
+      console.error('Error pausing auction:', error);
+      toast.error('Failed to pause the auction');
       return false;
     }
     
-    toast({ title: "Éxito", description: "Subasta pausada correctamente" });
+    toast.success('Auction paused successfully');
     return true;
   } catch (error) {
-    console.error('Error inesperado:', error);
-    toast({ title: "Error", description: "No se pudo pausar la subasta", variant: "destructive" });
+    console.error('Unexpected error:', error);
+    toast.error('Failed to pause the auction');
     return false;
   }
 }
@@ -132,16 +137,16 @@ export async function deleteAuction(auctionId: string) {
       .eq('id', auctionId);
       
     if (error) {
-      console.error('Error al eliminar subasta:', error);
-      toast({ title: "Error", description: "No se pudo eliminar la subasta", variant: "destructive" });
+      console.error('Error deleting auction:', error);
+      toast.error('Failed to delete the auction');
       return false;
     }
     
-    toast({ title: "Éxito", description: "Subasta eliminada correctamente" });
+    toast.success('Auction deleted successfully');
     return true;
   } catch (error) {
-    console.error('Error inesperado:', error);
-    toast({ title: "Error", description: "No se pudo eliminar la subasta", variant: "destructive" });
+    console.error('Unexpected error:', error);
+    toast.error('Failed to delete the auction');
     return false;
   }
 }

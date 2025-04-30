@@ -1,11 +1,13 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 import { AdminVehicle } from './types';
 
 // Vehicle management functions
 export async function getVehicles() {
   try {
+    console.log('Admin service: Fetching all vehicles...');
+    
     // First get all vehicles
     const { data: vehiclesData, error: vehiclesError } = await supabase
       .from('vehicles')
@@ -13,10 +15,12 @@ export async function getVehicles() {
       .order('created_at', { ascending: false });
       
     if (vehiclesError) {
-      console.error('Error al obtener vehículos:', vehiclesError);
-      toast({ title: "Error", description: "No se pudieron cargar los vehículos", variant: "destructive" });
+      console.error('Error fetching vehicles:', vehiclesError);
+      toast.error('Failed to load vehicles');
       return { vehicles: [] };
     }
+
+    console.log('Admin service: Number of vehicles returned:', vehiclesData ? vehiclesData.length : 0);
 
     // Then get user information for each vehicle
     const vehicles: AdminVehicle[] = [];
@@ -53,10 +57,11 @@ export async function getVehicles() {
       });
     }
     
+    console.log("Admin service: Total vehicles found:", vehicles.length);
     return { vehicles };
   } catch (error) {
-    console.error('Error inesperado:', error);
-    toast({ title: "Error", description: "No se pudieron cargar los vehículos", variant: "destructive" });
+    console.error('Unexpected error:', error);
+    toast.error('Failed to load vehicles');
     return { vehicles: [] };
   }
 }
@@ -69,16 +74,16 @@ export async function approveVehicle(vehicleId: string) {
       .eq('id', vehicleId);
       
     if (error) {
-      console.error('Error al aprobar vehículo:', error);
-      toast({ title: "Error", description: "No se pudo aprobar el vehículo", variant: "destructive" });
+      console.error('Error approving vehicle:', error);
+      toast.error('Failed to approve the vehicle');
       return false;
     }
     
-    toast({ title: "Éxito", description: "Vehículo aprobado correctamente" });
+    toast.success('Vehicle approved successfully');
     return true;
   } catch (error) {
-    console.error('Error inesperado:', error);
-    toast({ title: "Error", description: "No se pudo aprobar el vehículo", variant: "destructive" });
+    console.error('Unexpected error:', error);
+    toast.error('Failed to approve the vehicle');
     return false;
   }
 }
@@ -91,16 +96,16 @@ export async function deleteVehicle(vehicleId: string) {
       .eq('id', vehicleId);
       
     if (error) {
-      console.error('Error al eliminar vehículo:', error);
-      toast({ title: "Error", description: "No se pudo eliminar el vehículo", variant: "destructive" });
+      console.error('Error deleting vehicle:', error);
+      toast.error('Failed to delete the vehicle');
       return false;
     }
     
-    toast({ title: "Éxito", description: "Vehículo eliminado correctamente" });
+    toast.success('Vehicle deleted successfully');
     return true;
   } catch (error) {
-    console.error('Error inesperado:', error);
-    toast({ title: "Error", description: "No se pudo eliminar el vehículo", variant: "destructive" });
+    console.error('Unexpected error:', error);
+    toast.error('Failed to delete the vehicle');
     return false;
   }
 }

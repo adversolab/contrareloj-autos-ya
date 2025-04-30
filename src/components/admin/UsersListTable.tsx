@@ -36,10 +36,10 @@ const UsersListTable: React.FC<UsersListTableProps> = ({
   onUpdateRole
 }) => {
   if (loading) {
-    return <div className="text-center py-8">Cargando usuarios...</div>;
+    return <div className="text-center py-8">Loading users...</div>;
   }
 
-  // Log para verificar que recibimos todos los usuarios
+  // Log to verify that we're receiving all users
   console.log("Rendering UsersListTable with users:", users);
   console.log("Number of users in table:", users.length);
 
@@ -48,18 +48,18 @@ const UsersListTable: React.FC<UsersListTableProps> = ({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Usuario</TableHead>
-            <TableHead>Rol</TableHead>
-            <TableHead>Estado</TableHead>
-            <TableHead>Fecha de registro</TableHead>
-            <TableHead className="text-right">Acciones</TableHead>
+            <TableHead>User</TableHead>
+            <TableHead>Role</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Registration Date</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {users.length === 0 ? (
             <TableRow>
               <TableCell colSpan={5} className="text-center py-8">
-                No se encontraron usuarios
+                No users found
               </TableCell>
             </TableRow>
           ) : (
@@ -69,7 +69,7 @@ const UsersListTable: React.FC<UsersListTableProps> = ({
                   <div>
                     <div className="font-medium">
                       {user.first_name || ''} {user.last_name || ''}
-                      {!user.first_name && !user.last_name && 'Usuario'}
+                      {!user.first_name && !user.last_name && 'User'}
                     </div>
                     <div className="text-sm text-muted-foreground">
                       {user.email}
@@ -83,12 +83,12 @@ const UsersListTable: React.FC<UsersListTableProps> = ({
                 </TableCell>
                 <TableCell>
                   {user.identity_verified ? (
-                    <Badge variant="success" className="bg-green-500">Verificado</Badge>
+                    <Badge variant="success" className="bg-green-500">Verified</Badge>
                   ) : (
                     user.has_identity_document || user.has_selfie || user.has_rut ? (
-                      <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-200">Pendiente</Badge>
+                      <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-200">Pending</Badge>
                     ) : (
-                      <Badge variant="outline">No verificado</Badge>
+                      <Badge variant="outline">Not verified</Badge>
                     )
                   )}
                 </TableCell>
@@ -105,21 +105,21 @@ const UsersListTable: React.FC<UsersListTableProps> = ({
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => onViewDocuments(user.id)}>
                         <FileText className="mr-2 h-4 w-4" />
-                        <span>Ver documentos</span>
+                        <span>View documents</span>
                       </DropdownMenuItem>
                       {!user.identity_verified && (
                         <DropdownMenuItem onClick={() => onVerifyUser(user.id)}>
                           <CheckCircle className="mr-2 h-4 w-4" />
-                          <span>Verificar usuario</span>
+                          <span>Verify user</span>
                         </DropdownMenuItem>
                       )}
                       <DropdownMenuItem onClick={() => onUpdateRole(user.id, "user")}>
                         <UserCog className="mr-2 h-4 w-4" />
-                        <span>Establecer como Usuario</span>
+                        <span>Set as User</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => onUpdateRole(user.id, "admin")}>
                         <Shield className="mr-2 h-4 w-4" />
-                        <span>Establecer como Admin</span>
+                        <span>Set as Admin</span>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

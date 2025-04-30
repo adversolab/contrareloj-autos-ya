@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { AdminUser } from '@/services/types/adminTypes';
+import { AdminUser } from '@/services/admin/types';
 import { format } from 'date-fns';
 import {
   Table,
@@ -32,17 +32,17 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
     <div className="mt-8" id="pending-verifications">
       <div className="flex items-center gap-2 mb-4">
         <AlertCircle className="text-yellow-500" />
-        <h2 className="text-xl font-bold">Usuarios pendientes de verificación ({pendingUsers.length})</h2>
+        <h2 className="text-xl font-bold">Pending verification users ({pendingUsers.length})</h2>
       </div>
       
       <div className="rounded-md border bg-yellow-50">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Usuario</TableHead>
-              <TableHead>Correo</TableHead>
-              <TableHead>Fecha de registro</TableHead>
-              <TableHead className="text-right">Acciones</TableHead>
+              <TableHead>User</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Registration Date</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -51,7 +51,7 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
                 <TableCell>
                   <div className="font-medium">
                     {user.first_name || ''} {user.last_name || ''}
-                    {!user.first_name && !user.last_name && 'Usuario'}
+                    {!user.first_name && !user.last_name && 'User'}
                   </div>
                 </TableCell>
                 <TableCell>{user.email}</TableCell>
@@ -66,14 +66,14 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
                     className="mr-2"
                   >
                     <FileText className="mr-2 h-4 w-4" />
-                    Ver documentos
+                    View documents
                   </Button>
                   <Button 
                     size="sm"
                     onClick={() => onVerifyUser(user.id)}
                   >
                     <CheckCircle className="mr-2 h-4 w-4" />
-                    Verificar
+                    Verify
                   </Button>
                 </TableCell>
               </TableRow>

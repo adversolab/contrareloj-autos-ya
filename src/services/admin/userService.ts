@@ -8,22 +8,22 @@ export async function getUsers() {
   try {
     console.log('Admin service: Fetching all users from profiles table...');
     
-    // Obtenemos todos los perfiles sin filtros
+    // Fetch all profiles without filters
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .order('created_at', { ascending: false });
       
     if (error) {
-      console.error('Error al obtener usuarios:', error);
-      toast.error('Error al cargar los usuarios');
+      console.error('Error fetching users:', error);
+      toast.error('Error loading users');
       return { users: [] };
     }
     
     console.log("Admin service: Raw profiles data:", data);
     console.log('Admin service: Number of profiles returned:', data ? data.length : 0);
     
-    // Verificación adicional
+    // Additional verification
     if (!data || !Array.isArray(data)) {
       console.error('Admin service: Data returned is not an array or is null:', data);
       return { users: [] };
@@ -48,8 +48,8 @@ export async function getUsers() {
     
     return { users };
   } catch (error) {
-    console.error('Error inesperado:', error);
-    toast.error('Error al cargar los usuarios');
+    console.error('Unexpected error:', error);
+    toast.error('Error loading users');
     return { users: [] };
   }
 }
@@ -62,16 +62,16 @@ export async function verifyUser(userId: string) {
       .eq('id', userId);
       
     if (error) {
-      console.error('Error al verificar usuario:', error);
-      toast.error('No se pudo verificar al usuario');
+      console.error('Error verifying user:', error);
+      toast.error('Failed to verify the user');
       return false;
     }
     
-    toast.success('Usuario verificado correctamente');
+    toast.success('User verified successfully');
     return true;
   } catch (error) {
-    console.error('Error inesperado:', error);
-    toast.error('No se pudo verificar al usuario');
+    console.error('Unexpected error:', error);
+    toast.error('Failed to verify the user');
     return false;
   }
 }
@@ -84,16 +84,16 @@ export async function updateUserRole(userId: string, role: "user" | "admin" | "m
       .eq('id', userId);
       
     if (error) {
-      console.error('Error al actualizar rol:', error);
-      toast.error('No se pudo actualizar el rol del usuario');
+      console.error('Error updating role:', error);
+      toast.error('Failed to update user role');
       return false;
     }
     
-    toast.success('Rol actualizado correctamente');
+    toast.success('Role updated successfully');
     return true;
   } catch (error) {
-    console.error('Error inesperado:', error);
-    toast.error('No se pudo actualizar el rol del usuario');
+    console.error('Unexpected error:', error);
+    toast.error('Failed to update user role');
     return false;
   }
 }
@@ -107,8 +107,8 @@ export async function getUserDocuments(userId: string): Promise<UserDocuments | 
       .single();
       
     if (error) {
-      console.error('Error al obtener documentos:', error);
-      toast.error('Error al cargar los documentos');
+      console.error('Error fetching documents:', error);
+      toast.error('Error loading user documents');
       return null;
     }
     
@@ -148,8 +148,8 @@ export async function getUserDocuments(userId: string): Promise<UserDocuments | 
       back_url: backUrl
     };
   } catch (error) {
-    console.error('Error inesperado:', error);
-    toast.error('Error al cargar los documentos');
+    console.error('Unexpected error:', error);
+    toast.error('Error loading user documents');
     return null;
   }
 }
