@@ -97,14 +97,17 @@ export async function getUserFavorites() {
           .eq('is_primary', true)
           .limit(1);
 
+        // Create a properly typed vehicle object with photo_url
+        const vehicleWithPhoto = {
+          ...fav.auctions.vehicles,
+          photo_url: photos && photos.length > 0 ? photos[0].url : undefined
+        };
+
         return {
           ...fav,
           auctions: {
             ...fav.auctions,
-            vehicles: {
-              ...fav.auctions.vehicles,
-              photo_url: photos && photos.length > 0 ? photos[0].url : undefined
-            }
+            vehicles: vehicleWithPhoto
           }
         };
       })
@@ -117,16 +120,17 @@ export async function getUserFavorites() {
           return null;
         }
         
-        // Fix: Use optional chaining and provide default values to handle possible undefined properties
-        const photoUrl = fav.auctions.vehicles?.photo_url;
-        const brand = fav.auctions.vehicles?.brand || '';
-        const model = fav.auctions.vehicles?.model || '';
-        const year = fav.auctions.vehicles?.year || '';
+        // Fix: Use safely typed vehicle object
+        const vehicle = fav.auctions.vehicles || {};
+        const photoUrl = vehicle.photo_url;
+        const brand = vehicle.brand || '';
+        const model = vehicle.model || '';
+        const year = vehicle.year || '';
         
         return {
           id: fav.auctions.id,
           title: `${brand} ${model} ${year}`.trim(),
-          description: fav.auctions.vehicles?.description || '',
+          description: vehicle.description || '',
           imageUrl: photoUrl || '/placeholder.svg',
           currentBid: fav.auctions.start_price || 0,
           endTime: fav.auctions.end_date ? new Date(fav.auctions.end_date) : new Date(),

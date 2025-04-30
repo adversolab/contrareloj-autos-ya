@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Bell } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import {
   Popover,
   PopoverContent,
@@ -91,11 +92,18 @@ const NotificationBell: React.FC = () => {
       >
         <div className="flex items-center justify-between p-4 bg-muted/50">
           <h3 className="font-semibold">Notificaciones</h3>
-          {unreadCount > 0 && (
-            <Button variant="ghost" size="sm" onClick={handleMarkAllAsRead}>
-              Marcar todas como leídas
-            </Button>
-          )}
+          <div className="flex space-x-2">
+            {unreadCount > 0 && (
+              <Button variant="ghost" size="sm" onClick={handleMarkAllAsRead}>
+                Marcar todas como leídas
+              </Button>
+            )}
+            <Link to="/mensajes">
+              <Button variant="outline" size="sm">
+                Ver todas
+              </Button>
+            </Link>
+          </div>
         </div>
         <Separator />
         <ScrollArea className="h-[300px]">

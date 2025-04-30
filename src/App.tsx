@@ -12,6 +12,7 @@ import SellCar from "./pages/SellCar";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
+import Messages from "./pages/Messages";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminLayout from "./layouts/AdminLayout";
 import UsersManagement from "./pages/admin/UsersManagement";
@@ -33,6 +34,7 @@ const App = () => (
             <Route path="/subasta/:id" element={<AuctionDetail />} />
             <Route path="/vender" element={<SellCar />} />
             <Route path="/perfil" element={<Profile />} />
+            <Route path="/mensajes" element={<Messages />} />
             <Route path="/auth" element={<Auth />} />
             
             {/* Admin routes */}
