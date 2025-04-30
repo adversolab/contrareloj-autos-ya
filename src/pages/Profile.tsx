@@ -3,44 +3,17 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import AuctionCard from '@/components/AuctionCard';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { getUserVehicles, getUserFavorites, deleteVehicleWithAuction } from '@/services/vehicleService';
+import { getUserVehicles, getUserFavorites } from '@/services/vehicleService';
 import VerifyIdentityDialog from '@/components/VerifyIdentityDialog';
 import { useSearchParams } from 'react-router-dom';
-
-// Types for auctions
-interface Auction {
-  id: string | number;
-  title: string;
-  description: string;
-  imageUrl?: string;
-  currentBid: number;
-  endTime: Date;
-  bidCount: number;
-  status?: string;
-  auctionId?: string | null;
-  vehicleId?: string;
-}
-
-// Type for vehicle data from API
-interface Vehicle {
-  id: string;
-  brand: string;
-  model: string;
-  year: number;
-  description?: string;
-  created_at: string;
-  photo_url?: string;
-  auctions?: any[];
-  // Add other vehicle fields as needed
-}
+import ProfileHeader from '@/components/profile/ProfileHeader';
+import ProfileForm from '@/components/profile/ProfileForm';
+import ProfileTabs from '@/components/profile/ProfileTabs';
+import IdentityVerificationSection from '@/components/profile/IdentityVerificationSection';
+import { Auction, Vehicle } from '@/components/profile/types';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -311,9 +284,9 @@ const Profile = () => {
           <div className="text-center">
             <h1 className="text-2xl font-bold mb-4">Acceso no autorizado</h1>
             <p className="mb-6">Debes iniciar sesión para ver esta página</p>
-            <Button onClick={() => navigate('/auth?redirect=/perfil')} className="bg-contrareloj hover:bg-contrareloj-dark">
+            <button onClick={() => navigate('/auth?redirect=/perfil')} className="bg-contrareloj hover:bg-contrareloj-dark text-white px-4 py-2 rounded">
               Iniciar sesión
-            </Button>
+            </button>
           </div>
         </main>
         <Footer />
@@ -329,342 +302,57 @@ const Profile = () => {
         <div className="max-w-6xl mx-auto">
           <div className="bg-white shadow rounded-lg mb-8">
             <div className="p-6">
-              <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
-                <div className="flex items-center mb-4 md:mb-0">
-                  <Avatar className="w-16 h-16 mr-4">
-                    <AvatarFallback className="text-2xl">
-                      {getInitials()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <h1 className="text-2xl font-bold">
-                      {profile.first_name && profile.last_name 
-                        ? `${profile.first_name} ${profile.last_name}` 
-                        : 'Usuario'}
-                    </h1>
-                    <p className="text-gray-500">
-                      Miembro desde {new Date(user.created_at || Date.now()).toLocaleDateString('es-CL', { year: 'numeric', month: 'long' })}
-                    </p>
-                  </div>
-                </div>
-                
-                <Button 
-                  variant={isEditing ? "default" : "outline"}
-                  className={isEditing ? "bg-contrareloj hover:bg-contrareloj-dark" : ""}
-                  onClick={() => {
-                    if (isEditing) {
-                      handleSaveProfile();
-                    } else {
-                      setIsEditing(true);
-                    }
-                  }}
-                >
-                  {isEditing ? 'Guardar cambios' : 'Editar perfil'}
-                </Button>
-              </div>
+              <ProfileHeader
+                firstName={profile.first_name || ''}
+                lastName={profile.last_name || ''}
+                createdAt={user.created_at || Date.now()}
+                isEditing={isEditing}
+                onEditClick={() => setIsEditing(true)}
+                onSaveClick={handleSaveProfile}
+                getInitials={getInitials}
+              />
               
-              {isEditing ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Nombre</label>
-                    <Input 
-                      type="text" 
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      className="w-full"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Apellido</label>
-                    <Input 
-                      type="text" 
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                      className="w-full"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Email</label>
-                    <Input 
-                      type="email" 
-                      value={user.email || ''}
-                      disabled
-                      className="w-full bg-gray-100"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Teléfono</label>
-                    <Input 
-                      type="text" 
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="w-full"
-                      placeholder="+56 9 1234 5678"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Ciudad</label>
-                    <Input 
-                      type="text" 
-                      value={city}
-                      onChange={(e) => setCity(e.target.value)}
-                      className="w-full"
-                      placeholder="Santiago"
-                    />
-                  </div>
-                  
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium mb-2">Cambiar contraseña</label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <Input 
-                        type="password" 
-                        placeholder="Nueva contraseña"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        className="w-full"
-                      />
-                      <Input 
-                        type="password" 
-                        placeholder="Confirmar contraseña"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="w-full"
-                      />
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <h2 className="text-sm font-medium text-gray-500 mb-1">Email</h2>
-                    <p>{user.email || 'No disponible'}</p>
-                  </div>
-                  
-                  <div>
-                    <h2 className="text-sm font-medium text-gray-500 mb-1">Teléfono</h2>
-                    <p>{profile.phone || 'No especificado'}</p>
-                  </div>
-                  
-                  <div>
-                    <h2 className="text-sm font-medium text-gray-500 mb-1">Ciudad</h2>
-                    <p>{profile.city || 'No especificada'}</p>
-                  </div>
-                  
-                  <div>
-                    <h2 className="text-sm font-medium text-gray-500 mb-1">Estadísticas</h2>
-                    <p>
-                      {biddingAuctions.length} ofertas • 
-                      {sellingAuctions.length} ventas • 
-                      {draftAuctions.length} borradores • 
-                      {favoriteAuctions.length} favoritos •
-                      {wonAuctions.length} ganados
-                    </p>
-                  </div>
-                </div>
-              )}
+              <ProfileForm
+                isEditing={isEditing}
+                firstName={firstName}
+                lastName={lastName}
+                phone={phone}
+                city={city}
+                email={user.email || ''}
+                newPassword={newPassword}
+                confirmPassword={confirmPassword}
+                biddingCount={biddingAuctions.length}
+                sellingCount={sellingAuctions.length}
+                draftsCount={draftAuctions.length}
+                favoritesCount={favoriteAuctions.length}
+                wonCount={wonAuctions.length}
+                setFirstName={setFirstName}
+                setLastName={setLastName}
+                setPhone={setPhone}
+                setCity={setCity}
+                setNewPassword={setNewPassword}
+                setConfirmPassword={setConfirmPassword}
+              />
             </div>
           </div>
           
-          <Tabs defaultValue="selling" className="space-y-6">
-            <TabsList className="w-full border-b">
-              <TabsTrigger value="bidding" className="flex-1">
-                Mis ofertas ({biddingAuctions.length})
-              </TabsTrigger>
-              <TabsTrigger value="favorites" className="flex-1">
-                Favoritos ({favoriteAuctions.length})
-              </TabsTrigger>
-              <TabsTrigger value="selling" className="flex-1">
-                Mis ventas ({sellingAuctions.length})
-              </TabsTrigger>
-              <TabsTrigger value="drafts" className="flex-1">
-                Borradores ({draftAuctions.length})
-              </TabsTrigger>
-              <TabsTrigger value="won" className="flex-1">
-                Ganados ({wonAuctions.length})
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="bidding">
-              {biddingAuctions.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {biddingAuctions.map((auction) => (
-                    <AuctionCard 
-                      key={auction.id} 
-                      id={auction.id} 
-                      title={auction.title} 
-                      description={auction.description} 
-                      imageUrl={auction.imageUrl || '/placeholder.svg'} 
-                      currentBid={auction.currentBid} 
-                      endTime={auction.endTime} 
-                      bidCount={auction.bidCount} 
-                      status={auction.status}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                    <span className="text-3xl">🔍</span>
-                  </div>
-                  <h3 className="text-xl font-medium mb-2">No tienes ofertas activas</h3>
-                  <p className="text-gray-500 mb-6">
-                    Explora entre todas nuestras subastas y comienza a ofertar hoy mismo.
-                  </p>
-                  <Button className="bg-contrareloj hover:bg-contrareloj-dark text-white" onClick={() => navigate('/explorar')}>
-                    Explorar subastas
-                  </Button>
-                </div>
-              )}
-            </TabsContent>
-            
-            <TabsContent value="favorites">
-              {isLoadingFavorites ? (
-                <div className="flex justify-center py-10">
-                  <p>Cargando tus favoritos...</p>
-                </div>
-              ) : favoriteAuctions.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {favoriteAuctions.map((auction) => (
-                    <AuctionCard 
-                      key={auction.id} 
-                      id={auction.id} 
-                      title={auction.title} 
-                      description={auction.description} 
-                      imageUrl={auction.imageUrl || '/placeholder.svg'} 
-                      currentBid={auction.currentBid} 
-                      endTime={auction.endTime} 
-                      bidCount={auction.bidCount} 
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                    <span className="text-3xl">❤️</span>
-                  </div>
-                  <h3 className="text-xl font-medium mb-2">No tienes favoritos</h3>
-                  <p className="text-gray-500 mb-6">
-                    Guarda tus subastas favoritas para seguirlas fácilmente.
-                  </p>
-                  <Button className="bg-contrareloj hover:bg-contrareloj-dark text-white" onClick={() => navigate('/explorar')}>
-                    Explorar subastas
-                  </Button>
-                </div>
-              )}
-            </TabsContent>
-            
-            <TabsContent value="selling">
-              {isLoadingVehicles ? (
-                <div className="flex justify-center py-10">
-                  <p>Cargando tus publicaciones...</p>
-                </div>
-              ) : sellingAuctions.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {sellingAuctions.map((auction) => (
-                    <AuctionCard 
-                      key={auction.id} 
-                      id={auction.auctionId || auction.id}
-                      title={auction.title} 
-                      description={auction.description} 
-                      imageUrl={auction.imageUrl || '/placeholder.svg'} 
-                      currentBid={auction.currentBid} 
-                      endTime={auction.endTime} 
-                      bidCount={auction.bidCount} 
-                      status={auction.status}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                    <span className="text-3xl">🚗</span>
-                  </div>
-                  <h3 className="text-xl font-medium mb-2">No tienes autos a la venta</h3>
-                  <p className="text-gray-500 mb-6">
-                    Publica tu auto y véndelo al mejor precio en nuestra plataforma.
-                  </p>
-                  <Button className="bg-contrareloj hover:bg-contrareloj-dark text-white" onClick={() => navigate('/vender')}>
-                    Vender mi auto
-                  </Button>
-                </div>
-              )}
-            </TabsContent>
-            
-            <TabsContent value="drafts">
-              {isLoadingVehicles ? (
-                <div className="flex justify-center py-10">
-                  <p>Cargando tus borradores...</p>
-                </div>
-              ) : draftAuctions.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {draftAuctions.map((draft) => (
-                    <AuctionCard 
-                      key={draft.id} 
-                      id={draft.id}
-                      title={draft.title} 
-                      description={draft.description} 
-                      imageUrl={draft.imageUrl || '/placeholder.svg'} 
-                      currentBid={draft.currentBid} 
-                      endTime={draft.endTime} 
-                      bidCount={draft.bidCount} 
-                      status="draft"
-                      isDraft={true}
-                      vehicleId={draft.vehicleId}
-                      onDelete={handleDeleteDraft}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                    <span className="text-3xl">📝</span>
-                  </div>
-                  <h3 className="text-xl font-medium mb-2">No tienes borradores guardados</h3>
-                  <p className="text-gray-500 mb-6">
-                    Tus publicaciones incompletas aparecerán aquí para que puedas continuar con ellas más tarde.
-                  </p>
-                  <Button className="bg-contrareloj hover:bg-contrareloj-dark text-white" onClick={() => navigate('/vender')}>
-                    Vender mi auto
-                  </Button>
-                </div>
-              )}
-            </TabsContent>
-            
-            <TabsContent value="won">
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                  <span className="text-3xl">🏆</span>
-                </div>
-                <h3 className="text-xl font-medium mb-2">Aún no has ganado ninguna subasta</h3>
-                <p className="text-gray-500 mb-6">
-                  Explora entre todas nuestras subastas y comienza a ofertar hoy mismo.
-                </p>
-                <Button className="bg-contrareloj hover:bg-contrareloj-dark text-white" onClick={() => navigate('/explorar')}>
-                  Explorar subastas
-                </Button>
-              </div>
-            </TabsContent>
-          </Tabs>
+          <ProfileTabs
+            biddingAuctions={biddingAuctions}
+            favoriteAuctions={favoriteAuctions}
+            sellingAuctions={sellingAuctions}
+            draftAuctions={draftAuctions}
+            wonAuctions={wonAuctions}
+            isLoadingVehicles={isLoadingVehicles}
+            isLoadingFavorites={isLoadingFavorites}
+            onDeleteDraft={handleDeleteDraft}
+          />
         </div>
         
         {/* Sección de verificación de identidad */}
-        <div className="mt-8">
-          <h2 className="text-xl font-bold mb-4">Verificación de identidad</h2>
-          <p className="mb-4 text-gray-600">
-            Para participar en subastas necesitas verificar tu identidad. Esto nos ayuda a mantener un entorno seguro para todos los usuarios.
-          </p>
-          <Button 
-            onClick={() => setShowVerifyDialog(true)}
-            variant="outline"
-            className="w-full md:w-auto"
-          >
-            {profile?.identity_verified ? "Ver estado de verificación" : "Verificar mi identidad"}
-          </Button>
-        </div>
+        <IdentityVerificationSection
+          isVerified={profile?.identity_verified}
+          onVerifyClick={() => setShowVerifyDialog(true)}
+        />
       </main>
       
       <Footer />

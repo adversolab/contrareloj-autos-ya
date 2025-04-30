@@ -81,14 +81,21 @@ export async function getUserFavorites() {
     // For each favorite, get the primary photo of the vehicle
     const favoritesWithPhotos = await Promise.all(
       data.map(async (fav) => {
-        if (!fav.auctions?.vehicles?.id) {
+        // Fix: Check if auctions and vehicles exist and have an id property
+        if (!fav.auctions?.vehicles) {
+          return fav;
+        }
+        
+        // We need to safely access the vehicle id if it exists
+        const vehicleId = fav.auctions.vehicles.id;
+        if (!vehicleId) {
           return fav;
         }
 
         const { data: photos } = await supabase
           .from('vehicle_photos')
           .select('url')
-          .eq('vehicle_id', fav.auctions.vehicles.id)
+          .eq('vehicle_id', vehicleId)
           .eq('is_primary', true)
           .limit(1);
 
@@ -110,11 +117,15 @@ export async function getUserFavorites() {
       if (!fav.auctions) {
         return null;
       }
+      
+      // Fix: Safely access photo_url property
+      const photoUrl = fav.auctions.vehicles?.photo_url;
+      
       return {
         id: fav.auctions.id,
         title: `${fav.auctions.vehicles?.brand || ''} ${fav.auctions.vehicles?.model || ''} ${fav.auctions.vehicles?.year || ''}`.trim(),
         description: fav.auctions.vehicles?.description || '',
-        imageUrl: fav.auctions.vehicles?.photo_url || '/placeholder.svg',
+        imageUrl: photoUrl || '/placeholder.svg',
         currentBid: fav.auctions.start_price || 0,
         endTime: fav.auctions.end_date ? new Date(fav.auctions.end_date) : new Date(),
         bidCount: 0, // Default since we don't have this info
