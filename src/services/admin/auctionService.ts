@@ -87,22 +87,48 @@ export async function getAuctions() {
 
 export async function approveAuction(auctionId: string) {
   try {
+    const now = new Date();
+    
+    // Obtener información de la subasta
+    const { data: auction, error: fetchError } = await supabase
+      .from('auctions')
+      .select('duration_days')
+      .eq('id', auctionId)
+      .single();
+      
+    if (fetchError) {
+      console.error('Error fetching auction information:', fetchError);
+      toast.error('Failed to fetch auction information');
+      return false;
+    }
+    
+    // Calcular fechas para la subasta activa
+    const startDate = now;
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + (auction?.duration_days || 7)); // Use defined duration or 7 days default
+    
+    // Update auction: approve and change status to active
     const { error } = await supabase
       .from('auctions')
-      .update({ is_approved: true, status: 'approved' })
+      .update({ 
+        is_approved: true,
+        status: 'active', // Changed from 'approved' to 'active'
+        start_date: startDate.toISOString(),
+        end_date: endDate.toISOString()
+      })
       .eq('id', auctionId);
       
     if (error) {
       console.error('Error approving auction:', error);
-      toast.error('Failed to approve the auction');
+      toast.error('Failed to approve auction');
       return false;
     }
     
-    toast.success('Auction approved successfully');
+    toast.success('Auction approved and activated successfully');
     return true;
   } catch (error) {
     console.error('Unexpected error:', error);
-    toast.error('Failed to approve the auction');
+    toast.error('Failed to approve auction');
     return false;
   }
 }
@@ -131,22 +157,59 @@ export async function pauseAuction(auctionId: string) {
 
 export async function deleteAuction(auctionId: string) {
   try {
-    const { error } = await supabase
+    // First get the vehicle ID associated with the auction
+    const { data: auction, error: fetchError } = await supabase
+      .from('auctions')
+      .select('vehicle_id')
+      .eq('id', auctionId)
+      .single();
+      
+    if (fetchError) {
+      console.error('Error fetching auction information:', fetchError);
+      toast.error('Failed to fetch auction information');
+      return false;
+    }
+    
+    const vehicleId = auction?.vehicle_id;
+    
+    // Delete the auction
+    const { error: deleteAuctionError } = await supabase
       .from('auctions')
       .delete()
       .eq('id', auctionId);
       
-    if (error) {
-      console.error('Error deleting auction:', error);
-      toast.error('Failed to delete the auction');
+    if (deleteAuctionError) {
+      console.error('Error deleting auction:', deleteAuctionError);
+      toast.error('Failed to delete auction');
       return false;
+    }
+    
+    // If there's an associated vehicle, delete it too
+    if (vehicleId) {
+      // Delete vehicle features
+      await supabase
+        .from('vehicle_features')
+        .delete()
+        .eq('vehicle_id', vehicleId);
+        
+      // Delete vehicle photos
+      await supabase
+        .from('vehicle_photos')
+        .delete()
+        .eq('vehicle_id', vehicleId);
+        
+      // Finally delete the vehicle
+      await supabase
+        .from('vehicles')
+        .delete()
+        .eq('id', vehicleId);
     }
     
     toast.success('Auction deleted successfully');
     return true;
   } catch (error) {
     console.error('Unexpected error:', error);
-    toast.error('Failed to delete the auction');
+    toast.error('Failed to delete auction');
     return false;
   }
 }
