@@ -34,6 +34,8 @@ export async function getUserVehicles() {
           .eq('is_primary', true)
           .limit(1);
         
+        console.log(`Vehicle ${vehicle.id} photos:`, photos);
+        
         return {
           ...vehicle,
           photo_url: photos && photos.length > 0 ? photos[0].url : undefined
@@ -99,6 +101,8 @@ export async function getUserFavorites() {
           .eq('vehicle_id', vehicleId)
           .eq('is_primary', true)
           .limit(1);
+
+        console.log(`Favorite vehicle ${vehicleId} photos:`, photos);
 
         // Create a properly typed vehicle object with photo_url
         const vehicleWithPhoto = {
@@ -175,6 +179,8 @@ export async function getVehicleDetails(vehicleId: string) {
       .select('*')
       .eq('vehicle_id', vehicleId)
       .order('position', { ascending: true });
+
+    console.log(`Vehicle ${vehicleId} photos:`, photos);
 
     // Get features
     const { data: features } = await supabase

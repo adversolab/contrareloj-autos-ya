@@ -11,7 +11,7 @@ import { toast } from "sonner";
  * @param bucket The storage bucket to upload to
  * @returns Object with the public URL and an error if any
  */
-export async function uploadPhoto(file: File, fileName: string = UUID(), bucket: string = 'vehicles') {
+export async function uploadPhoto(file: File, fileName: string = UUID(), bucket: string = 'vehicle-photos') {
   try {
     // Upload the file to Supabase storage
     const { data: uploadData, error: uploadError } = await supabase
@@ -108,6 +108,8 @@ export async function uploadVehiclePhoto(vehicleId: string, photoData: {
     
     if (insertError) throw insertError;
     
+    console.log("Vehicle photo uploaded successfully:", url);
+    
     return { success: true, url, error: null, data };
   } catch (error: any) {
     console.error("Error uploading vehicle photo:", error);
@@ -127,7 +129,7 @@ export async function uploadVehicleReport(vehicleId: string, file: File) {
     const { url, error: uploadError } = await uploadPhoto(
       file, 
       `${vehicleId}/reports/${UUID()}_${file.name}`, 
-      'reports'
+      'vehicle-photos'
     );
     
     if (uploadError) throw new Error(uploadError);
@@ -165,7 +167,7 @@ export async function uploadAutofactReport(vehicleId: string, file: File) {
     const { url, error: uploadError } = await uploadPhoto(
       file,
       `${vehicleId}/autofact/${UUID()}_${file.name}`,
-      'reports'
+      'vehicle-photos'
     );
     
     if (uploadError) throw new Error(uploadError);
@@ -180,6 +182,8 @@ export async function uploadAutofactReport(vehicleId: string, file: File) {
       .eq('id', vehicleId);
     
     if (updateError) throw updateError;
+    
+    console.log("Autofact report uploaded successfully:", url);
     
     return { success: true, url, error: null };
   } catch (error: any) {
