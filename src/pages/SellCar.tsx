@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -19,6 +20,7 @@ import {
   VehicleFeature,
   AuctionInfo,
 } from '@/services/vehicleService';
+import { uploadVehiclePhotos } from '@/services/vehicles/uploadService'; // Add this import
 
 // Components
 import StepIndicator from '@/components/sell/StepIndicator';
@@ -329,9 +331,11 @@ const SellCar = () => {
         
       console.log(`Found ${photosToUpload.length} photos to upload`);
       
-      // Upload all photos at once for better performance
+      // Use the imported uploadVehiclePhotos function
       if (photosToUpload.length > 0) {
-        const result = await uploadVehiclePhotos(vehicleId, photosToUpload.map(p => p.file));
+        // Extract only the files for the upload function
+        const photoFiles = photosToUpload.map(p => p.file);
+        const result = await uploadVehiclePhotos(vehicleId, photoFiles);
         
         if (result.error) {
           throw new Error(`Error uploading photos: ${result.error}`);
