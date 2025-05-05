@@ -112,7 +112,7 @@ export async function approveAuction(auctionId: string) {
       .from('auctions')
       .update({ 
         is_approved: true,
-        status: 'active', // Changed from 'approved' to 'active'
+        status: 'active',
         start_date: startDate.toISOString(),
         end_date: endDate.toISOString()
       })
@@ -135,6 +135,7 @@ export async function approveAuction(auctionId: string) {
 
 export async function pauseAuction(auctionId: string) {
   try {
+    console.log('Pausing auction:', auctionId);
     const { error } = await supabase
       .from('auctions')
       .update({ status: 'paused' })
@@ -146,6 +147,7 @@ export async function pauseAuction(auctionId: string) {
       return false;
     }
     
+    console.log('Auction paused successfully');
     toast.success('Auction paused successfully');
     return true;
   } catch (error) {
@@ -157,6 +159,8 @@ export async function pauseAuction(auctionId: string) {
 
 export async function deleteAuction(auctionId: string) {
   try {
+    console.log('Deleting auction:', auctionId);
+    
     // First get the vehicle ID associated with the auction
     const { data: auction, error: fetchError } = await supabase
       .from('auctions')
@@ -183,6 +187,8 @@ export async function deleteAuction(auctionId: string) {
       toast.error('Failed to delete auction');
       return false;
     }
+    
+    console.log('Auction deleted successfully');
     
     // If there's an associated vehicle, delete it too
     if (vehicleId) {

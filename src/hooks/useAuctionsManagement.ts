@@ -24,14 +24,14 @@ export const useAuctionsManagement = () => {
   const handleApproveAuction = async (auctionId: string) => {
     const success = await approveAuction(auctionId);
     if (success) {
-      fetchAuctions();
+      await fetchAuctions();
     }
   };
 
   const handlePauseAuction = async (auctionId: string) => {
     const success = await pauseAuction(auctionId);
     if (success) {
-      fetchAuctions();
+      await fetchAuctions();
     }
   };
 
@@ -45,7 +45,7 @@ export const useAuctionsManagement = () => {
     
     const success = await deleteAuction(auctionToDelete);
     if (success) {
-      fetchAuctions();
+      await fetchAuctions();
     }
     
     setDeleteDialogOpen(false);
