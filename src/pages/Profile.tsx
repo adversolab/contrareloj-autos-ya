@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -14,6 +13,7 @@ import ProfileForm from '@/components/profile/ProfileForm';
 import ProfileTabs from '@/components/profile/ProfileTabs';
 import IdentityVerificationSection from '@/components/profile/IdentityVerificationSection';
 import { Auction, Vehicle } from '@/components/profile/types';
+import MandatoryProfileForm from '@/components/MandatoryProfileForm';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -36,6 +36,10 @@ const Profile = () => {
   const [wonAuctions, setWonAuctions] = useState<Auction[]>([]);
   const [isLoadingVehicles, setIsLoadingVehicles] = useState(false);
   const [isLoadingFavorites, setIsLoadingFavorites] = useState(false);
+  
+  // Check if profile is incomplete
+  const [isProfileIncomplete, setIsProfileIncomplete] = useState(false);
+  const [showMandatoryForm, setShowMandatoryForm] = useState(false);
 
   // Load profile data
   useEffect(() => {
@@ -44,6 +48,15 @@ const Profile = () => {
       setLastName(profile.last_name || '');
       setPhone(profile.phone || '');
       setCity(profile.city || '');
+      
+      // Check if any of the required fields is empty
+      const isIncomplete = !profile.first_name || !profile.last_name || !profile.phone || !profile.city;
+      setIsProfileIncomplete(isIncomplete);
+      
+      // If any of the fields is missing, show the mandatory form
+      if (isIncomplete) {
+        setShowMandatoryForm(true);
+      }
     }
   }, [profile]);
 
@@ -184,6 +197,11 @@ const Profile = () => {
     }
   };
   
+  const handleCloseMandatoryForm = () => {
+    // Only allow closing if the form was submitted successfully
+    // This is handled by the form component itself
+  };
+
   const handleDeleteDraft = () => {
     // Refresh the vehicles list
     const loadUserVehicles = async () => {
@@ -361,6 +379,13 @@ const Profile = () => {
       <VerifyIdentityDialog 
         isOpen={showVerifyDialog} 
         onClose={() => setShowVerifyDialog(false)} 
+      />
+      
+      {/* Mandatory Profile Form */}
+      <MandatoryProfileForm
+        isOpen={showMandatoryForm}
+        onClose={handleCloseMandatoryForm}
+        redirectAfter={searchParams.get('redirect') || '/perfil'}
       />
     </div>
   );

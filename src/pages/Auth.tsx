@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { signIn, signUp, getCurrentUser } from '@/services/authService';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import MandatoryProfileForm from '@/components/MandatoryProfileForm';
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -18,6 +19,8 @@ const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
+  const [showProfileForm, setShowProfileForm] = useState(false);
+  const [newUserId, setNewUserId] = useState<string | null>(null);
 
   useEffect(() => {
     // Verificar si el usuario ya está autenticado
@@ -87,13 +90,11 @@ const Auth = () => {
         const { user, error } = await signUp(email, password);
         
         if (user) {
-          toast.success("Registro exitoso. Ahora necesitas verificar tu identidad.");
-          setIsLogin(true);
-          setEmail('');
-          setPassword('');
-          setConfirmPassword('');
-          // Redirigir al usuario al perfil para completar la verificación de identidad
-          navigate('/perfil?verify=true');
+          toast.success("Registro exitoso. Por favor complete su información de perfil.");
+          // Store user ID for profile completion
+          setNewUserId(user.id);
+          // Show profile form immediately after signup
+          setShowProfileForm(true);
         } else if (error) {
           toast.error(error.message || "Error al registrarse");
         }
@@ -103,6 +104,11 @@ const Auth = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleProfileFormClose = () => {
+    setShowProfileForm(false);
+    // On close, we don't redirect as the user must complete the profile
   };
 
   if (isChecking) {
@@ -216,6 +222,13 @@ const Auth = () => {
         </Card>
       </main>
       <Footer />
+      
+      {/* Mandatory Profile Form */}
+      <MandatoryProfileForm 
+        isOpen={showProfileForm} 
+        onClose={handleProfileFormClose}
+        redirectAfter={redirectUrl || '/'}
+      />
     </div>
   );
 };

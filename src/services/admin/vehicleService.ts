@@ -113,6 +113,42 @@ export async function approveVehicle(vehicleId: string) {
 
 export async function deleteVehicle(vehicleId: string) {
   try {
+    console.log('Admin service: Attempting to delete vehicle:', vehicleId);
+    
+    // First delete any auctions related to this vehicle
+    const { error: auctionsError } = await supabase
+      .from('auctions')
+      .delete()
+      .eq('vehicle_id', vehicleId);
+      
+    if (auctionsError) {
+      console.error('Error deleting related auctions:', auctionsError);
+      // Continue with deletion process even if auction deletion fails
+    }
+    
+    // Delete vehicle features
+    const { error: featuresError } = await supabase
+      .from('vehicle_features')
+      .delete()
+      .eq('vehicle_id', vehicleId);
+      
+    if (featuresError) {
+      console.error('Error deleting vehicle features:', featuresError);
+      // Continue with deletion process
+    }
+    
+    // Delete vehicle photos
+    const { error: photosError } = await supabase
+      .from('vehicle_photos')
+      .delete()
+      .eq('vehicle_id', vehicleId);
+      
+    if (photosError) {
+      console.error('Error deleting vehicle photos:', photosError);
+      // Continue with deletion process
+    }
+    
+    // Finally delete the vehicle itself
     const { error } = await supabase
       .from('vehicles')
       .delete()
