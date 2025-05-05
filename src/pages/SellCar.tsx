@@ -18,6 +18,7 @@ import AuthRequiredScreen from '@/components/sell/AuthRequiredScreen';
 import ProfileRequiredScreen from '@/components/sell/ProfileRequiredScreen';
 
 const SellCarContent = () => {
+  const navigate = useNavigate(); // Re-added the useNavigate hook
   const {
     step,
     setStep,
