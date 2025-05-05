@@ -355,6 +355,7 @@ export type Database = {
       }
       vehicles: {
         Row: {
+          autofact_report_url: string | null
           brand: string
           created_at: string
           description: string | null
@@ -369,6 +370,7 @@ export type Database = {
           year: number
         }
         Insert: {
+          autofact_report_url?: string | null
           brand: string
           created_at?: string
           description?: string | null
@@ -383,6 +385,7 @@ export type Database = {
           year: number
         }
         Update: {
+          autofact_report_url?: string | null
           brand?: string
           created_at?: string
           description?: string | null
