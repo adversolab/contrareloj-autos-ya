@@ -18,9 +18,9 @@ import AuthRequiredScreen from '@/components/sell/AuthRequiredScreen';
 import ProfileRequiredScreen from '@/components/sell/ProfileRequiredScreen';
 
 const SellCarContent = () => {
-  const navigate = useNavigate();
   const {
     step,
+    setStep,
     isLoggedIn,
     isCheckingAuth,
     isAuthDialogOpen,
@@ -157,7 +157,7 @@ const SellCarContent = () => {
                   carInfo={carInfo}
                   auctionInfo={auctionInfo}
                   onPrevStep={prevStep}
-                  onEditInfo={() => step=1}
+                  onEditInfo={() => setStep(1)}
                   onSubmit={handleFinish}
                   isProcessing={isProcessing}
                 />
