@@ -31,6 +31,7 @@ const VehiclesManagement = () => {
   const [loading, setLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [vehicleToDelete, setVehicleToDelete] = useState<string | null>(null);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
   const fetchVehicles = async () => {
     setLoading(true);
@@ -40,6 +41,7 @@ const VehiclesManagement = () => {
   };
 
   const handleApproveVehicle = async (vehicleId: string) => {
+    setOpenDropdown(null); // Close dropdown after action
     const success = await approveVehicle(vehicleId);
     if (success) {
       fetchVehicles();
@@ -47,6 +49,7 @@ const VehiclesManagement = () => {
   };
 
   const openDeleteDialog = (vehicleId: string) => {
+    setOpenDropdown(null); // Close dropdown after action
     setVehicleToDelete(vehicleId);
     setDeleteDialogOpen(true);
   };
@@ -133,7 +136,12 @@ const VehiclesManagement = () => {
                       {vehicle.created_at ? format(new Date(vehicle.created_at), 'dd/MM/yyyy') : ''}
                     </TableCell>
                     <TableCell className="text-right">
-                      <DropdownMenu>
+                      <DropdownMenu 
+                        open={openDropdown === vehicle.id} 
+                        onOpenChange={(open) => {
+                          setOpenDropdown(open ? vehicle.id : null);
+                        }}
+                      >
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon">
                             <MoreHorizontal className="h-4 w-4" />
