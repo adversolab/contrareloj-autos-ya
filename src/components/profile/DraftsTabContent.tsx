@@ -1,8 +1,9 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuctionCard from '@/components/AuctionCard';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Auction {
   id: string | number;
@@ -24,6 +25,53 @@ interface DraftsTabContentProps {
 
 const DraftsTabContent = ({ draftAuctions, isLoading, onDelete }: DraftsTabContentProps) => {
   const navigate = useNavigate();
+  const [auctionsWithImages, setAuctionsWithImages] = useState<Auction[]>([]);
+  
+  useEffect(() => {
+    const loadVehicleImages = async () => {
+      if (!draftAuctions.length) return;
+      
+      const updatedAuctions = await Promise.all(
+        draftAuctions.map(async (auction) => {
+          if (!auction.vehicleId) return auction;
+          
+          try {
+            // Fetch primary image for this vehicle
+            const { data: photos, error } = await supabase
+              .from('vehicle_photos')
+              .select('url')
+              .eq('vehicle_id', auction.vehicleId)
+              .eq('is_primary', true)
+              .limit(1);
+            
+            console.log(`Fetched photos for vehicle ${auction.vehicleId}:`, photos);
+            
+            if (error) {
+              console.error(`Error fetching image for auction ${auction.id}:`, error);
+              return auction;
+            }
+            
+            // If we found a primary image, update the auction with it
+            if (photos && photos.length > 0) {
+              return {
+                ...auction,
+                imageUrl: photos[0].url
+              };
+            }
+            
+            return auction;
+          } catch (err) {
+            console.error(`Error processing auction ${auction.id}:`, err);
+            return auction;
+          }
+        })
+      );
+      
+      setAuctionsWithImages(updatedAuctions);
+    };
+    
+    loadVehicleImages();
+  }, [draftAuctions]);
   
   if (isLoading) {
     return <div className="flex justify-center py-10">
@@ -31,10 +79,12 @@ const DraftsTabContent = ({ draftAuctions, isLoading, onDelete }: DraftsTabConte
     </div>;
   }
 
-  if (draftAuctions.length > 0) {
+  const displayAuctions = auctionsWithImages.length > 0 ? auctionsWithImages : draftAuctions;
+
+  if (displayAuctions.length > 0) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {draftAuctions.map((draft) => (
+        {displayAuctions.map((draft) => (
           <AuctionCard 
             key={draft.id} 
             id={draft.id}

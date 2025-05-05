@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -317,20 +316,40 @@ const SellCar = () => {
     setIsProcessing(true);
 
     try {
-      // Upload photos
-      for (const photo of uploadedPhotos) {
-        if (photo.file) {
-          await uploadVehiclePhoto(vehicleId, {
-            file: photo.file,
-            isMain: photo.isMain,
-            position: photo.id
-          });
+      console.log("Starting photo uploads for vehicle:", vehicleId);
+      
+      // First, collect all files with their positions
+      const photosToUpload = uploadedPhotos
+        .filter(photo => photo.file !== null)
+        .map((photo) => ({
+          file: photo.file!,
+          isMain: photo.isMain,
+          position: photo.id
+        }));
+        
+      console.log(`Found ${photosToUpload.length} photos to upload`);
+      
+      // Upload all photos at once for better performance
+      if (photosToUpload.length > 0) {
+        const result = await uploadVehiclePhotos(vehicleId, photosToUpload.map(p => p.file));
+        
+        if (result.error) {
+          throw new Error(`Error uploading photos: ${result.error}`);
         }
+        
+        console.log("Successfully uploaded photos:", result.photos);
       }
       
       // Upload Autofact report
       if (autofactReport) {
-        await uploadAutofactReport(vehicleId, autofactReport);
+        console.log("Uploading Autofact report");
+        const reportResult = await uploadAutofactReport(vehicleId, autofactReport);
+        
+        if (!reportResult.success) {
+          throw new Error(`Error uploading Autofact report: ${reportResult.error}`);
+        }
+        
+        console.log("Successfully uploaded report:", reportResult.url);
       }
 
       // Save features
@@ -341,13 +360,15 @@ const SellCar = () => {
         });
       });
 
+      console.log("Saving vehicle features:", allFeatures.length, "features");
       await saveVehicleFeatures(vehicleId, allFeatures);
 
       // Go to next step
+      toast.success("Fotos y detalles guardados exitosamente");
       nextStep();
-    } catch (error) {
-      toast.error("Ocurrió un error al guardar las fotos y características");
-      console.error(error);
+    } catch (error: any) {
+      console.error("Error in saveStep2:", error);
+      toast.error("Ocurrió un error al guardar las fotos y características: " + error.message);
     } finally {
       setIsProcessing(false);
     }

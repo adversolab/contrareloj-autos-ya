@@ -13,6 +13,8 @@ import { toast } from "sonner";
  */
 export async function uploadPhoto(file: File, fileName: string = UUID(), bucket: string = 'vehicle-photos') {
   try {
+    console.log(`Uploading photo to ${bucket}/${fileName}`);
+    
     // Upload the file to Supabase storage
     const { data: uploadData, error: uploadError } = await supabase
       .storage
@@ -20,6 +22,7 @@ export async function uploadPhoto(file: File, fileName: string = UUID(), bucket:
       .upload(`${fileName}`, file);
 
     if (uploadError) {
+      console.error("Upload error:", uploadError);
       throw uploadError;
     }
 
@@ -29,6 +32,7 @@ export async function uploadPhoto(file: File, fileName: string = UUID(), bucket:
       .from(bucket)
       .getPublicUrl(uploadData.path);
 
+    console.log("Upload successful, URL:", publicUrlData.publicUrl);
     return { url: publicUrlData.publicUrl, error: null };
   } catch (error: any) {
     console.error("Error uploading photo:", error);
@@ -47,10 +51,18 @@ export async function uploadVehiclePhotos(vehicleId: string, files: File[]) {
   try {
     if (!files.length) return { photos: [], error: null };
     
+    console.log(`Uploading ${files.length} photos for vehicle ${vehicleId}`);
+    
     const photoPromises = files.map(async (file, index) => {
-      const { url, error } = await uploadPhoto(file, `${vehicleId}/${UUID()}`);
+      const filePath = `vehicles/${vehicleId}/${UUID()}`;
+      const { url, error } = await uploadPhoto(file, filePath);
       
-      if (error) throw new Error(`Error uploading photo ${index + 1}: ${error}`);
+      if (error) {
+        console.error(`Error uploading photo ${index + 1}:`, error);
+        throw new Error(`Error uploading photo ${index + 1}: ${error}`);
+      }
+      
+      console.log(`Photo ${index + 1} uploaded successfully:`, url);
       
       return {
         vehicle_id: vehicleId,
@@ -61,6 +73,7 @@ export async function uploadVehiclePhotos(vehicleId: string, files: File[]) {
     });
     
     const photos = await Promise.all(photoPromises);
+    console.log("All photos uploaded, saving to database:", photos);
     
     // Save photo records to the database
     const { data, error } = await supabase
@@ -68,8 +81,12 @@ export async function uploadVehiclePhotos(vehicleId: string, files: File[]) {
       .insert(photos)
       .select();
     
-    if (error) throw error;
+    if (error) {
+      console.error("Error saving photos to database:", error);
+      throw error;
+    }
     
+    console.log("Photos saved to database:", data);
     return { photos: data, error: null };
   } catch (error: any) {
     console.error("Error uploading vehicle photos:", error);
@@ -91,9 +108,18 @@ export async function uploadVehiclePhoto(vehicleId: string, photoData: {
 }) {
   try {
     const { file, isMain = false, position } = photoData;
-    const { url, error } = await uploadPhoto(file, `${vehicleId}/${UUID()}`);
+    const filePath = `vehicles/${vehicleId}/${UUID()}`;
     
-    if (error) throw new Error(error);
+    console.log(`Uploading vehicle photo to ${filePath}, isMain: ${isMain}, position: ${position}`);
+    
+    const { url, error } = await uploadPhoto(file, filePath);
+    
+    if (error) {
+      console.error("Error uploading vehicle photo:", error);
+      throw new Error(error);
+    }
+    
+    console.log("Photo uploaded successfully, saving to database:", url);
     
     // Save photo record to the database
     const { data, error: insertError } = await supabase
@@ -106,9 +132,12 @@ export async function uploadVehiclePhoto(vehicleId: string, photoData: {
       })
       .select();
     
-    if (insertError) throw insertError;
+    if (insertError) {
+      console.error("Error saving photo to database:", insertError);
+      throw insertError;
+    }
     
-    console.log("Vehicle photo uploaded successfully:", url);
+    console.log("Vehicle photo saved to database:", data);
     
     return { success: true, url, error: null, data };
   } catch (error: any) {
@@ -126,13 +155,17 @@ export async function uploadVehiclePhoto(vehicleId: string, photoData: {
  */
 export async function uploadVehicleReport(vehicleId: string, file: File) {
   try {
-    const { url, error: uploadError } = await uploadPhoto(
-      file, 
-      `${vehicleId}/reports/${UUID()}_${file.name}`, 
-      'vehicle-photos'
-    );
+    const filePath = `vehicles/${vehicleId}/reports/${UUID()}_${file.name}`;
+    console.log(`Uploading vehicle report to ${filePath}`);
     
-    if (uploadError) throw new Error(uploadError);
+    const { url, error: uploadError } = await uploadPhoto(file, filePath);
+    
+    if (uploadError) {
+      console.error("Error uploading vehicle report:", uploadError);
+      throw new Error(uploadError);
+    }
+    
+    console.log("Report uploaded successfully:", url);
     
     // Update the vehicle with the report URL
     const { error: updateError } = await supabase
@@ -142,7 +175,10 @@ export async function uploadVehicleReport(vehicleId: string, file: File) {
       })
       .eq('id', vehicleId);
     
-    if (updateError) throw updateError;
+    if (updateError) {
+      console.error("Error updating vehicle:", updateError);
+      throw updateError;
+    }
     
     return { url, error: null };
   } catch (error: any) {
@@ -164,13 +200,17 @@ export async function uploadAutofactReport(vehicleId: string, file: File) {
       throw new Error('El archivo debe ser un PDF');
     }
     
-    const { url, error: uploadError } = await uploadPhoto(
-      file,
-      `${vehicleId}/autofact/${UUID()}_${file.name}`,
-      'vehicle-photos'
-    );
+    const filePath = `vehicles/${vehicleId}/autofact/${UUID()}_${file.name}`;
+    console.log(`Uploading Autofact report to ${filePath}`);
     
-    if (uploadError) throw new Error(uploadError);
+    const { url, error: uploadError } = await uploadPhoto(file, filePath);
+    
+    if (uploadError) {
+      console.error("Error uploading Autofact report:", uploadError);
+      throw new Error(uploadError);
+    }
+    
+    console.log("Autofact report uploaded successfully:", url);
     
     // Update the vehicle with the Autofact report URL
     const { error: updateError } = await supabase
@@ -181,9 +221,10 @@ export async function uploadAutofactReport(vehicleId: string, file: File) {
       })
       .eq('id', vehicleId);
     
-    if (updateError) throw updateError;
-    
-    console.log("Autofact report uploaded successfully:", url);
+    if (updateError) {
+      console.error("Error updating vehicle with report URL:", updateError);
+      throw updateError;
+    }
     
     return { success: true, url, error: null };
   } catch (error: any) {
