@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { 
   Select, 
   SelectContent, 
@@ -25,6 +26,23 @@ const BasicInfoForm: React.FC<BasicInfoFormProps> = ({
   onSubmit,
   isProcessing
 }) => {
+  // Function to handle numeric input for kilometers
+  const handleKilometersChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Only allow digits and ensure a valid number format
+    const formattedValue = value.replace(/[^\d]/g, '');
+    
+    // Update the input with the formatted value
+    const syntheticEvent = {
+      target: {
+        name: 'kilometers',
+        value: formattedValue
+      }
+    } as React.ChangeEvent<HTMLInputElement>;
+    
+    onInputChange(syntheticEvent);
+  };
+
   return (
     <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); onSubmit(); }}>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -53,13 +71,13 @@ const BasicInfoForm: React.FC<BasicInfoFormProps> = ({
         
         <div>
           <label className="block text-sm font-medium mb-2">Modelo*</label>
-          <input 
+          <Input 
             type="text"
             name="model"
             value={carInfo.model}
             onChange={onInputChange}
             placeholder="Ej: Corolla XEI"
-            className="w-full border border-gray-300 rounded-md p-2"
+            className="w-full"
           />
         </div>
         
@@ -84,13 +102,14 @@ const BasicInfoForm: React.FC<BasicInfoFormProps> = ({
         
         <div>
           <label className="block text-sm font-medium mb-2">Kilómetros*</label>
-          <input 
+          <Input 
             type="text"
             name="kilometers"
             value={carInfo.kilometers}
-            onChange={onInputChange}
+            onChange={handleKilometersChange}
             placeholder="Ej: 45000"
-            className="w-full border border-gray-300 rounded-md p-2"
+            className="w-full"
+            inputMode="numeric"
           />
         </div>
         

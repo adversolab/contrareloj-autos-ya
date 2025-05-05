@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -20,7 +19,7 @@ import {
   VehicleFeature,
   AuctionInfo,
 } from '@/services/vehicleService';
-import { uploadVehiclePhotos } from '@/services/vehicles/uploadService'; // Add this import
+import { uploadVehiclePhotos } from '@/services/vehicles/uploadService';
 
 // Components
 import StepIndicator from '@/components/sell/StepIndicator';
@@ -267,6 +266,13 @@ const SellCar = () => {
       return;
     }
 
+    // Validate kilometers separately
+    const kilometersValue = carInfo.kilometers ? carInfo.kilometers.toString().replace(/\D/g, '') : '';
+    if (!kilometersValue || isNaN(parseInt(kilometersValue)) || parseInt(kilometersValue) <= 0) {
+      toast.error("El valor de kilómetros debe ser un número mayor que 0");
+      return;
+    }
+
     setIsProcessing(true);
 
     try {
@@ -274,7 +280,7 @@ const SellCar = () => {
         // Update existing vehicle
         const result = await updateVehicleBasicInfo(vehicleId, carInfo);
         if (!result.success) {
-          throw new Error("Error updating vehicle info");
+          throw new Error(result.error || "Error updating vehicle info");
         }
       } else {
         // Create new vehicle
@@ -282,14 +288,14 @@ const SellCar = () => {
         if (result.success && result.vehicleId) {
           setVehicleId(result.vehicleId);
         } else {
-          throw new Error("Error saving vehicle info");
+          throw new Error(result.error || "Error saving vehicle info");
         }
       }
       
       // Go to next step
       nextStep();
-    } catch (error) {
-      toast.error("Ocurrió un error al guardar la información");
+    } catch (error: any) {
+      toast.error(error.message || "Ocurrió un error al guardar la información");
       console.error(error);
     } finally {
       setIsProcessing(false);
