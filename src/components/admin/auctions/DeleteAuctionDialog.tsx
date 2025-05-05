@@ -24,6 +24,11 @@ const DeleteAuctionDialog: React.FC<DeleteAuctionDialogProps> = ({
   onCancel,
   onConfirm
 }) => {
+  const handleConfirm = () => {
+    console.log("Confirming auction deletion");
+    onConfirm();
+  };
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
@@ -35,7 +40,7 @@ const DeleteAuctionDialog: React.FC<DeleteAuctionDialogProps> = ({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={onCancel}>Cancelar</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm} className="bg-red-600 hover:bg-red-700">
+          <AlertDialogAction onClick={handleConfirm} className="bg-red-600 hover:bg-red-700">
             Eliminar
           </AlertDialogAction>
         </AlertDialogFooter>

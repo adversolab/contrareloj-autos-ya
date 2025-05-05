@@ -105,7 +105,7 @@ const AuctionsTable: React.FC<AuctionsTableProps> = ({
                           <span>Approve auction</span>
                         </DropdownMenuItem>
                       )}
-                      {auction.status === 'active' && (
+                      {(auction.status === 'active') && (
                         <DropdownMenuItem onClick={() => onPause(auction.id)}>
                           <PauseCircle className="mr-2 h-4 w-4" />
                           <span>Pause auction</span>
@@ -117,7 +117,13 @@ const AuctionsTable: React.FC<AuctionsTableProps> = ({
                           <span>View auction</span>
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-red-600" onClick={() => onOpenDeleteDialog(auction.id)}>
+                      <DropdownMenuItem 
+                        className="text-red-600" 
+                        onClick={() => {
+                          console.log('Delete clicked for auction:', auction.id);
+                          onOpenDeleteDialog(auction.id);
+                        }}
+                      >
                         <Trash className="mr-2 h-4 w-4" />
                         <span>Delete auction</span>
                       </DropdownMenuItem>

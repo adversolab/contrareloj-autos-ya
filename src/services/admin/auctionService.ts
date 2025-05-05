@@ -176,7 +176,60 @@ export async function deleteAuction(auctionId: string) {
     
     const vehicleId = auction?.vehicle_id;
     
-    // Delete the auction
+    // First delete any related records that might cause foreign key constraints
+    if (vehicleId) {
+      // Delete vehicle features
+      const { error: featuresError } = await supabase
+        .from('vehicle_features')
+        .delete()
+        .eq('vehicle_id', vehicleId);
+        
+      if (featuresError) {
+        console.error('Error deleting vehicle features:', featuresError);
+      }
+        
+      // Delete vehicle photos
+      const { error: photosError } = await supabase
+        .from('vehicle_photos')
+        .delete()
+        .eq('vehicle_id', vehicleId);
+        
+      if (photosError) {
+        console.error('Error deleting vehicle photos:', photosError);
+      }
+    }
+    
+    // Delete any bids related to the auction
+    const { error: bidsError } = await supabase
+      .from('bids')
+      .delete()
+      .eq('auction_id', auctionId);
+      
+    if (bidsError) {
+      console.error('Error deleting auction bids:', bidsError);
+    }
+    
+    // Delete any questions related to the auction
+    const { error: questionsError } = await supabase
+      .from('auction_questions')
+      .delete()
+      .eq('auction_id', auctionId);
+      
+    if (questionsError) {
+      console.error('Error deleting auction questions:', questionsError);
+    }
+    
+    // Delete any services related to the auction
+    const { error: servicesError } = await supabase
+      .from('auction_services')
+      .delete()
+      .eq('auction_id', auctionId);
+      
+    if (servicesError) {
+      console.error('Error deleting auction services:', servicesError);
+    }
+    
+    // Finally delete the auction
     const { error: deleteAuctionError } = await supabase
       .from('auctions')
       .delete()
@@ -192,23 +245,17 @@ export async function deleteAuction(auctionId: string) {
     
     // If there's an associated vehicle, delete it too
     if (vehicleId) {
-      // Delete vehicle features
-      await supabase
-        .from('vehicle_features')
-        .delete()
-        .eq('vehicle_id', vehicleId);
-        
-      // Delete vehicle photos
-      await supabase
-        .from('vehicle_photos')
-        .delete()
-        .eq('vehicle_id', vehicleId);
-        
       // Finally delete the vehicle
-      await supabase
+      const { error: vehicleError } = await supabase
         .from('vehicles')
         .delete()
         .eq('id', vehicleId);
+        
+      if (vehicleError) {
+        console.error('Error deleting vehicle:', vehicleError);
+        toast.error('Vehicle could not be deleted');
+        // We still return true since the auction was deleted
+      }
     }
     
     toast.success('Auction deleted successfully');

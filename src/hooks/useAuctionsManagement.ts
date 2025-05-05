@@ -43,9 +43,14 @@ export const useAuctionsManagement = () => {
   const handleDeleteAuction = async () => {
     if (!auctionToDelete) return;
     
+    console.log('Attempting to delete auction:', auctionToDelete);
     const success = await deleteAuction(auctionToDelete);
+    
     if (success) {
+      console.log('Auction deleted successfully, refreshing list...');
       await fetchAuctions();
+    } else {
+      console.error('Failed to delete auction');
     }
     
     setDeleteDialogOpen(false);
