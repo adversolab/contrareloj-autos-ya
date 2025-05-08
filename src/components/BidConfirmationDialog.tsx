@@ -1,15 +1,17 @@
 
 import React from 'react';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogHeader, 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
-  DialogFooter
+  DialogClose
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { AlertCircle } from 'lucide-react';
+import { formatCurrency } from '@/utils/formatters';
 
 interface BidConfirmationDialogProps {
   isOpen: boolean;
@@ -18,9 +20,9 @@ interface BidConfirmationDialogProps {
   onConfirm: () => void;
 }
 
-const BidConfirmationDialog: React.FC<BidConfirmationDialogProps> = ({ 
-  isOpen, 
-  onClose, 
+const BidConfirmationDialog: React.FC<BidConfirmationDialogProps> = ({
+  isOpen,
+  onClose,
   bidAmount,
   onConfirm
 }) => {
@@ -28,53 +30,41 @@ const BidConfirmationDialog: React.FC<BidConfirmationDialogProps> = ({
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center">
-            <AlertCircle className="h-5 w-5 mr-2 text-yellow-500" />
-            Confirmar oferta
-          </DialogTitle>
+          <DialogTitle>Confirmar oferta</DialogTitle>
           <DialogDescription>
-            Estás a punto de realizar una oferta por este vehículo.
+            Estás a punto de realizar una oferta. Por favor confirma los detalles.
           </DialogDescription>
         </DialogHeader>
-
+        
         <div className="py-4">
-          <div className="bg-gray-50 p-4 rounded-lg mb-4">
-            <h4 className="font-medium mb-2">Detalles de la oferta:</h4>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="text-sm text-gray-500">Monto de la oferta:</div>
-              <div className="text-sm font-medium text-right">${bidAmount.toLocaleString('es-CL')}</div>
-              
-              <div className="text-sm text-gray-500">Comisión (5%):</div>
-              <div className="text-sm font-medium text-right">${holdAmount.toLocaleString('es-CL')}</div>
-              
-              <div className="border-t border-gray-200 col-span-2 my-2"></div>
-              
-              <div className="text-sm font-medium">Total en caso de adjudicación:</div>
-              <div className="text-sm font-medium text-right">${bidAmount.toLocaleString('es-CL')}</div>
+          <div className="mb-4 text-center">
+            <p className="text-sm text-gray-500">Monto de oferta</p>
+            <p className="text-2xl font-bold">{formatCurrency(bidAmount)}</p>
+          </div>
+          
+          <div className="bg-amber-50 border border-amber-100 rounded-lg p-4">
+            <div className="flex items-start">
+              <AlertCircle className="h-5 w-5 text-amber-500 mr-2 mt-0.5" />
+              <div>
+                <h4 className="font-medium text-amber-800">Información importante</h4>
+                <ul className="text-sm text-amber-700 space-y-1 mt-1">
+                  <li>Se retendrá el 5% ({formatCurrency(holdAmount)}) como garantía.</li>
+                  <li>Si ganas la subasta, deberás completar la compra.</li>
+                  <li>Si no completas la compra, perderás el monto retenido.</li>
+                </ul>
+              </div>
             </div>
           </div>
-
-          <div className="space-y-3 text-sm">
-            <p>
-              <strong>Importante:</strong> Al confirmar, aceptas el compromiso de compra si ganas la subasta.
-            </p>
-            <p>
-              La comisión del 5% ya está incluida en el monto de tu oferta y solo se cobrará si ganas.
-            </p>
-            <p>
-              Si haces una nueva oferta mayor, solo se considera la comisión sobre esta última oferta.
-            </p>
-          </div>
         </div>
-
-        <DialogFooter className="flex flex-col sm:flex-row sm:justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>
-            Cancelar
-          </Button>
+        
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          </DialogClose>
           <Button 
-            className="bg-contrareloj hover:bg-contrareloj-dark"
+            className="bg-contrareloj hover:bg-contrareloj-dark text-white"
             onClick={onConfirm}
           >
             Confirmar oferta

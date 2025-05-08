@@ -28,6 +28,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatCurrency, formatInputCurrency, parseCurrencyValue, MAX_BID_AMOUNT } from '@/utils/formatters';
 
 const AuctionDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -243,6 +244,10 @@ const AuctionDetail = () => {
     }
   }, [auctionData, user, profile, navigate]);
 
+  const formatBidAmount = (value: string) => {
+    return formatInputCurrency(value);
+  };
+
   const handleBid = () => {
     if (!user) {
       toast.error("Debes iniciar sesión para ofertar");
@@ -264,9 +269,15 @@ const AuctionDetail = () => {
       return;
     }
     
-    const bidValue = parseInt(bidAmount.replace(/\D/g, ''));
+    const bidValue = parseCurrencyValue(bidAmount);
     if (isNaN(bidValue) || bidValue <= 0) {
       toast.error("Ingresa un monto válido");
+      return;
+    }
+    
+    // Check if bid exceeds maximum allowed amount
+    if (bidValue > MAX_BID_AMOUNT) {
+      toast.error(`La oferta máxima permitida es ${formatCurrency(MAX_BID_AMOUNT)}`);
       return;
     }
     
@@ -275,7 +286,7 @@ const AuctionDetail = () => {
     const minBid = currentHighestBid + auctionData.min_increment;
     
     if (bidValue < minBid) {
-      toast.error(`Tu oferta debe ser al menos $${minBid.toLocaleString('es-CL')}`);
+      toast.error(`Tu oferta debe ser al menos ${formatCurrency(minBid)}`);
       return;
     }
     
@@ -286,7 +297,7 @@ const AuctionDetail = () => {
   const confirmBid = async () => {
     if (!id) return;
     
-    const bidValue = parseInt(bidAmount.replace(/\D/g, ''));
+    const bidValue = parseCurrencyValue(bidAmount);
     const holdAmount = Math.round(bidValue * 0.05);
     
     const { success, needsVerification } = await placeBid(id, {
@@ -378,14 +389,6 @@ const AuctionDetail = () => {
     setIsAnswerDialogOpen(true);
   };
 
-  const formatBidAmount = (value: string) => {
-    // Eliminar caracteres no numéricos
-    const numericValue = value.replace(/\D/g, '');
-    // Formatear con separadores de miles
-    const formattedValue = Number(numericValue).toLocaleString('es-CL');
-    return formattedValue;
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -459,7 +462,7 @@ const AuctionDetail = () => {
             <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-sm">
               <div className="mb-4">
                 <p className="text-sm text-gray-500 uppercase mb-1">OFERTA ACTUAL</p>
-                <h2 className="text-3xl font-bold">${highestBid.toLocaleString('es-CL')}</h2>
+                <h2 className="text-3xl font-bold">{formatCurrency(highestBid)}</h2>
                 <p className="text-sm text-gray-500">{bids.length} ofertas</p>
               </div>
               
@@ -492,7 +495,7 @@ const AuctionDetail = () => {
                         type="text"
                         value={bidAmount} 
                         onChange={(e) => setBidAmount(formatBidAmount(e.target.value))}
-                        placeholder={`Mín ${(highestBid + auctionData.min_increment).toLocaleString('es-CL')}`}
+                        placeholder={`Mín ${formatInputCurrency((highestBid + auctionData.min_increment).toString())}`}
                         className="flex-grow"
                       />
                       <Button 
@@ -502,7 +505,12 @@ const AuctionDetail = () => {
                         Ofertar
                       </Button>
                     </div>
-                    <p className="mt-1 text-xs text-gray-500">Incremento mínimo: ${auctionData.min_increment?.toLocaleString('es-CL')}</p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Incremento mínimo: {formatCurrency(auctionData.min_increment)}
+                    </p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Oferta máxima: {formatCurrency(MAX_BID_AMOUNT)}
+                    </p>
                   </div>
                   
                   <div className="bg-gray-50 p-4 rounded-lg mb-6">

@@ -8,6 +8,7 @@ import { addToFavorites, removeFromFavorites, isFavorite, deleteVehicleWithAucti
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
+import { formatCurrency } from '@/utils/formatters';
 import { 
   AlertDialog, 
   AlertDialogAction, 
@@ -171,7 +172,7 @@ const AuctionCard: React.FC<AuctionCardProps> = ({
           <div>
             <p className="text-xs text-gray-500">OFERTA ACTUAL</p>
             <p className="text-lg font-bold">
-              ${currentBid.toLocaleString('es-CL')}
+              {formatCurrency(currentBid)}
             </p>
             <p className="text-xs text-gray-500">{bidCount} ofertas</p>
           </div>
