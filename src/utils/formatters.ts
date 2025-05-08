@@ -51,3 +51,36 @@ export function parseCurrencyValue(value: string): number {
 
 // Maximum allowed bid in CLP
 export const MAX_BID_AMOUNT = 1_000_000_000; // 1 billion CLP
+
+/**
+ * Validates if a bid amount is within the allowed range
+ * @param amount The bid amount to validate
+ * @returns Boolean indicating if the amount is valid
+ */
+export function isValidBidAmount(amount: number): boolean {
+  return amount > 0 && amount <= MAX_BID_AMOUNT;
+}
+
+/**
+ * Formats a date with time remaining in a human-readable format
+ * @param date The date to format
+ * @returns Formatted string showing days, hours or minutes remaining
+ */
+export function formatTimeRemaining(date: Date): string {
+  const now = new Date();
+  const diff = date.getTime() - now.getTime();
+  
+  if (diff <= 0) return "Finalizada";
+  
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  
+  if (days > 0) {
+    return `${days} día${days > 1 ? 's' : ''}`;
+  } else if (hours > 0) {
+    return `${hours} hora${hours > 1 ? 's' : ''}`;
+  } else {
+    return `${minutes} minuto${minutes > 1 ? 's' : ''}`;
+  }
+}

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import Navbar from '@/components/Navbar';
 import Hero from '@/components/Hero';
@@ -8,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
+import FeaturedAuctionShowcase from '@/components/FeaturedAuctionShowcase';
+import EndingSoonCarousel from '@/components/EndingSoonCarousel';
 
 interface Auction {
   id: string;
@@ -184,16 +185,8 @@ const Index = () => {
             <div className="flex justify-center items-center py-12">
               <Loader2 className="w-10 h-10 text-contrareloj animate-spin" />
             </div>
-          ) : featuredAuctions.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {featuredAuctions.map((auction) => (
-                <AuctionCard key={auction.id} {...auction} />
-              ))}
-            </div>
           ) : (
-            <div className="text-center py-8 bg-gray-50 rounded-lg">
-              <p className="text-gray-500">No hay subastas destacadas disponibles actualmente.</p>
-            </div>
+            <FeaturedAuctionShowcase auctions={featuredAuctions} />
           )}
         </section>
         
@@ -212,16 +205,8 @@ const Index = () => {
             <div className="flex justify-center items-center py-12">
               <Loader2 className="w-10 h-10 text-contrareloj animate-spin" />
             </div>
-          ) : endingSoonAuctions.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {endingSoonAuctions.map((auction) => (
-                <AuctionCard key={auction.id} {...auction} />
-              ))}
-            </div>
           ) : (
-            <div className="text-center py-8 bg-gray-50 rounded-lg">
-              <p className="text-gray-500">No hay subastas finalizando pronto disponibles.</p>
-            </div>
+            <EndingSoonCarousel auctions={endingSoonAuctions} />
           )}
         </section>
         
