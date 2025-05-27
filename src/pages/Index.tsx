@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 import FeaturedAuctionShowcase from '@/components/FeaturedAuctionShowcase';
 import EndingSoonCarousel from '@/components/EndingSoonCarousel';
+import FeaturedVehiclesSection from '@/components/FeaturedVehiclesSection';
 
 interface Auction {
   id: string;
@@ -170,6 +171,9 @@ const Index = () => {
       <Hero />
       
       <main className="flex-grow">
+        {/* Featured/Highlighted Vehicles Section */}
+        <FeaturedVehiclesSection />
+        
         {/* Featured Auctions */}
         <section className="container mx-auto px-4 py-12">
           <div className="flex justify-between items-center mb-6">

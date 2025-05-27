@@ -407,6 +407,7 @@ export type Database = {
           brand: string
           created_at: string
           description: string | null
+          destacado: boolean
           fuel: string
           id: string
           is_approved: boolean | null
@@ -422,6 +423,7 @@ export type Database = {
           brand: string
           created_at?: string
           description?: string | null
+          destacado?: boolean
           fuel: string
           id?: string
           is_approved?: boolean | null
@@ -437,6 +439,7 @@ export type Database = {
           brand?: string
           created_at?: string
           description?: string | null
+          destacado?: boolean
           fuel?: string
           id?: string
           is_approved?: boolean | null

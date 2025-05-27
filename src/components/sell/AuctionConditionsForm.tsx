@@ -8,6 +8,8 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Star, Coins } from 'lucide-react';
 import { AuctionInfo } from '@/services/vehicleService';
 import { toast } from 'sonner';
 
@@ -117,6 +119,35 @@ const AuctionConditionsForm: React.FC<AuctionConditionsFormProps> = ({
         </div>
       </div>
       
+      {/* Sección de destacar publicación */}
+      <div className="border p-4 rounded-lg bg-gradient-to-r from-yellow-50 to-orange-50">
+        <h4 className="font-medium mb-3 flex items-center gap-2">
+          <Star className="w-5 h-5 text-yellow-500" />
+          Destacar Publicación
+        </h4>
+        
+        <div className="flex items-start space-x-3">
+          <Checkbox 
+            id="highlight"
+            checked={auctionInfo.services.includes('highlight')}
+            onCheckedChange={(checked) => onServiceChange('highlight', !!checked)}
+          />
+          <div className="flex-1">
+            <label htmlFor="highlight" className="font-medium cursor-pointer flex items-center gap-2">
+              <Star className="w-4 h-4 text-yellow-500" />
+              Destacar mi publicación
+              <div className="bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+                <Coins className="w-3 h-3" />
+                25 créditos
+              </div>
+            </label>
+            <p className="text-sm text-gray-600 mt-1">
+              Tu vehículo aparecerá en la sección "Destacados" de la página principal y tendrá mayor visibilidad para los compradores.
+            </p>
+          </div>
+        </div>
+      </div>
+      
       <div className="border p-4 rounded-lg bg-gray-50">
         <h4 className="font-medium mb-3">Servicios adicionales</h4>
         
@@ -147,21 +178,6 @@ const AuctionConditionsForm: React.FC<AuctionConditionsFormProps> = ({
               <span className="font-medium">Servicio de fotografía profesional</span>
               <p className="text-sm text-gray-500">
                 Un fotógrafo profesional tomará fotos de alta calidad de tu vehículo. Costo: $50.000
-              </p>
-            </div>
-          </label>
-          
-          <label className="flex items-start">
-            <input 
-              type="checkbox" 
-              className="mt-1 mr-3"
-              checked={auctionInfo.services.includes('highlight')}
-              onChange={(e) => onServiceChange('highlight', e.target.checked)}
-            />
-            <div>
-              <span className="font-medium">Destacar anuncio</span>
-              <p className="text-sm text-gray-500">
-                Tu anuncio aparecerá en las primeras posiciones y en la página principal. Costo: $30.000
               </p>
             </div>
           </label>

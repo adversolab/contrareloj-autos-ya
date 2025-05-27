@@ -184,6 +184,24 @@ export const useSellCarSteps = () => {
     setIsProcessing(true);
 
     try {
+      // Verificar si se quiere destacar la publicación
+      const wantsHighlight = auctionInfo.services.includes('highlight');
+      
+      if (wantsHighlight) {
+        // Importar y usar el servicio de destacar
+        const { highlightVehicle } = await import('@/services/highlightService');
+        const highlightResult = await highlightVehicle(vehicleId);
+        
+        if (!highlightResult.success) {
+          if (highlightResult.error === 'insufficient_credits') {
+            toast.error('No tienes créditos suficientes para destacar esta publicación');
+            return;
+          }
+          toast.error(`Error al destacar: ${highlightResult.error}`);
+          return;
+        }
+      }
+
       const result = await saveAuctionInfo(vehicleId, auctionInfo);
       
       if (result.success && result.auctionId) {
