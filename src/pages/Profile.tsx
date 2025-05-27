@@ -13,6 +13,7 @@ import ProfileForm from '@/components/profile/ProfileForm';
 import ProfileTabs from '@/components/profile/ProfileTabs';
 import IdentityVerificationSection from '@/components/profile/IdentityVerificationSection';
 import ReputationSection from '@/components/profile/ReputationSection';
+import UserRatingsSection from '@/components/profile/UserRatingsSection';
 import { Auction, Vehicle } from '@/components/profile/types';
 import MandatoryProfileForm from '@/components/MandatoryProfileForm';
 
@@ -360,6 +361,12 @@ const Profile = () => {
             subastas_ganadas={profile.subastas_ganadas || 0}
             subastas_abandonadas={profile.subastas_abandonadas || 0}
             penalizaciones={profile.penalizaciones || 0}
+          />
+          
+          {/* Sección de Valoraciones */}
+          <UserRatingsSection
+            userId={profile.id}
+            averageRating={profile.valoracion_promedio || 0}
           />
           
           <ProfileTabs

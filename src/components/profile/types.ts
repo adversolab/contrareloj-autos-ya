@@ -39,5 +39,27 @@ export interface UserProfile {
   subastas_ganadas: number;
   subastas_abandonadas: number;
   penalizaciones: number;
+  valoracion_promedio?: number;
   created_at?: string;
+}
+
+export interface UserRating {
+  id: string;
+  evaluador_id: string;
+  evaluado_id: string;
+  remate_id: string;
+  puntuacion: number;
+  comentario?: string;
+  fecha: string;
+  evaluador?: {
+    first_name?: string;
+    last_name?: string;
+  };
+  remate?: {
+    vehicle?: {
+      brand: string;
+      model: string;
+      year: number;
+    };
+  };
 }
