@@ -202,6 +202,36 @@ export type Database = {
           },
         ]
       }
+      movimientos_credito: {
+        Row: {
+          cantidad: number
+          created_at: string
+          descripcion: string
+          fecha: string
+          id: string
+          tipo: string
+          usuario_id: string
+        }
+        Insert: {
+          cantidad: number
+          created_at?: string
+          descripcion: string
+          fecha?: string
+          id?: string
+          tipo: string
+          usuario_id: string
+        }
+        Update: {
+          cantidad?: number
+          created_at?: string
+          descripcion?: string
+          fecha?: string
+          id?: string
+          tipo?: string
+          usuario_id?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -250,6 +280,7 @@ export type Database = {
           phone: string | null
           role: Database["public"]["Enums"]["user_role"]
           rut: string | null
+          saldo_creditos: number
           updated_at: string | null
         }
         Insert: {
@@ -266,6 +297,7 @@ export type Database = {
           phone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           rut?: string | null
+          saldo_creditos?: number
           updated_at?: string | null
         }
         Update: {
@@ -282,6 +314,7 @@ export type Database = {
           phone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           rut?: string | null
+          saldo_creditos?: number
           updated_at?: string | null
         }
         Relationships: []
@@ -409,6 +442,15 @@ export type Database = {
       is_admin: {
         Args: { user_id: string }
         Returns: boolean
+      }
+      procesar_movimiento_credito: {
+        Args: {
+          p_usuario_id: string
+          p_tipo: string
+          p_cantidad: number
+          p_descripcion: string
+        }
+        Returns: Json
       }
     }
     Enums: {

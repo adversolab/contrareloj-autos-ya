@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getCurrentUser } from "@/services/authService";
 import { getVerificationStatus } from "./identityService";
+import { deductCreditsForBid } from "@/services/creditService";
 import { AuctionInfo } from "./types";
 
 export async function saveAuctionInfo(vehicleId: string, info: AuctionInfo): Promise<{ success: boolean; auctionId?: string }> {
@@ -149,14 +150,29 @@ export async function placeBid(auctionId: string, bidData: { amount: number, hol
     const user = await getCurrentUser();
     if (!user) {
       toast.error('Debes iniciar sesión para participar');
-      return { success: false, needsVerification: false };
+      return { success: false, needsVerification: false, needsCredits: false };
     }
 
     // Check if user is verified
     const { isVerified } = await getVerificationStatus();
     if (!isVerified) {
       toast.error('Debes verificar tu identidad para ofertar');
-      return { success: false, needsVerification: true };
+      return { success: false, needsVerification: true, needsCredits: false };
+    }
+
+    // Get auction details for credit deduction description
+    const { auction } = await getAuctionById(auctionId);
+    const auctionTitle = auction?.vehicles 
+      ? `${auction.vehicles.brand} ${auction.vehicles.model} ${auction.vehicles.year}`
+      : 'vehículo';
+
+    // Deduct credits for bid
+    const creditResult = await deductCreditsForBid(auctionTitle);
+    if (!creditResult.success) {
+      if (creditResult.error === 'insufficient_credits') {
+        return { success: false, needsVerification: false, needsCredits: true };
+      }
+      return { success: false, needsVerification: false, needsCredits: false };
     }
 
     // Place the bid
@@ -172,14 +188,14 @@ export async function placeBid(auctionId: string, bidData: { amount: number, hol
     if (error) {
       console.error('Error al realizar oferta:', error);
       toast.error('Error al procesar tu oferta');
-      return { success: false, needsVerification: false };
+      return { success: false, needsVerification: false, needsCredits: false };
     }
 
-    toast.success('¡Oferta realizada con éxito!');
-    return { success: true, needsVerification: false };
+    toast.success('¡Oferta realizada con éxito! Se descontó 1 crédito.');
+    return { success: true, needsVerification: false, needsCredits: false };
   } catch (error) {
     console.error('Error inesperado:', error);
     toast.error('Error al procesar la oferta');
-    return { success: false, needsVerification: false };
+    return { success: false, needsVerification: false, needsCredits: false };
   }
 }

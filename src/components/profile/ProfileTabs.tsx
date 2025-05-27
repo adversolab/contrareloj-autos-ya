@@ -1,24 +1,14 @@
 
 import React from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Car, Heart, Gavel, FileText, Trophy, Coins } from 'lucide-react';
 import BiddingTabContent from './BiddingTabContent';
 import FavoritesTabContent from './FavoritesTabContent';
 import SellingTabContent from './SellingTabContent';
 import DraftsTabContent from './DraftsTabContent';
 import WonTabContent from './WonTabContent';
-
-interface Auction {
-  id: string | number;
-  title: string;
-  description: string;
-  imageUrl?: string;
-  currentBid: number;
-  endTime: Date;
-  bidCount: number;
-  status?: string;
-  auctionId?: string | null;
-  vehicleId?: string;
-}
+import CreditSection from './CreditSection';
+import { Auction } from './types';
 
 interface ProfileTabsProps {
   biddingAuctions: Auction[];
@@ -31,7 +21,7 @@ interface ProfileTabsProps {
   onDeleteDraft: () => void;
 }
 
-const ProfileTabs = ({
+const ProfileTabs: React.FC<ProfileTabsProps> = ({
   biddingAuctions,
   favoriteAuctions,
   sellingAuctions,
@@ -40,58 +30,93 @@ const ProfileTabs = ({
   isLoadingVehicles,
   isLoadingFavorites,
   onDeleteDraft
-}: ProfileTabsProps) => {
+}) => {
   return (
-    <Tabs defaultValue="selling" className="space-y-6">
-      <TabsList className="w-full border-b">
-        <TabsTrigger value="bidding" className="flex-1">
-          Mis ofertas ({biddingAuctions.length})
+    <Tabs defaultValue="credits" className="mb-8">
+      <TabsList className="grid w-full grid-cols-6">
+        <TabsTrigger value="credits" className="flex items-center gap-2">
+          <Coins className="w-4 h-4" />
+          <span className="hidden sm:inline">Créditos</span>
         </TabsTrigger>
-        <TabsTrigger value="favorites" className="flex-1">
-          Favoritos ({favoriteAuctions.length})
+        <TabsTrigger value="bidding" className="flex items-center gap-2">
+          <Gavel className="w-4 h-4" />
+          <span className="hidden sm:inline">Pujando</span>
+          {biddingAuctions.length > 0 && (
+            <span className="bg-contrareloj text-white rounded-full px-2 py-0.5 text-xs">
+              {biddingAuctions.length}
+            </span>
+          )}
         </TabsTrigger>
-        <TabsTrigger value="selling" className="flex-1">
-          Mis ventas ({sellingAuctions.length})
+        <TabsTrigger value="favorites" className="flex items-center gap-2">
+          <Heart className="w-4 h-4" />
+          <span className="hidden sm:inline">Favoritos</span>
+          {favoriteAuctions.length > 0 && (
+            <span className="bg-contrareloj text-white rounded-full px-2 py-0.5 text-xs">
+              {favoriteAuctions.length}
+            </span>
+          )}
         </TabsTrigger>
-        <TabsTrigger value="drafts" className="flex-1">
-          Borradores ({draftAuctions.length})
+        <TabsTrigger value="selling" className="flex items-center gap-2">
+          <Car className="w-4 h-4" />
+          <span className="hidden sm:inline">Vendiendo</span>
+          {sellingAuctions.length > 0 && (
+            <span className="bg-contrareloj text-white rounded-full px-2 py-0.5 text-xs">
+              {sellingAuctions.length}
+            </span>
+          )}
         </TabsTrigger>
-        <TabsTrigger value="won" className="flex-1">
-          Ganados ({wonAuctions.length})
+        <TabsTrigger value="drafts" className="flex items-center gap-2">
+          <FileText className="w-4 h-4" />
+          <span className="hidden sm:inline">Borradores</span>
+          {draftAuctions.length > 0 && (
+            <span className="bg-gray-500 text-white rounded-full px-2 py-0.5 text-xs">
+              {draftAuctions.length}
+            </span>
+          )}
+        </TabsTrigger>
+        <TabsTrigger value="won" className="flex items-center gap-2">
+          <Trophy className="w-4 h-4" />
+          <span className="hidden sm:inline">Ganados</span>
+          {wonAuctions.length > 0 && (
+            <span className="bg-green-500 text-white rounded-full px-2 py-0.5 text-xs">
+              {wonAuctions.length}
+            </span>
+          )}
         </TabsTrigger>
       </TabsList>
-      
-      <TabsContent value="bidding">
-        <BiddingTabContent 
-          biddingAuctions={biddingAuctions} 
-          isLoading={false} 
-        />
+
+      <TabsContent value="credits" className="mt-6">
+        <CreditSection />
       </TabsContent>
-      
-      <TabsContent value="favorites">
+
+      <TabsContent value="bidding" className="mt-6">
+        <BiddingTabContent auctions={biddingAuctions} />
+      </TabsContent>
+
+      <TabsContent value="favorites" className="mt-6">
         <FavoritesTabContent 
-          favoriteAuctions={favoriteAuctions} 
+          auctions={favoriteAuctions} 
           isLoading={isLoadingFavorites} 
         />
       </TabsContent>
-      
-      <TabsContent value="selling">
+
+      <TabsContent value="selling" className="mt-6">
         <SellingTabContent 
-          sellingAuctions={sellingAuctions} 
+          auctions={sellingAuctions} 
           isLoading={isLoadingVehicles} 
         />
       </TabsContent>
-      
-      <TabsContent value="drafts">
+
+      <TabsContent value="drafts" className="mt-6">
         <DraftsTabContent 
-          draftAuctions={draftAuctions} 
-          isLoading={isLoadingVehicles} 
-          onDelete={onDeleteDraft} 
+          auctions={draftAuctions} 
+          isLoading={isLoadingVehicles}
+          onDeleteDraft={onDeleteDraft}
         />
       </TabsContent>
-      
-      <TabsContent value="won">
-        <WonTabContent wonAuctions={wonAuctions} />
+
+      <TabsContent value="won" className="mt-6">
+        <WonTabContent auctions={wonAuctions} />
       </TabsContent>
     </Tabs>
   );

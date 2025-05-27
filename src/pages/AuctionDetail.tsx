@@ -5,7 +5,7 @@ import Footer from '@/components/Footer';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Heart, Share2, ArrowLeft, PlusCircle, MessageSquare, AlertCircle } from 'lucide-react';
+import { Heart, Share2, ArrowLeft, PlusCircle, MessageSquare, AlertCircle, Coins } from 'lucide-react';
 import CountdownTimer from '@/components/CountdownTimer';
 import QuestionList from '@/components/QuestionList';
 import QuestionForm from '@/components/QuestionForm';
@@ -14,17 +14,10 @@ import BidHistory from '@/components/BidHistory';
 import BidConfirmationDialog from '@/components/BidConfirmationDialog';
 import VerifyIdentityDialog from '@/components/VerifyIdentityDialog';
 import AuctionCallToAction from '@/components/AuctionCallToAction';
-import { 
-  getAuctionById, 
-  isFavorite, 
-  addToFavorites, 
-  removeFromFavorites, 
-  getAuctionQuestions,
-  getAuctionBids,
-  placeBid,
-  finalizeAuction,
-  getVerificationStatus
-} from '@/services/vehicleService';
+import Dialog from '@/components/ui/dialog';
+import { DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DialogOpen } from '@radix-ui/react-dialog';
+import { Coins as CoinsIcon } from '@radix-ui/react-icons';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -54,6 +47,7 @@ const AuctionDetail = () => {
   const [isVerified, setIsVerified] = useState(false);
   const [isAuctionEnded, setIsAuctionEnded] = useState(false);
   const [winner, setWinner] = useState<any>(null);
+  const [isBuyCreditsDialogOpen, setIsBuyCreditsDialogOpen] = useState(false);
 
   // Add new useMemo for processing vehicle features by category
   const featuresByCategory = useMemo(() => {
@@ -300,13 +294,15 @@ const AuctionDetail = () => {
     const bidValue = parseCurrencyValue(bidAmount);
     const holdAmount = Math.round(bidValue * 0.05);
     
-    const { success, needsVerification } = await placeBid(id, {
+    const { success, needsVerification, needsCredits } = await placeBid(id, {
       amount: bidValue,
       holdAmount
     });
     
     if (needsVerification) {
       setIsVerifyDialogOpen(true);
+    } else if (needsCredits) {
+      setIsBuyCreditsDialogOpen(true);
     } else if (success) {
       // Reload bid history
       const { bids: updatedBids } = await getAuctionBids(id);
@@ -757,6 +753,53 @@ const AuctionDetail = () => {
             isOpen={isVerifyDialogOpen}
             onClose={() => setIsVerifyDialogOpen(false)}
           />
+
+          {/* Diálogo para comprar créditos */}
+          <Dialog open={isBuyCreditsDialogOpen} onOpenChange={setIsBuyCreditsDialogOpen}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle className="flex items-center">
+                  <CoinsIcon className="w-5 h-5 mr-2 text-yellow-500" />
+                  Créditos insuficientes
+                </DialogTitle>
+                <DialogDescription>
+                  Necesitas al menos 1 crédito para poder hacer una oferta en esta subasta.
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="py-4">
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                  <div className="flex items-start">
+                    <AlertCircle className="h-5 w-5 text-yellow-500 mr-2 mt-0.5" />
+                    <div>
+                      <h4 className="font-medium text-yellow-800">¿Cómo funcionan los créditos?</h4>
+                      <ul className="text-sm text-yellow-700 space-y-1 mt-1">
+                        <li>• Cada puja cuesta 1 crédito</li>
+                        <li>• Los créditos no tienen fecha de expiración</li>
+                        <li>• Solo pagas si participas activamente</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsBuyCreditsDialogOpen(false)}>
+                  Más tarde
+                </Button>
+                <Button 
+                  className="bg-contrareloj hover:bg-contrareloj-dark text-white"
+                  onClick={() => {
+                    setIsBuyCreditsDialogOpen(false);
+                    navigate('/comprar-creditos');
+                  }}
+                >
+                  <CoinsIcon className="w-4 h-4 mr-2" />
+                  Comprar créditos
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </main>
       
