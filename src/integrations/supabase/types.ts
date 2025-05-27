@@ -290,10 +290,13 @@ export type Database = {
           identity_selfie_url: string | null
           identity_verified: boolean | null
           last_name: string | null
+          penalizaciones: number
           phone: string | null
           role: Database["public"]["Enums"]["user_role"]
           rut: string | null
           saldo_creditos: number
+          subastas_abandonadas: number
+          subastas_ganadas: number
           updated_at: string | null
         }
         Insert: {
@@ -308,10 +311,13 @@ export type Database = {
           identity_selfie_url?: string | null
           identity_verified?: boolean | null
           last_name?: string | null
+          penalizaciones?: number
           phone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           rut?: string | null
           saldo_creditos?: number
+          subastas_abandonadas?: number
+          subastas_ganadas?: number
           updated_at?: string | null
         }
         Update: {
@@ -326,10 +332,13 @@ export type Database = {
           identity_selfie_url?: string | null
           identity_verified?: boolean | null
           last_name?: string | null
+          penalizaciones?: number
           phone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           rut?: string | null
           saldo_creditos?: number
+          subastas_abandonadas?: number
+          subastas_ganadas?: number
           updated_at?: string | null
         }
         Relationships: []
@@ -476,6 +485,10 @@ export type Database = {
           p_cantidad: number
           p_descripcion: string
         }
+        Returns: Json
+      }
+      update_reputation_on_purchase: {
+        Args: { auction_id_param: string }
         Returns: Json
       }
     }
