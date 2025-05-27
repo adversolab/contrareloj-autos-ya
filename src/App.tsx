@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { SellCarProvider } from "@/contexts/SellContext";
+import { SellProvider } from "@/contexts/SellContext";
 import AdminLayout from "@/layouts/AdminLayout";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -31,7 +31,7 @@ function App() {
         <Toaster />
         <BrowserRouter>
           <AuthProvider>
-            <SellCarProvider>
+            <SellProvider>
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<Auth />} />
@@ -53,7 +53,7 @@ function App() {
                 
                 <Route path="*" element={<NotFound />} />
               </Routes>
-            </SellCarProvider>
+            </SellProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>

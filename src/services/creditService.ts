@@ -95,11 +95,19 @@ export async function getCreditMovements(): Promise<{ movements: CreditMovement[
       return { movements: [], error: 'Error al obtener movimientos' };
     }
 
-    return { movements: data || [] };
+    // Type assertion para manejar el tipo de Supabase
+    const typedMovements = (data || []) as CreditMovement[];
+    return { movements: typedMovements };
   } catch (error) {
     console.error('Error inesperado:', error);
     return { movements: [], error: 'Error inesperado' };
   }
+}
+
+interface DatabaseFunctionResult {
+  success: boolean;
+  error?: string;
+  saldo_nuevo?: number;
 }
 
 export async function processCreditsMovement(
@@ -125,16 +133,19 @@ export async function processCreditsMovement(
       return { success: false, error: 'Error al procesar movimiento' };
     }
 
-    if (!data.success) {
+    // Type assertion para manejar la respuesta de la función
+    const result = data as DatabaseFunctionResult;
+    
+    if (!result.success) {
       return { 
         success: false, 
-        error: data.error || 'Error desconocido'
+        error: result.error || 'Error desconocido'
       };
     }
 
     return { 
       success: true, 
-      newBalance: data.saldo_nuevo 
+      newBalance: result.saldo_nuevo 
     };
   } catch (error) {
     console.error('Error inesperado:', error);

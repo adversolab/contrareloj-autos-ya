@@ -90,33 +90,33 @@ const ProfileTabs: React.FC<ProfileTabsProps> = ({
       </TabsContent>
 
       <TabsContent value="bidding" className="mt-6">
-        <BiddingTabContent auctions={biddingAuctions} />
+        <BiddingTabContent biddingAuctions={biddingAuctions} />
       </TabsContent>
 
       <TabsContent value="favorites" className="mt-6">
         <FavoritesTabContent 
-          auctions={favoriteAuctions} 
+          favoriteAuctions={favoriteAuctions} 
           isLoading={isLoadingFavorites} 
         />
       </TabsContent>
 
       <TabsContent value="selling" className="mt-6">
         <SellingTabContent 
-          auctions={sellingAuctions} 
+          sellingAuctions={sellingAuctions} 
           isLoading={isLoadingVehicles} 
         />
       </TabsContent>
 
       <TabsContent value="drafts" className="mt-6">
         <DraftsTabContent 
-          auctions={draftAuctions} 
+          draftAuctions={draftAuctions} 
           isLoading={isLoadingVehicles}
-          onDeleteDraft={onDeleteDraft}
+          onDelete={onDeleteDraft}
         />
       </TabsContent>
 
       <TabsContent value="won" className="mt-6">
-        <WonTabContent auctions={wonAuctions} />
+        <WonTabContent wonAuctions={wonAuctions} />
       </TabsContent>
     </Tabs>
   );
