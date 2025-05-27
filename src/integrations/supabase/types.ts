@@ -90,12 +90,16 @@ export type Database = {
           id: string
           is_approved: boolean | null
           min_increment: number
+          penalized: boolean
+          purchase_confirmed: boolean
           reserve_price: number
           start_date: string | null
           start_price: number
           status: string
           updated_at: string
           vehicle_id: string | null
+          winner_id: string | null
+          winning_bid: number | null
         }
         Insert: {
           created_at?: string
@@ -104,12 +108,16 @@ export type Database = {
           id?: string
           is_approved?: boolean | null
           min_increment: number
+          penalized?: boolean
+          purchase_confirmed?: boolean
           reserve_price: number
           start_date?: string | null
           start_price: number
           status?: string
           updated_at?: string
           vehicle_id?: string | null
+          winner_id?: string | null
+          winning_bid?: number | null
         }
         Update: {
           created_at?: string
@@ -118,12 +126,16 @@ export type Database = {
           id?: string
           is_approved?: boolean | null
           min_increment?: number
+          penalized?: boolean
+          purchase_confirmed?: boolean
           reserve_price?: number
           start_date?: string | null
           start_price?: number
           status?: string
           updated_at?: string
           vehicle_id?: string | null
+          winner_id?: string | null
+          winning_bid?: number | null
         }
         Relationships: [
           {
@@ -268,6 +280,7 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          blocked: boolean
           city: string | null
           created_at: string | null
           email: string | null
@@ -285,6 +298,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          blocked?: boolean
           city?: string | null
           created_at?: string | null
           email?: string | null
@@ -302,6 +316,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          blocked?: boolean
           city?: string | null
           created_at?: string | null
           email?: string | null
@@ -439,9 +454,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      confirm_auction_purchase: {
+        Args: { auction_id: string }
+        Returns: Json
+      }
       is_admin: {
         Args: { user_id: string }
         Returns: boolean
+      }
+      penalize_auction_abandonment: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       procesar_movimiento_credito: {
         Args: {

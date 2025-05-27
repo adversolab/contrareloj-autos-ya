@@ -120,14 +120,15 @@ export async function finalizeAuction(auctionId: string) {
       .limit(1);
 
     const winnerId = bids && bids.length > 0 ? bids[0].user_id : null;
+    const winningBid = bids && bids.length > 0 ? bids[0].amount : null;
 
-    // Update auction status
+    // Update auction status with winner information
     const { error } = await supabase
       .from('auctions')
       .update({
         status: 'finished',
         winner_id: winnerId,
-        winning_bid: winnerId ? bids[0].amount : null
+        winning_bid: winningBid
       })
       .eq('id', auctionId);
 

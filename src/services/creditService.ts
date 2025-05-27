@@ -95,8 +95,12 @@ export async function getCreditMovements(): Promise<{ movements: CreditMovement[
       return { movements: [], error: 'Error al obtener movimientos' };
     }
 
-    // Type assertion para manejar el tipo de Supabase
-    const typedMovements = (data || []) as CreditMovement[];
+    // Type assertion with validation
+    const typedMovements = (data || []).map(item => ({
+      ...item,
+      tipo: item.tipo as CreditMovement['tipo']
+    })) as CreditMovement[];
+    
     return { movements: typedMovements };
   } catch (error) {
     console.error('Error inesperado:', error);
@@ -108,6 +112,8 @@ interface DatabaseFunctionResult {
   success: boolean;
   error?: string;
   saldo_nuevo?: number;
+  penalized_users?: number;
+  message?: string;
 }
 
 export async function processCreditsMovement(
@@ -133,13 +139,13 @@ export async function processCreditsMovement(
       return { success: false, error: 'Error al procesar movimiento' };
     }
 
-    // Type assertion para manejar la respuesta de la función
-    const result = data as DatabaseFunctionResult;
+    // Safe type assertion with proper error handling
+    const result = data as unknown as DatabaseFunctionResult;
     
-    if (!result.success) {
+    if (!result || typeof result !== 'object' || !result.success) {
       return { 
         success: false, 
-        error: result.error || 'Error desconocido'
+        error: result?.error || 'Error desconocido'
       };
     }
 
@@ -186,4 +192,90 @@ export async function applyPenalty(reason: string): Promise<{ success: boolean; 
     -10,
     `Penalización: ${reason}`
   );
+}
+
+// Nueva función para ejecutar penalizaciones automáticas
+export async function executePenalizationProcess(): Promise<{ success: boolean; penalizedUsers?: number; error?: string }> {
+  try {
+    const { data, error } = await supabase.rpc('penalize_auction_abandonment');
+
+    if (error) {
+      console.error('Error al ejecutar penalizaciones:', error);
+      return { success: false, error: 'Error al ejecutar penalizaciones' };
+    }
+
+    const result = data as unknown as DatabaseFunctionResult;
+    
+    if (!result || typeof result !== 'object') {
+      return { success: false, error: 'Respuesta inválida del servidor' };
+    }
+
+    if (!result.success) {
+      return { success: false, error: result.error || 'Error desconocido' };
+    }
+
+    return { 
+      success: true, 
+      penalizedUsers: result.penalized_users || 0 
+    };
+  } catch (error) {
+    console.error('Error inesperado:', error);
+    return { success: false, error: 'Error inesperado' };
+  }
+}
+
+// Nueva función para confirmar compra de subasta
+export async function confirmAuctionPurchase(auctionId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { data, error } = await supabase.rpc('confirm_auction_purchase', {
+      auction_id: auctionId
+    });
+
+    if (error) {
+      console.error('Error al confirmar compra:', error);
+      return { success: false, error: 'Error al confirmar compra' };
+    }
+
+    const result = data as unknown as DatabaseFunctionResult;
+    
+    if (!result || typeof result !== 'object') {
+      return { success: false, error: 'Respuesta inválida del servidor' };
+    }
+
+    if (!result.success) {
+      return { success: false, error: result.error || 'Error desconocido' };
+    }
+
+    toast.success('Compra confirmada correctamente');
+    return { success: true };
+  } catch (error) {
+    console.error('Error inesperado:', error);
+    return { success: false, error: 'Error inesperado' };
+  }
+}
+
+// Nueva función para verificar si el usuario está bloqueado
+export async function checkUserBlocked(): Promise<{ blocked: boolean; error?: string }> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { blocked: false, error: 'Usuario no autenticado' };
+    }
+
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('blocked')
+      .eq('id', user.id)
+      .single();
+
+    if (error) {
+      console.error('Error al verificar estado del usuario:', error);
+      return { blocked: false, error: 'Error al verificar estado del usuario' };
+    }
+
+    return { blocked: profile?.blocked || false };
+  } catch (error) {
+    console.error('Error inesperado:', error);
+    return { blocked: false, error: 'Error inesperado' };
+  }
 }
