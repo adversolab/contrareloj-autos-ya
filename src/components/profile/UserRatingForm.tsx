@@ -58,7 +58,7 @@ const UserRatingForm: React.FC<UserRatingFormProps> = ({
 
       // Verificar si ya existe una valoración
       const { data: existingRating } = await supabase
-        .from('valoraciones_usuario')
+        .from('valoraciones_usuario' as any)
         .select('id')
         .eq('evaluador_id', user.id)
         .eq('remate_id', auctionId)
@@ -71,7 +71,7 @@ const UserRatingForm: React.FC<UserRatingFormProps> = ({
 
       // Crear la valoración
       const { error } = await supabase
-        .from('valoraciones_usuario')
+        .from('valoraciones_usuario' as any)
         .insert({
           evaluador_id: user.id,
           evaluado_id: evaluatedUserId,
@@ -103,17 +103,17 @@ const UserRatingForm: React.FC<UserRatingFormProps> = ({
     try {
       // Obtener todas las valoraciones del usuario
       const { data: ratings } = await supabase
-        .from('valoraciones_usuario')
+        .from('valoraciones_usuario' as any)
         .select('puntuacion')
         .eq('evaluado_id', userId);
 
       if (ratings && ratings.length > 0) {
-        const average = ratings.reduce((sum, r) => sum + r.puntuacion, 0) / ratings.length;
+        const average = ratings.reduce((sum: number, r: any) => sum + r.puntuacion, 0) / ratings.length;
         
         // Actualizar el promedio en el perfil
         await supabase
           .from('profiles')
-          .update({ valoracion_promedio: Math.round(average * 10) / 10 })
+          .update({ valoracion_promedio: Math.round(average * 10) / 10 } as any)
           .eq('id', userId);
       }
     } catch (error) {

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -358,15 +359,15 @@ const Profile = () => {
           
           {/* Sección de Reputación */}
           <ReputationSection
-            subastas_ganadas={profile.subastas_ganadas || 0}
-            subastas_abandonadas={profile.subastas_abandonadas || 0}
-            penalizaciones={profile.penalizaciones || 0}
+            subastas_ganadas={(profile as any).subastas_ganadas || 0}
+            subastas_abandonadas={(profile as any).subastas_abandonadas || 0}
+            penalizaciones={(profile as any).penalizaciones || 0}
           />
           
           {/* Sección de Valoraciones */}
           <UserRatingsSection
             userId={profile.id}
-            averageRating={profile.valoracion_promedio || 0}
+            averageRating={(profile as any).valoracion_promedio || 0}
           />
           
           <ProfileTabs

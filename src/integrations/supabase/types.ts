@@ -298,6 +298,7 @@ export type Database = {
           subastas_abandonadas: number
           subastas_ganadas: number
           updated_at: string | null
+          valoracion_promedio: number | null
         }
         Insert: {
           avatar_url?: string | null
@@ -319,6 +320,7 @@ export type Database = {
           subastas_abandonadas?: number
           subastas_ganadas?: number
           updated_at?: string | null
+          valoracion_promedio?: number | null
         }
         Update: {
           avatar_url?: string | null
@@ -340,8 +342,50 @@ export type Database = {
           subastas_abandonadas?: number
           subastas_ganadas?: number
           updated_at?: string | null
+          valoracion_promedio?: number | null
         }
         Relationships: []
+      }
+      valoraciones_usuario: {
+        Row: {
+          comentario: string | null
+          created_at: string
+          evaluado_id: string
+          evaluador_id: string
+          fecha: string
+          id: string
+          puntuacion: number
+          remate_id: string
+        }
+        Insert: {
+          comentario?: string | null
+          created_at?: string
+          evaluado_id: string
+          evaluador_id: string
+          fecha?: string
+          id?: string
+          puntuacion: number
+          remate_id: string
+        }
+        Update: {
+          comentario?: string | null
+          created_at?: string
+          evaluado_id?: string
+          evaluador_id?: string
+          fecha?: string
+          id?: string
+          puntuacion?: number
+          remate_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "valoraciones_usuario_remate_id_fkey"
+            columns: ["remate_id"]
+            isOneToOne: false
+            referencedRelation: "auctions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vehicle_features: {
         Row: {

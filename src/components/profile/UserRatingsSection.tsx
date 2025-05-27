@@ -23,8 +23,9 @@ const UserRatingsSection: React.FC<UserRatingsSectionProps> = ({
 
   const loadUserRatings = async () => {
     try {
+      // Usar query directo para evitar problemas de tipos temporales
       const { data, error } = await supabase
-        .from('valoraciones_usuario')
+        .from('valoraciones_usuario' as any)
         .select(`
           *,
           evaluador:profiles!valoraciones_usuario_evaluador_id_fkey(first_name, last_name),
