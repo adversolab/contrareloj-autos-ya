@@ -1,15 +1,21 @@
+
 import React, { useEffect, useState } from 'react';
 import Navbar from '@/components/Navbar';
 import Hero from '@/components/Hero';
-import AuctionCard from '@/components/AuctionCard';
 import Footer from '@/components/Footer';
-import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
+import FeaturedVehiclesSection from '@/components/FeaturedVehiclesSection';
+import BrandsCarousel from '@/components/home/BrandsCarousel';
+import ActiveAuctionsSection from '@/components/home/ActiveAuctionsSection';
+import PartnersSection from '@/components/home/PartnersSection';
+import EditorialCarousel from '@/components/home/EditorialCarousel';
+import ModernHowItWorks from '@/components/home/ModernHowItWorks';
+import DoubleCTA from '@/components/home/DoubleCTA';
 import FeaturedAuctionShowcase from '@/components/FeaturedAuctionShowcase';
 import EndingSoonCarousel from '@/components/EndingSoonCarousel';
-import FeaturedVehiclesSection from '@/components/FeaturedVehiclesSection';
+import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
 
 interface Auction {
   id: string;
@@ -30,12 +36,12 @@ const Index = () => {
     const fetchAuctions = async () => {
       setLoading(true);
       try {
-        // Primero, actualizar subastas expiradas
+        // First, update expired auctions
         await updateExpiredAuctions();
 
         const now = new Date().toISOString();
 
-        // Get active and approved auctions que NO hayan expirado
+        // Get active and approved auctions that haven't expired
         const { data: auctionsData, error: auctionsError } = await supabase
           .from('auctions')
           .select(`
@@ -55,7 +61,7 @@ const Index = () => {
           `)
           .eq('status', 'active')
           .eq('is_approved', true)
-          .gte('end_date', now); // Solo subastas que no han expirado
+          .gte('end_date', now);
 
         if (auctionsError) {
           console.error('Error fetching auctions:', auctionsError);
@@ -143,7 +149,6 @@ const Index = () => {
           };
         });
 
-        // Filter by end date (ya no es necesario porque ya filtramos en la query)
         const now_date = new Date();
         
         // Featured auctions (with most bids)
@@ -170,12 +175,12 @@ const Index = () => {
     fetchAuctions();
   }, []);
 
-  // Nueva función para actualizar subastas expiradas
+  // Function to update expired auctions
   const updateExpiredAuctions = async () => {
     try {
       const now = new Date().toISOString();
       
-      // Actualizar subastas que están marcadas como activas pero ya expiraron
+      // Update auctions that are marked as active but have expired
       const { error } = await supabase
         .from('auctions')
         .update({ status: 'finished' })
@@ -199,13 +204,19 @@ const Index = () => {
       <Hero />
       
       <main className="flex-grow w-full">
+        {/* Brands Carousel */}
+        <BrandsCarousel />
+        
         {/* Featured/Highlighted Vehicles Section */}
         <FeaturedVehiclesSection />
         
+        {/* Active Auctions Section */}
+        <ActiveAuctionsSection />
+        
         {/* Featured Auctions */}
-        <section className="w-full px-4 sm:px-6 lg:px-8 py-12">
+        <section className="w-full px-4 sm:px-6 lg:px-8 py-12 bg-white">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold">Subastas Destacadas</h2>
+            <h2 className="text-2xl md:text-3xl font-bold">Subastas Destacadas</h2>
             <Link to="/explorar">
               <Button variant="link" className="text-contrareloj">
                 Ver todas
@@ -223,9 +234,9 @@ const Index = () => {
         </section>
         
         {/* Ending Soon */}
-        <section className="w-full px-4 sm:px-6 lg:px-8 py-12">
+        <section className="w-full px-4 sm:px-6 lg:px-8 py-12 bg-gray-50">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold">Finalizando Pronto</h2>
+            <h2 className="text-2xl md:text-3xl font-bold">Finalizando Pronto</h2>
             <Link to="/explorar?sort=endingSoon">
               <Button variant="link" className="text-contrareloj">
                 Ver todas
@@ -242,67 +253,17 @@ const Index = () => {
           )}
         </section>
         
-        {/* How It Works */}
-        <section className="bg-gray-50 py-16 w-full">
-          <div className="w-full px-4 sm:px-6 lg:px-8">
-            <h2 className="text-3xl font-bold text-center mb-12">¿Cómo funciona?</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="bg-white p-6 rounded-lg shadow-sm text-center">
-                <div className="w-16 h-16 bg-contrareloj-light rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-contrareloj text-2xl font-bold">1</span>
-                </div>
-                <h3 className="text-xl font-semibold mb-3">Explora</h3>
-                <p className="text-gray-600">
-                  Navega por nuestra selección de vehículos y encuentra el que se ajuste a tus necesidades.
-                </p>
-              </div>
-              
-              <div className="bg-white p-6 rounded-lg shadow-sm text-center">
-                <div className="w-16 h-16 bg-contrareloj-light rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-contrareloj text-2xl font-bold">2</span>
-                </div>
-                <h3 className="text-xl font-semibold mb-3">Oferta</h3>
-                <p className="text-gray-600">
-                  Participa en la subasta realizando ofertas seguras antes de que finalice el tiempo.
-                </p>
-              </div>
-              
-              <div className="bg-white p-6 rounded-lg shadow-sm text-center">
-                <div className="w-16 h-16 bg-contrareloj-light rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-contrareloj text-2xl font-bold">3</span>
-                </div>
-                <h3 className="text-xl font-semibold mb-3">Compra</h3>
-                <p className="text-gray-600">
-                  Si ganas la subasta, completa la compra y ¡disfruta de tu nuevo vehículo!
-                </p>
-              </div>
-            </div>
-            
-            <div className="text-center mt-12">
-              <Link to="/ayuda/como-funciona">
-                <Button variant="outline" className="text-contrareloj border-contrareloj hover:bg-contrareloj hover:text-white">
-                  Saber más
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </section>
+        {/* Partners Section */}
+        <PartnersSection />
         
-        {/* CTA Section */}
-        <section className="bg-contrareloj py-16 w-full">
-          <div className="w-full px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-3xl font-bold text-white mb-4">¿Tienes un auto para vender?</h2>
-            <p className="text-xl text-white/80 mb-8 max-w-2xl mx-auto">
-              Véndelo de forma rápida, segura y al mejor precio con nuestras subastas.
-            </p>
-            <Link to="/vender">
-              <Button className="bg-white text-contrareloj hover:bg-gray-100 text-lg px-8 py-6">
-                Vende tu auto ahora
-              </Button>
-            </Link>
-          </div>
-        </section>
+        {/* Editorial Carousel */}
+        <EditorialCarousel />
+        
+        {/* How It Works - Modern Design */}
+        <ModernHowItWorks />
+        
+        {/* Double CTA Section */}
+        <DoubleCTA />
       </main>
       
       <Footer />

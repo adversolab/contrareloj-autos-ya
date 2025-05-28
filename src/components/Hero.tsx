@@ -2,6 +2,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
+import StatsCounter from './home/StatsCounter';
 
 const Hero = () => {
   return (
@@ -16,26 +17,28 @@ const Hero = () => {
       ></div>
       
       <div className="w-full px-4 sm:px-6 lg:px-8 py-20 relative z-20">
-        <div className="max-w-xl">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">
-            El tiempo corre, encuentra tu auto ideal
+        <div className="max-w-2xl">
+          <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">
+            El tiempo corre. Súmate a las subastas que mueven el motor de Chile
           </h1>
-          <p className="text-lg mb-8">
-            Subastas rápidas y transparentes para comprar o vender cualquier vehículo en Chile
+          <p className="text-xl md:text-2xl mb-8 text-white/90">
+            Subastas rápidas y transparentes para comprar o vender cualquier vehículo
           </p>
           
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-4 mb-8">
             <Link to="/explorar">
-              <Button className="bg-contrareloj hover:bg-contrareloj-dark text-white text-lg py-6 px-8">
-                Explorar subastas
+              <Button className="bg-contrareloj hover:bg-contrareloj-dark text-white text-lg py-6 px-8 shadow-lg">
+                Explorar autos
               </Button>
             </Link>
             <Link to="/vender">
-              <Button variant="outline" className="bg-white/10 backdrop-blur-sm border-white text-white hover:bg-white/20 text-lg py-6 px-8">
-                Vender mi auto
+              <Button variant="outline" className="bg-white/10 backdrop-blur-sm border-white text-white hover:bg-white/20 text-lg py-6 px-8 shadow-lg">
+                Publicar vehículo
               </Button>
             </Link>
           </div>
+          
+          <StatsCounter />
         </div>
       </div>
     </div>
