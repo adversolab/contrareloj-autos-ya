@@ -31,6 +31,7 @@ const SentMessagesSection: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [currentAdminId, setCurrentAdminId] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string>('');
 
   useEffect(() => {
     fetchSentMessages();
@@ -52,6 +53,7 @@ const SentMessagesSection: React.FC = () => {
   const fetchSentMessages = async () => {
     setLoading(true);
     setError(null);
+    setDebugInfo('Iniciando consulta...');
     
     try {
       console.log('SentMessagesSection: Starting fetchSentMessages...');
@@ -64,6 +66,7 @@ const SentMessagesSection: React.FC = () => {
         console.error('SentMessagesSection: No authenticated user');
         setError(errorMsg);
         setCurrentAdminId(null);
+        setDebugInfo('Error: Usuario no autenticado');
         toast.error('Error: Usuario no autenticado');
         return;
       }
@@ -71,18 +74,20 @@ const SentMessagesSection: React.FC = () => {
       const adminId = currentUser.id;
       console.log('SentMessagesSection: Admin ID to query:', adminId);
       setCurrentAdminId(adminId);
+      setDebugInfo(`Consultando con admin ID: ${adminId}`);
 
       if (!adminId || adminId.trim() === '') {
         const errorMsg = 'ID de administrador no válido';
         console.error('SentMessagesSection: Invalid admin ID:', adminId);
         setError(errorMsg);
+        setDebugInfo('Error: ID inválido');
         toast.error('Error: ID de administrador no válido');
         return;
       }
 
       console.log('SentMessagesSection: Querying notifications with sent_by =', adminId);
       
-      // Direct Supabase query - no dependency on Lovable endpoints
+      // Direct Supabase query
       const { data, error } = await supabase
         .from('notifications')
         .select('id, title, message, created_at, is_read, user_id, type, sent_by')
@@ -90,26 +95,36 @@ const SentMessagesSection: React.FC = () => {
         .eq('sent_by', adminId)
         .order('created_at', { ascending: false });
 
-      console.log('SentMessagesSection: Supabase query result:', { data, error });
+      console.log('SentMessagesSection: Supabase query result:', { 
+        dataCount: data?.length || 0, 
+        error,
+        adminId,
+        rawData: data
+      });
 
       if (error) {
         console.error('SentMessagesSection: Supabase error:', error);
         setError('Error al cargar mensajes desde la base de datos');
+        setDebugInfo(`Error Supabase: ${error.message}`);
         toast.error('Error al cargar mensajes enviados');
         return;
       }
 
       console.log('SentMessagesSection: Successfully fetched', data?.length || 0, 'messages');
+      setDebugInfo(`Encontrados ${data?.length || 0} mensajes enviados`);
 
       if (!data || data.length === 0) {
         console.log('SentMessagesSection: No messages found for current admin');
         setSentMessages([]);
         setFilteredMessages([]);
+        setDebugInfo('No se encontraron mensajes enviados por este admin');
         return;
       }
 
       // Fetch user details for each message
       console.log('SentMessagesSection: Fetching user details for messages...');
+      setDebugInfo(`Cargando datos de ${data.length} usuarios...`);
+      
       const messagesWithUserData = await Promise.all(
         data.map(async (notification) => {
           try {
@@ -147,9 +162,12 @@ const SentMessagesSection: React.FC = () => {
       console.log('SentMessagesSection: Final messages with user data:', messagesWithUserData);
       setSentMessages(messagesWithUserData);
       setFilteredMessages(messagesWithUserData);
+      setDebugInfo(`Cargados ${messagesWithUserData.length} mensajes completamente`);
+      
     } catch (error) {
       console.error('SentMessagesSection: Unexpected error:', error);
       setError('Error inesperado al cargar mensajes');
+      setDebugInfo(`Error inesperado: ${error}`);
       toast.error('Error al cargar mensajes enviados');
     } finally {
       setLoading(false);
@@ -175,12 +193,14 @@ const SentMessagesSection: React.FC = () => {
           </Button>
         </div>
         
-        {/* Debug info - visible admin ID */}
+        {/* Debug info */}
         <div className="flex items-center gap-2 p-2 bg-blue-50 border border-blue-200 rounded-lg text-sm">
           <User className="h-4 w-4 text-blue-600" />
-          <span className="text-blue-800">
-            Admin actual: {currentAdminId ? currentAdminId : 'No identificado'}
-          </span>
+          <div className="text-blue-800">
+            <div>Admin: {currentAdminId ? currentAdminId : 'No identificado'}</div>
+            <div>Estado: {debugInfo}</div>
+            <div>Mensajes cargados: {sentMessages.length}</div>
+          </div>
         </div>
         
         <div className="relative">

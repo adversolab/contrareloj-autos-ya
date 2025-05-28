@@ -57,6 +57,7 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
     } else {
       console.log('PendingVerificationsTable: No pending users, clearing notifications');
       setUserNotifications({});
+      setDebugInfo('No hay usuarios pendientes');
     }
   }, [pendingUsers]);
 
@@ -78,9 +79,9 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
       
       const userIds = pendingUsers.map(user => user.id);
       console.log('PendingVerificationsTable: Querying notifications for user IDs:', userIds);
-      setDebugInfo(`Consultando notificaciones para ${userIds.length} usuarios...`);
+      setDebugInfo(`Consultando ${userIds.length} usuarios con admin ID: ${adminId}`);
       
-      // Direct Supabase query - no dependency on Lovable endpoints
+      // Query ALL admin notifications for these users (not filtered by sent_by)
       const { data, error } = await supabase
         .from('notifications')
         .select('id, title, message, created_at, is_read, user_id, sent_by')
@@ -88,49 +89,52 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
         .eq('type', 'admin')
         .order('created_at', { ascending: false });
 
-      console.log('PendingVerificationsTable: Supabase query result:', { 
-        data: data?.length || 0, 
-        error, 
-        userIds: userIds.length 
+      console.log('PendingVerificationsTable: Raw Supabase response:', { 
+        dataCount: data?.length || 0, 
+        error,
+        data: data
       });
 
       if (error) {
         console.error('PendingVerificationsTable: Supabase error:', error);
-        setUserNotifications({});
         setDebugInfo(`Error en consulta: ${error.message}`);
         return;
       }
 
-      console.log('PendingVerificationsTable: Successfully fetched notifications:', data?.length || 0);
-      setDebugInfo(`Encontradas ${data?.length || 0} notificaciones en total`);
-
-      // Group by user_id and get the latest notification for each user
-      const latestNotifications: Record<string, UserNotification> = {};
-      
+      // Process notifications and update state ONLY if we have data
       if (data && data.length > 0) {
-        console.log('PendingVerificationsTable: Processing notifications...');
+        console.log('PendingVerificationsTable: Processing', data.length, 'notifications');
+        
+        // Group by user_id and get the latest notification for each user
+        const latestNotifications: Record<string, UserNotification> = {};
+        
         data.forEach(notification => {
           console.log('PendingVerificationsTable: Processing notification:', {
             id: notification.id,
             user_id: notification.user_id,
             title: notification.title,
-            sent_by: notification.sent_by
+            sent_by: notification.sent_by,
+            created_at: notification.created_at
           });
           
+          // Take the first one for each user (already ordered by created_at desc)
           if (!latestNotifications[notification.user_id]) {
             latestNotifications[notification.user_id] = notification;
             console.log('PendingVerificationsTable: Set latest notification for user:', notification.user_id);
           }
         });
-      }
 
-      console.log('PendingVerificationsTable: Final latest notifications:', Object.keys(latestNotifications));
-      setUserNotifications(latestNotifications);
-      setDebugInfo(`Procesadas notificaciones para ${Object.keys(latestNotifications).length} usuarios`);
+        console.log('PendingVerificationsTable: Final processed notifications:', latestNotifications);
+        setUserNotifications(latestNotifications);
+        setDebugInfo(`Procesadas ${data.length} notificaciones, ${Object.keys(latestNotifications).length} usuarios notificados`);
+      } else {
+        console.log('PendingVerificationsTable: No notifications found, keeping existing state');
+        setDebugInfo(`No se encontraron notificaciones para estos usuarios`);
+        // Don't clear existing notifications if query returns empty
+      }
       
     } catch (error) {
       console.error('PendingVerificationsTable: Unexpected error:', error);
-      setUserNotifications({});
       setDebugInfo(`Error inesperado: ${error}`);
     } finally {
       setLoadingNotifications(false);
@@ -138,9 +142,12 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
   };
 
   const handleMessageSent = () => {
-    console.log('PendingVerificationsTable: Message sent, refreshing notifications');
+    console.log('PendingVerificationsTable: Message sent, refreshing notifications in 1 second');
     setDebugInfo('Mensaje enviado, actualizando...');
-    fetchUserNotifications();
+    // Wait a moment for the message to be stored before refreshing
+    setTimeout(() => {
+      fetchUserNotifications();
+    }, 1000);
   };
 
   const getUserDisplayName = (user: AdminUser) => {
@@ -163,7 +170,8 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
           <div className="text-gray-600">Admin ID: {currentAdminId || 'No identificado'}</div>
           <div className="text-gray-600">Estado: {debugInfo || 'Inicializando...'}</div>
           <div className="text-gray-600">Usuarios pendientes: {pendingUsers.length}</div>
-          <div className="text-gray-600">Notificaciones cargadas: {Object.keys(userNotifications).length}</div>
+          <div className="text-gray-600">Notificaciones en memoria: {Object.keys(userNotifications).length}</div>
+          <div className="text-gray-600">Cargando: {loadingNotifications ? 'Sí' : 'No'}</div>
         </div>
         
         <div className="rounded-md border">
@@ -180,7 +188,7 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
             <TableBody>
               {pendingUsers.map((user) => {
                 const lastNotification = userNotifications[user.id];
-                console.log('PendingVerificationsTable: Rendering user:', user.id, 'notification:', !!lastNotification);
+                console.log('PendingVerificationsTable: Rendering user:', user.id, 'has notification:', !!lastNotification);
                 
                 return (
                   <TableRow key={user.id}>
