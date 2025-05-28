@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { AdminUser } from '@/services/admin/types';
 import { format } from 'date-fns';
@@ -51,11 +50,11 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
   const [debugInfo, setDebugInfo] = useState<string>('');
 
   useEffect(() => {
-    console.log('PendingVerificationsTable: useEffect triggered, pendingUsers:', pendingUsers);
+    console.log('🔵 PendingVerificationsTable: useEffect triggered, pendingUsers:', pendingUsers);
     if (pendingUsers.length > 0) {
       fetchUserNotifications();
     } else {
-      console.log('PendingVerificationsTable: No pending users, clearing notifications');
+      console.log('🟡 PendingVerificationsTable: No pending users, clearing notifications');
       setUserNotifications({});
       setDebugInfo('No hay usuarios pendientes');
     }
@@ -63,25 +62,26 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
 
   const fetchUserNotifications = async () => {
     if (pendingUsers.length === 0) {
-      console.log('PendingVerificationsTable: No pending users to fetch notifications for');
+      console.log('🟡 PendingVerificationsTable: No pending users to fetch notifications for');
       return;
     }
     
     setLoadingNotifications(true);
-    console.log('PendingVerificationsTable: Starting fetchUserNotifications...');
+    console.log('🔵 PendingVerificationsTable: Starting fetchUserNotifications...');
     
     try {
       // Get current admin for debugging
       const currentUser = await getCurrentUser();
       const adminId = currentUser?.id;
       setCurrentAdminId(adminId || null);
-      console.log('PendingVerificationsTable: Current admin ID:', adminId);
+      console.log('🔵 PendingVerificationsTable: Current admin ID:', adminId);
       
       const userIds = pendingUsers.map(user => user.id);
-      console.log('PendingVerificationsTable: Querying notifications for user IDs:', userIds);
-      setDebugInfo(`Consultando ${userIds.length} usuarios con admin ID: ${adminId}`);
+      console.log('🔵 PendingVerificationsTable: Querying notifications for user IDs:', userIds);
+      setDebugInfo(`🔵 Consultando ${userIds.length} usuarios con admin ID: ${adminId}`);
       
       // Query ALL admin notifications for these users (not filtered by sent_by)
+      console.log('🔵 PendingVerificationsTable: Querying all admin notifications for users...');
       const { data, error } = await supabase
         .from('notifications')
         .select('id, title, message, created_at, is_read, user_id, sent_by')
@@ -89,27 +89,34 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
         .eq('type', 'admin')
         .order('created_at', { ascending: false });
 
-      console.log('PendingVerificationsTable: Raw Supabase response:', { 
+      console.log('🔵 PendingVerificationsTable: Raw Supabase response:', { 
         dataCount: data?.length || 0, 
         error,
         data: data
       });
 
+      if (data && data.length > 0) {
+        console.log('🔵 PendingVerificationsTable: Detailed notification analysis:');
+        data.forEach((notif, index) => {
+          console.log(`  ${index + 1}. user_id: ${notif.user_id}, sent_by: ${notif.sent_by}, title: ${notif.title}`);
+        });
+      }
+
       if (error) {
-        console.error('PendingVerificationsTable: Supabase error:', error);
-        setDebugInfo(`Error en consulta: ${error.message}`);
+        console.error('🔴 PendingVerificationsTable: Supabase error:', error);
+        setDebugInfo(`🔴 Error en consulta: ${error.message}`);
         return;
       }
 
-      // Process notifications and update state ONLY if we have data
+      // Process notifications and update state
       if (data && data.length > 0) {
-        console.log('PendingVerificationsTable: Processing', data.length, 'notifications');
+        console.log('🔵 PendingVerificationsTable: Processing', data.length, 'notifications');
         
         // Group by user_id and get the latest notification for each user
         const latestNotifications: Record<string, UserNotification> = {};
         
         data.forEach(notification => {
-          console.log('PendingVerificationsTable: Processing notification:', {
+          console.log('🔵 PendingVerificationsTable: Processing notification:', {
             id: notification.id,
             user_id: notification.user_id,
             title: notification.title,
@@ -120,34 +127,34 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
           // Take the first one for each user (already ordered by created_at desc)
           if (!latestNotifications[notification.user_id]) {
             latestNotifications[notification.user_id] = notification;
-            console.log('PendingVerificationsTable: Set latest notification for user:', notification.user_id);
+            console.log('🟢 PendingVerificationsTable: Set latest notification for user:', notification.user_id);
           }
         });
 
-        console.log('PendingVerificationsTable: Final processed notifications:', latestNotifications);
+        console.log('🟢 PendingVerificationsTable: Final processed notifications:', latestNotifications);
         setUserNotifications(latestNotifications);
-        setDebugInfo(`Procesadas ${data.length} notificaciones, ${Object.keys(latestNotifications).length} usuarios notificados`);
+        setDebugInfo(`🟢 Procesadas ${data.length} notificaciones, ${Object.keys(latestNotifications).length} usuarios notificados`);
       } else {
-        console.log('PendingVerificationsTable: No notifications found, keeping existing state');
-        setDebugInfo(`No se encontraron notificaciones para estos usuarios`);
-        // Don't clear existing notifications if query returns empty
+        console.log('🟡 PendingVerificationsTable: No notifications found');
+        setDebugInfo(`🟡 No se encontraron notificaciones para estos usuarios`);
+        setUserNotifications({});
       }
       
     } catch (error) {
-      console.error('PendingVerificationsTable: Unexpected error:', error);
-      setDebugInfo(`Error inesperado: ${error}`);
+      console.error('🔴 PendingVerificationsTable: Unexpected error:', error);
+      setDebugInfo(`🔴 Error inesperado: ${error}`);
     } finally {
       setLoadingNotifications(false);
     }
   };
 
   const handleMessageSent = () => {
-    console.log('PendingVerificationsTable: Message sent, refreshing notifications in 1 second');
-    setDebugInfo('Mensaje enviado, actualizando...');
-    // Wait a moment for the message to be stored before refreshing
+    console.log('🔵 PendingVerificationsTable: Message sent, refreshing notifications in 2 seconds');
+    setDebugInfo('🔵 Mensaje enviado, actualizando...');
+    // Wait a bit longer for the message to be stored before refreshing
     setTimeout(() => {
       fetchUserNotifications();
-    }, 1000);
+    }, 2000); // Increased from 1000ms to 2000ms
   };
 
   const getUserDisplayName = (user: AdminUser) => {
@@ -164,7 +171,7 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
       <div className="mt-8">
         <h2 className="text-lg font-semibold mb-4">Usuarios Pendientes de Verificación</h2>
         
-        {/* Debug panel */}
+        {/* Enhanced debug panel */}
         <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm">
           <div className="font-medium text-gray-700 mb-1">Debug Info:</div>
           <div className="text-gray-600">Admin ID: {currentAdminId || 'No identificado'}</div>
@@ -172,6 +179,7 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
           <div className="text-gray-600">Usuarios pendientes: {pendingUsers.length}</div>
           <div className="text-gray-600">Notificaciones en memoria: {Object.keys(userNotifications).length}</div>
           <div className="text-gray-600">Cargando: {loadingNotifications ? 'Sí' : 'No'}</div>
+          <div className="text-blue-600">🔍 Revisa la consola del navegador para logs detallados</div>
         </div>
         
         <div className="rounded-md border">

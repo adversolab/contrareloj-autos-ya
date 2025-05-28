@@ -85,18 +85,18 @@ export async function markAllNotificationsAsRead() {
 // Create a notification for a specific user (for admin use)
 export async function createNotification(userId: string, title: string, message: string, type: string = 'admin', relatedId?: string) {
   try {
-    console.log('createNotification: Starting to create notification...');
+    console.log('🔵 createNotification: Starting to create notification...');
     
     const currentUser = await getCurrentUser();
     if (!currentUser) {
-      console.error('createNotification: No authenticated user found');
+      console.error('🔴 createNotification: No authenticated user found');
       return false;
     }
 
     const adminId = currentUser.id;
-    console.log('createNotification: Current admin ID:', adminId);
-    console.log('createNotification: Target user ID:', userId);
-    console.log('createNotification: Message details:', { title, message, type });
+    console.log('🔵 createNotification: Current admin ID:', adminId);
+    console.log('🔵 createNotification: Target user ID:', userId);
+    console.log('🔵 createNotification: Message details:', { title, message, type });
 
     // Prepare notification data with explicit sent_by field
     const notificationData = {
@@ -109,7 +109,7 @@ export async function createNotification(userId: string, title: string, message:
       sent_by: adminId // Explicitly set the admin ID who sent the message
     };
 
-    console.log('createNotification: Inserting notification data:', notificationData);
+    console.log('🔵 createNotification: About to insert notification data:', notificationData);
 
     const { data, error } = await supabase
       .from('notifications')
@@ -117,8 +117,8 @@ export async function createNotification(userId: string, title: string, message:
       .select('*'); // Select to get the inserted data back
 
     if (error) {
-      console.error('createNotification: Supabase error:', error);
-      console.error('createNotification: Error details:', {
+      console.error('🔴 createNotification: Supabase insertion error:', error);
+      console.error('🔴 createNotification: Error details:', {
         message: error.message,
         details: error.details,
         hint: error.hint,
@@ -127,11 +127,36 @@ export async function createNotification(userId: string, title: string, message:
       return false;
     }
 
-    console.log('createNotification: Successfully inserted notification:', data);
-    console.log('createNotification: Notification created with sent_by =', adminId);
+    console.log('🟢 createNotification: Successfully inserted notification:', data);
+    
+    if (data && data.length > 0) {
+      const insertedNotification = data[0];
+      console.log('🟢 createNotification: Inserted notification details:');
+      console.log('  - ID:', insertedNotification.id);
+      console.log('  - user_id:', insertedNotification.user_id);
+      console.log('  - sent_by:', insertedNotification.sent_by);
+      console.log('  - type:', insertedNotification.type);
+      console.log('  - title:', insertedNotification.title);
+      console.log('  - created_at:', insertedNotification.created_at);
+      
+      // Immediately test if we can query it back
+      console.log('🔵 createNotification: Testing immediate query with sent_by =', adminId);
+      const { data: testQuery, error: testError } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('sent_by', adminId)
+        .eq('type', 'admin');
+        
+      console.log('🔵 createNotification: Test query result:', { 
+        count: testQuery?.length || 0, 
+        error: testError,
+        data: testQuery 
+      });
+    }
+    
     return true;
   } catch (error) {
-    console.error('createNotification: Unexpected error:', error);
+    console.error('🔴 createNotification: Unexpected error:', error);
     return false;
   }
 }
