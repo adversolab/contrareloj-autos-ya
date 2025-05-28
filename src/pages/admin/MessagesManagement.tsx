@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +18,35 @@ interface User {
   first_name: string | null;
   last_name: string | null;
 }
+
+interface PredefinedMessage {
+  id: string;
+  title: string;
+  message: string;
+}
+
+const predefinedMessages: PredefinedMessage[] = [
+  {
+    id: 'falta_cedula',
+    title: 'Falta de documentos para verificación',
+    message: 'Hola, bienvenido a Contrareloj. Hemos detectado que falta adjuntar la cédula de identidad por ambos lados. Por favor, sube las imágenes de tu cédula (frente y reverso) en tu perfil para completar la verificación.'
+  },
+  {
+    id: 'fotos_borrosas',
+    title: 'Problemas con calidad de imágenes',
+    message: 'Las imágenes adjuntadas están borrosas o poco legibles. Por favor vuelve a subirlas con mejor resolución y asegúrate de que todos los datos sean claramente visibles.'
+  },
+  {
+    id: 'documentos_incompletos',
+    title: 'Documentación incompleta',
+    message: 'Parte de la información requerida está incompleta. Revisa los campos solicitados en tu perfil y actualízalos para completar el proceso de verificación.'
+  },
+  {
+    id: 'rechazo_verificacion',
+    title: 'Rechazo de verificación',
+    message: 'No se ha podido verificar tu identidad con los documentos enviados. Por favor revisa que la información coincida exactamente con tus documentos oficiales y vuelve a intentar.'
+  }
+];
 
 const MessagesManagement = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -66,6 +94,14 @@ const MessagesManagement = () => {
       toast.error('Error al cargar usuarios');
     } finally {
       setLoadingUsers(false);
+    }
+  };
+
+  const handlePredefinedMessage = (messageId: string) => {
+    const predefined = predefinedMessages.find(msg => msg.id === messageId);
+    if (predefined) {
+      setTitle(predefined.title);
+      setMessage(predefined.message);
     }
   };
 
@@ -160,6 +196,22 @@ const MessagesManagement = () => {
                         </div>
                       </SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Mensajes predefinidos */}
+              <div className="space-y-2">
+                <Label htmlFor="predefined-select">Mensajes predefinidos</Label>
+                <Select onValueChange={handlePredefinedMessage}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar motivo..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="falta_cedula">Falta cédula de identidad</SelectItem>
+                    <SelectItem value="fotos_borrosas">Fotos borrosas</SelectItem>
+                    <SelectItem value="documentos_incompletos">Documentación incompleta</SelectItem>
+                    <SelectItem value="rechazo_verificacion">Rechazo de verificación</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
