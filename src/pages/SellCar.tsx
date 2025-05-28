@@ -20,7 +20,7 @@ import ProfileRequiredScreen from '@/components/sell/ProfileRequiredScreen';
 const SellCarContent = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const draftId = searchParams.get('draft');
+  const draftId = searchParams.get('draftId') || searchParams.get('draft');
   
   const {
     step,
@@ -60,6 +60,7 @@ const SellCarContent = () => {
   // Load draft data if draftId is present
   useEffect(() => {
     if (draftId && isLoggedIn && !isCheckingAuth) {
+      console.log('Loading draft with ID:', draftId);
       loadDraftData(draftId);
     }
   }, [draftId, isLoggedIn, isCheckingAuth, loadDraftData]);
@@ -105,6 +106,18 @@ const SellCarContent = () => {
       
       <main className="flex-grow container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
+          {/* Draft indicator */}
+          {draftId && (
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-blue-800 font-medium">
+                📝 Continuando con borrador guardado
+              </p>
+              <p className="text-blue-600 text-sm">
+                Puedes continuar donde lo dejaste o modificar la información.
+              </p>
+            </div>
+          )}
+
           {/* Steps indicator */}
           <StepIndicator currentStep={step} steps={stepLabels} />
           

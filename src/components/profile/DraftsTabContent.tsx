@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuctionCard from '@/components/AuctionCard';
@@ -73,7 +74,7 @@ const DraftsTabContent = ({ draftAuctions, isLoading, onDelete }: DraftsTabConte
   }, [draftAuctions]);
   
   const handleEditDraft = (vehicleId: string) => {
-    navigate(`/vender?draft=${vehicleId}`);
+    navigate(`/vender?draftId=${vehicleId}`);
   };
   
   if (isLoading) {

@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -66,6 +67,7 @@ type SellContextType = {
   refreshCredits: () => Promise<void>;
   getTotalCostInCredits: () => number;
   loadDraftData: (draftId: string) => Promise<void>;
+  saveDraftAutomatically: () => Promise<void>;
 };
 
 export const SellContext = createContext<SellContextType | undefined>(undefined);
@@ -192,28 +194,115 @@ export const SellProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return total;
   };
 
-  // Verificar autenticación y perfil del usuario al cargar
-  useEffect(() => {
-    const checkAuth = async () => {
-      const user = await getCurrentUser();
-      setIsLoggedIn(!!user);
-      
-      if (user) {
-        // Obtener información del perfil
-        const { data } = await supabase
-          .from('profiles')
-          .select('first_name, last_name, phone')
-          .eq('id', user.id)
-          .single();
-          
-        setUserProfile(data);
-      }
-      
-      setIsCheckingAuth(false);
-    };
+  // Save draft automatically
+  const saveDraftAutomatically = useCallback(async () => {
+    if (!isLoggedIn) return;
 
-    checkAuth();
-  }, []);
+    try {
+      const user = await getCurrentUser();
+      if (!user) return;
+
+      // Only save if we have at least basic car info
+      if (!carInfo.brand && !carInfo.model) return;
+
+      console.log('Saving draft automatically...');
+
+      if (vehicleId) {
+        // Update existing vehicle
+        const { error: updateError } = await supabase
+          .from('vehicles')
+          .update({
+            brand: carInfo.brand,
+            model: carInfo.model,
+            year: carInfo.year ? parseInt(carInfo.year) : null,
+            kilometers: carInfo.kilometers ? parseInt(carInfo.kilometers.replace(/\D/g, '')) : null,
+            fuel: carInfo.fuel,
+            transmission: carInfo.transmission,
+            description: carInfo.description || additionalDetails,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', vehicleId);
+
+        if (updateError) {
+          console.error('Error updating vehicle draft:', updateError);
+          return;
+        }
+      } else {
+        // Create new vehicle draft
+        const { data: vehicleData, error: vehicleError } = await supabase
+          .from('vehicles')
+          .insert({
+            user_id: user.id,
+            brand: carInfo.brand,
+            model: carInfo.model,
+            year: carInfo.year ? parseInt(carInfo.year) : null,
+            kilometers: carInfo.kilometers ? parseInt(carInfo.kilometers.replace(/\D/g, '')) : null,
+            fuel: carInfo.fuel,
+            transmission: carInfo.transmission,
+            description: carInfo.description || additionalDetails,
+            is_approved: false
+          })
+          .select()
+          .single();
+
+        if (vehicleError || !vehicleData) {
+          console.error('Error creating vehicle draft:', vehicleError);
+          return;
+        }
+
+        setVehicleId(vehicleData.id);
+      }
+
+      // Save auction info if exists
+      if (vehicleId && (auctionInfo.reservePrice > 0 || auctionInfo.startPrice > 0)) {
+        if (auctionId) {
+          // Update existing auction
+          await supabase
+            .from('auctions')
+            .update({
+              reserve_price: auctionInfo.reservePrice,
+              start_price: auctionInfo.startPrice,
+              duration_days: auctionInfo.durationDays,
+              min_increment: auctionInfo.minIncrement,
+              status: 'draft',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', auctionId);
+        } else {
+          // Create new auction
+          const { data: auctionData } = await supabase
+            .from('auctions')
+            .insert({
+              vehicle_id: vehicleId,
+              reserve_price: auctionInfo.reservePrice,
+              start_price: auctionInfo.startPrice,
+              duration_days: auctionInfo.durationDays,
+              min_increment: auctionInfo.minIncrement,
+              status: 'draft'
+            })
+            .select()
+            .single();
+
+          if (auctionData) {
+            setAuctionId(auctionData.id);
+          }
+        }
+      }
+
+      console.log('Draft saved successfully');
+    } catch (error) {
+      console.error('Error saving draft:', error);
+    }
+  }, [carInfo, additionalDetails, auctionInfo, vehicleId, auctionId, isLoggedIn]);
+
+  // Auto-save when data changes
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      saveDraftAutomatically();
+    }, 2000); // Save 2 seconds after user stops typing
+
+    return () => clearTimeout(timeoutId);
+  }, [saveDraftAutomatically]);
 
   // Manejar subida de imágenes
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
@@ -506,7 +595,8 @@ export const SellProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     handleAuctionInfoChange,
     refreshCredits,
     getTotalCostInCredits,
-    loadDraftData
+    loadDraftData,
+    saveDraftAutomatically
   };
 
   return (
