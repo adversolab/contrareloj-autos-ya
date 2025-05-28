@@ -30,7 +30,12 @@ const Index = () => {
     const fetchAuctions = async () => {
       setLoading(true);
       try {
-        // Get active and approved auctions
+        // Primero, actualizar subastas expiradas
+        await updateExpiredAuctions();
+
+        const now = new Date().toISOString();
+
+        // Get active and approved auctions que NO hayan expirado
         const { data: auctionsData, error: auctionsError } = await supabase
           .from('auctions')
           .select(`
@@ -49,7 +54,8 @@ const Index = () => {
             )
           `)
           .eq('status', 'active')
-          .eq('is_approved', true);
+          .eq('is_approved', true)
+          .gte('end_date', now); // Solo subastas que no han expirado
 
         if (auctionsError) {
           console.error('Error fetching auctions:', auctionsError);
@@ -137,8 +143,8 @@ const Index = () => {
           };
         });
 
-        // Filter by end date
-        const now = new Date();
+        // Filter by end date (ya no es necesario porque ya filtramos en la query)
+        const now_date = new Date();
         
         // Featured auctions (with most bids)
         const featured = [...formattedAuctions]
@@ -147,7 +153,7 @@ const Index = () => {
         
         // Auctions ending soon
         const endingSoon = [...formattedAuctions]
-          .filter(auction => auction.endTime > now)
+          .filter(auction => auction.endTime > now_date)
           .sort((a, b) => a.endTime.getTime() - b.endTime.getTime())
           .slice(0, 3);
 
@@ -163,6 +169,28 @@ const Index = () => {
 
     fetchAuctions();
   }, []);
+
+  // Nueva función para actualizar subastas expiradas
+  const updateExpiredAuctions = async () => {
+    try {
+      const now = new Date().toISOString();
+      
+      // Actualizar subastas que están marcadas como activas pero ya expiraron
+      const { error } = await supabase
+        .from('auctions')
+        .update({ status: 'finished' })
+        .eq('status', 'active')
+        .lt('end_date', now);
+
+      if (error) {
+        console.error('Error updating expired auctions:', error);
+      } else {
+        console.log('Expired auctions updated on home page');
+      }
+    } catch (error) {
+      console.error('Error in updateExpiredAuctions:', error);
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col">

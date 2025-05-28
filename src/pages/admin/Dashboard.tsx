@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Car, CreditCard, Trophy, AlertTriangle, Star } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
 
 interface DashboardStats {
   newUsers: number;
@@ -16,7 +16,10 @@ interface DashboardStats {
 
 interface CreditMovement {
   fecha: string;
-  total: number;
+  compras: number;
+  ajustes: number;
+  bonos: number;
+  correcciones: number;
 }
 
 const Dashboard = () => {
@@ -39,6 +42,9 @@ const Dashboard = () => {
     try {
       setLoading(true);
 
+      // Primero, actualizar subastas expiradas
+      await updateExpiredAuctions();
+
       // Usuarios nuevos en últimos 7 días
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -48,11 +54,14 @@ const Dashboard = () => {
         .select('id')
         .gte('created_at', sevenDaysAgo.toISOString());
 
-      // Subastas activas
+      // Subastas activas (solo las que realmente están activas y no han expirado)
+      const now = new Date().toISOString();
       const { data: activeAuctionsData } = await supabase
         .from('auctions')
         .select('id')
-        .in('status', ['active', 'pending_approval']);
+        .eq('status', 'active')
+        .eq('is_approved', true)
+        .gte('end_date', now);
 
       // Vehículos destacados
       const { data: featuredVehiclesData } = await supabase
@@ -77,14 +86,14 @@ const Dashboard = () => {
         .select('puntuacion')
         .eq('visible', true);
 
-      // Datos de créditos por mes (últimos 6 meses)
+      // Datos de créditos por mes (últimos 6 meses) - MEJORADO
       const sixMonthsAgo = new Date();
       sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
       
       const { data: creditMovementsData } = await supabase
         .from('movimientos_credito')
-        .select('fecha, cantidad')
-        .eq('tipo', 'compra')
+        .select('fecha, cantidad, tipo')
+        .in('tipo', ['compra', 'ajuste', 'bono', 'correccion'])
         .gte('fecha', sixMonthsAgo.toISOString());
 
       // Procesar datos
@@ -92,17 +101,32 @@ const Dashboard = () => {
       const averageRating = ratingsData?.length ? 
         ratingsData.reduce((sum, rating) => sum + rating.puntuacion, 0) / ratingsData.length : 0;
 
-      // Agrupar movimientos de créditos por mes
-      const creditsByMonth = creditMovementsData?.reduce((acc: Record<string, number>, movement) => {
+      // Agrupar movimientos de créditos por mes y tipo - MEJORADO
+      const creditsByMonthAndType = creditMovementsData?.reduce((acc: Record<string, any>, movement) => {
         const month = new Date(movement.fecha).toLocaleDateString('es-ES', { month: 'short', year: 'numeric' });
-        acc[month] = (acc[month] || 0) + movement.cantidad;
+        if (!acc[month]) {
+          acc[month] = { fecha: month, compras: 0, ajustes: 0, bonos: 0, correcciones: 0 };
+        }
+        
+        switch (movement.tipo) {
+          case 'compra':
+            acc[month].compras += movement.cantidad;
+            break;
+          case 'ajuste':
+            acc[month].ajustes += movement.cantidad;
+            break;
+          case 'bono':
+            acc[month].bonos += movement.cantidad;
+            break;
+          case 'correccion':
+            acc[month].correcciones += movement.cantidad;
+            break;
+        }
         return acc;
       }, {}) || {};
 
-      const creditChartData = Object.entries(creditsByMonth).map(([month, total]) => ({
-        fecha: month,
-        total
-      }));
+      const creditChartData = Object.values(creditsByMonthAndType)
+        .sort((a: any, b: any) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
 
       setStats({
         newUsers: newUsersData?.length || 0,
@@ -118,6 +142,28 @@ const Dashboard = () => {
       console.error('Error loading dashboard data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Nueva función para actualizar subastas expiradas
+  const updateExpiredAuctions = async () => {
+    try {
+      const now = new Date().toISOString();
+      
+      // Actualizar subastas que están marcadas como activas pero ya expiraron
+      const { error } = await supabase
+        .from('auctions')
+        .update({ status: 'finished' })
+        .eq('status', 'active')
+        .lt('end_date', now);
+
+      if (error) {
+        console.error('Error updating expired auctions:', error);
+      } else {
+        console.log('Expired auctions updated successfully');
+      }
+    } catch (error) {
+      console.error('Error in updateExpiredAuctions:', error);
     }
   };
 
@@ -153,6 +199,9 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.activeAuctions}</div>
+            <p className="text-xs text-muted-foreground">
+              Solo subastas no expiradas
+            </p>
           </CardContent>
         </Card>
 
@@ -197,21 +246,25 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Credit Chart */}
+      {/* Credit Chart - MEJORADO */}
       <Card>
         <CardHeader>
-          <CardTitle>Créditos Comprados (Últimos 6 Meses)</CardTitle>
+          <CardTitle>Movimientos de Créditos por Tipo (Últimos 6 Meses)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={creditData}>
+              <BarChart data={creditData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="fecha" />
                 <YAxis />
                 <Tooltip />
-                <Line type="monotone" dataKey="total" stroke="#8884d8" strokeWidth={2} />
-              </LineChart>
+                <Legend />
+                <Bar dataKey="compras" stackId="a" fill="#10b981" name="Compras" />
+                <Bar dataKey="ajustes" stackId="a" fill="#f59e0b" name="Ajustes Admin" />
+                <Bar dataKey="bonos" stackId="a" fill="#8b5cf6" name="Bonos" />
+                <Bar dataKey="correcciones" stackId="a" fill="#06b6d4" name="Correcciones" />
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </CardContent>
