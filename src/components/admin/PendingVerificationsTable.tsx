@@ -45,8 +45,15 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
 
   const fetchUserNotifications = async () => {
     const userIds = pendingUsers.map(user => user.id);
+    console.log('Fetching notifications for users:', userIds);
     const notifications = await getUsersWithNotificationStatus(userIds);
+    console.log('Received notifications:', notifications);
     setUserNotifications(notifications);
+  };
+
+  const handleMessageSent = () => {
+    // Refresh notifications after sending a message
+    fetchUserNotifications();
   };
 
   const getUserDisplayName = (user: AdminUser) => {
@@ -143,6 +150,7 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
                           userId={user.id}
                           userName={getUserDisplayName(user)}
                           userEmail={user.email}
+                          onMessageSent={handleMessageSent}
                         />
                         
                         {/* Menú desplegable con otras acciones */}

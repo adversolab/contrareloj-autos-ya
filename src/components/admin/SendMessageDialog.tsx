@@ -15,9 +15,15 @@ interface SendMessageDialogProps {
   userId: string;
   userName: string;
   userEmail: string;
+  onMessageSent?: () => void;
 }
 
-const SendMessageDialog: React.FC<SendMessageDialogProps> = ({ userId, userName, userEmail }) => {
+const SendMessageDialog: React.FC<SendMessageDialogProps> = ({ 
+  userId, 
+  userName, 
+  userEmail, 
+  onMessageSent 
+}) => {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
@@ -59,6 +65,7 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({ userId, userName,
 
     setLoading(true);
     try {
+      console.log('Sending message to user:', { userId, title, message });
       const success = await createNotification(userId, title, message, 'admin');
       
       if (success) {
@@ -66,6 +73,11 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({ userId, userName,
         setTitle('');
         setMessage('');
         setOpen(false);
+        
+        // Call the callback to refresh parent components
+        if (onMessageSent) {
+          onMessageSent();
+        }
       } else {
         toast.error('Error al enviar el mensaje');
       }

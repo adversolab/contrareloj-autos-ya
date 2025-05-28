@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/table";
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Search, Bell, Calendar, User, Filter } from 'lucide-react';
+import { Search, Bell, Calendar, User, Filter, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface NotificationHistory {
@@ -52,6 +52,7 @@ const NotificationsHistory: React.FC = () => {
   const fetchNotifications = async () => {
     setLoading(true);
     try {
+      console.log('Fetching all notifications...');
       const { data, error } = await supabase
         .from('notifications')
         .select(`
@@ -71,6 +72,8 @@ const NotificationsHistory: React.FC = () => {
         return;
       }
 
+      console.log('Fetched all notifications:', data);
+
       // Fetch user details for each notification
       const notificationsWithUserData = await Promise.all(
         (data || []).map(async (notification) => {
@@ -89,6 +92,7 @@ const NotificationsHistory: React.FC = () => {
         })
       );
 
+      console.log('Notifications with user data:', notificationsWithUserData);
       setNotifications(notificationsWithUserData);
     } catch (error) {
       console.error('Error:', error);
@@ -161,10 +165,16 @@ const NotificationsHistory: React.FC = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Bell className="h-5 w-5" />
-          Historial de Notificaciones Enviadas
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <Bell className="h-5 w-5" />
+            Historial de Notificaciones Enviadas
+          </CardTitle>
+          <Button onClick={fetchNotifications} variant="outline" size="sm" disabled={loading}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Actualizar
+          </Button>
+        </div>
         
         {/* Filters */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
@@ -225,9 +235,6 @@ const NotificationsHistory: React.FC = () => {
           <Button onClick={clearFilters} variant="outline" size="sm">
             <Filter className="mr-2 h-4 w-4" />
             Limpiar filtros
-          </Button>
-          <Button onClick={fetchNotifications} variant="outline" size="sm">
-            Actualizar
           </Button>
         </div>
       </CardHeader>

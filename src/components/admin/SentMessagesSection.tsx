@@ -3,9 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Search, Mail, Clock } from 'lucide-react';
+import { Search, Mail, Clock, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface SentMessage {
@@ -47,6 +48,7 @@ const SentMessagesSection: React.FC = () => {
   const fetchSentMessages = async () => {
     setLoading(true);
     try {
+      console.log('Fetching sent messages...');
       const { data, error } = await supabase
         .from('notifications')
         .select(`
@@ -67,6 +69,8 @@ const SentMessagesSection: React.FC = () => {
         return;
       }
 
+      console.log('Fetched notifications:', data);
+
       // Fetch user details for each message
       const messagesWithUserData = await Promise.all(
         (data || []).map(async (notification) => {
@@ -85,6 +89,7 @@ const SentMessagesSection: React.FC = () => {
         })
       );
 
+      console.log('Messages with user data:', messagesWithUserData);
       setSentMessages(messagesWithUserData);
       setFilteredMessages(messagesWithUserData);
     } catch (error) {
@@ -103,10 +108,16 @@ const SentMessagesSection: React.FC = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Mail className="h-5 w-5" />
-          Mensajes Enviados
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <Mail className="h-5 w-5" />
+            Mensajes Enviados
+          </CardTitle>
+          <Button onClick={fetchSentMessages} variant="outline" size="sm" disabled={loading}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Actualizar
+          </Button>
+        </div>
         <div className="relative">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input

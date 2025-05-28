@@ -83,8 +83,16 @@ export async function markAllNotificationsAsRead() {
 }
 
 // Create a notification for a specific user (for admin use)
-export async function createNotification(userId: string, title: string, message: string, type: string = 'info', relatedId?: string) {
+export async function createNotification(userId: string, title: string, message: string, type: string = 'admin', relatedId?: string) {
   try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
+      console.error('No authenticated user found');
+      return false;
+    }
+
+    console.log('Creating notification:', { userId, title, message, type, currentUser: currentUser.id });
+
     const { error } = await supabase
       .from('notifications')
       .insert({
@@ -92,7 +100,8 @@ export async function createNotification(userId: string, title: string, message:
         title,
         message,
         type,
-        related_id: relatedId
+        related_id: relatedId,
+        is_read: false
       });
 
     if (error) {
@@ -100,9 +109,10 @@ export async function createNotification(userId: string, title: string, message:
       return false;
     }
 
+    console.log('Notification created successfully');
     return true;
   } catch (error) {
-    console.error('Unexpected error:', error);
+    console.error('Unexpected error creating notification:', error);
     return false;
   }
 }
