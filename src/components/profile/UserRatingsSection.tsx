@@ -23,7 +23,7 @@ const UserRatingsSection: React.FC<UserRatingsSectionProps> = ({
 
   const loadUserRatings = async () => {
     try {
-      // First, get the basic ratings data
+      // First, get the basic ratings data with explicit typing
       const { data: ratingsData, error: ratingsError } = await supabase
         .from('valoraciones_usuario' as any)
         .select('*')
@@ -40,15 +40,26 @@ const UserRatingsSection: React.FC<UserRatingsSectionProps> = ({
         return;
       }
 
+      // Type cast the data to ensure TypeScript recognizes the structure
+      const typedRatingsData = ratingsData as Array<{
+        id: string;
+        evaluador_id: string;
+        evaluado_id: string;
+        remate_id: string;
+        puntuacion: number;
+        comentario?: string;
+        fecha: string;
+      }>;
+
       // Get evaluator profiles for each rating
-      const evaluatorIds = ratingsData.map(rating => rating.evaluador_id);
+      const evaluatorIds = typedRatingsData.map(rating => rating.evaluador_id);
       const { data: profilesData } = await supabase
         .from('profiles')
         .select('id, first_name, last_name')
         .in('id', evaluatorIds);
 
       // Get auction/vehicle data for each rating
-      const auctionIds = ratingsData.map(rating => rating.remate_id);
+      const auctionIds = typedRatingsData.map(rating => rating.remate_id);
       const { data: auctionsData } = await supabase
         .from('auctions')
         .select(`
@@ -58,7 +69,7 @@ const UserRatingsSection: React.FC<UserRatingsSectionProps> = ({
         .in('id', auctionIds);
 
       // Combine the data
-      const enrichedRatings = ratingsData.map(rating => {
+      const enrichedRatings = typedRatingsData.map(rating => {
         const evaluator = profilesData?.find(p => p.id === rating.evaluador_id);
         const auction = auctionsData?.find(a => a.id === rating.remate_id);
         
