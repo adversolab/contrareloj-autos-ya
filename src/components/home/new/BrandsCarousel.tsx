@@ -25,7 +25,7 @@ const BrandsCarousel = () => {
       
       {/* Infinite scrolling carousel */}
       <div className="relative">
-        <div className="flex animate-scroll space-x-12">
+        <div className="flex space-x-12 animate-scroll">
           {/* First set */}
           {brands.map((brand, index) => (
             <Link
@@ -68,20 +68,22 @@ const BrandsCarousel = () => {
         </div>
       </div>
       
-      <style jsx>{`
-        @keyframes scroll {
-          0% {
-            transform: translateX(0);
+      <style>
+        {`
+          @keyframes scroll {
+            0% {
+              transform: translateX(0);
+            }
+            100% {
+              transform: translateX(-50%);
+            }
           }
-          100% {
-            transform: translateX(-50%);
+          
+          .animate-scroll {
+            animation: scroll 30s linear infinite;
           }
-        }
-        
-        .animate-scroll {
-          animation: scroll 30s linear infinite;
-        }
-      `}</style>
+        `}
+      </style>
     </section>
   );
 };
