@@ -48,18 +48,30 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
   const [loadingNotifications, setLoadingNotifications] = useState(false);
 
   useEffect(() => {
+    console.log('PendingVerificationsTable: useEffect triggered');
+    console.log('PendingVerificationsTable: pendingUsers length:', pendingUsers.length);
+    console.log('PendingVerificationsTable: pendingUsers:', pendingUsers.map(u => ({ id: u.id, email: u.email })));
+    
     if (pendingUsers.length > 0) {
       fetchUserNotifications();
+    } else {
+      console.log('PendingVerificationsTable: No pending users, clearing notifications');
+      setUserNotifications({});
     }
   }, [pendingUsers]);
 
   const fetchUserNotifications = async () => {
-    if (pendingUsers.length === 0) return;
+    if (pendingUsers.length === 0) {
+      console.log('PendingVerificationsTable: fetchUserNotifications aborted - no pending users');
+      return;
+    }
     
     setLoadingNotifications(true);
+    console.log('PendingVerificationsTable: Starting fetchUserNotifications');
+    
     try {
       const userIds = pendingUsers.map(user => user.id);
-      console.log('Fetching notifications for pending users:', userIds);
+      console.log('PendingVerificationsTable: Fetching notifications for user IDs:', userIds);
       
       const { data, error } = await supabase
         .from('notifications')
@@ -69,32 +81,44 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching user notifications:', error);
+        console.error('PendingVerificationsTable: Error fetching notifications:', error);
         return;
       }
 
-      console.log('Fetched notifications data:', data);
+      console.log('PendingVerificationsTable: Raw notifications data:', data);
+      console.log('PendingVerificationsTable: Notifications count:', data?.length || 0);
 
       // Group by user_id and get the latest notification for each user
       const latestNotifications: Record<string, UserNotification> = {};
       
-      data?.forEach(notification => {
-        if (!latestNotifications[notification.user_id]) {
-          latestNotifications[notification.user_id] = notification;
-        }
-      });
+      if (data && data.length > 0) {
+        data.forEach(notification => {
+          console.log('PendingVerificationsTable: Processing notification for user:', notification.user_id);
+          if (!latestNotifications[notification.user_id]) {
+            latestNotifications[notification.user_id] = notification;
+            console.log('PendingVerificationsTable: Added latest notification for user:', notification.user_id, notification.title);
+          }
+        });
+      } else {
+        console.log('PendingVerificationsTable: No notifications found in database');
+      }
 
-      console.log('Latest notifications by user:', latestNotifications);
+      console.log('PendingVerificationsTable: Final latest notifications by user:', latestNotifications);
+      console.log('PendingVerificationsTable: Setting userNotifications state...');
+      
       setUserNotifications(latestNotifications);
+      
+      console.log('PendingVerificationsTable: State updated successfully');
     } catch (error) {
-      console.error('Unexpected error fetching notifications:', error);
+      console.error('PendingVerificationsTable: Unexpected error fetching notifications:', error);
     } finally {
       setLoadingNotifications(false);
+      console.log('PendingVerificationsTable: fetchUserNotifications completed');
     }
   };
 
   const handleMessageSent = () => {
-    console.log('Message sent, refreshing notifications...');
+    console.log('PendingVerificationsTable: Message sent callback triggered, refreshing notifications...');
     // Refresh notifications after sending a message
     fetchUserNotifications();
   };
@@ -107,6 +131,8 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
   if (pendingUsers.length === 0) {
     return null;
   }
+
+  console.log('PendingVerificationsTable: Rendering with userNotifications:', userNotifications);
 
   return (
     <TooltipProvider>
@@ -126,6 +152,7 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
             <TableBody>
               {pendingUsers.map((user) => {
                 const lastNotification = userNotifications[user.id];
+                console.log(`PendingVerificationsTable: Rendering user ${user.id} (${user.email}), notification:`, lastNotification);
                 
                 return (
                   <TableRow key={user.id}>
