@@ -56,7 +56,9 @@ const NotificationsHistory: React.FC = () => {
   const fetchNotifications = async () => {
     setLoading(true);
     try {
-      console.log('Fetching all notifications...');
+      console.log('Fetching all admin notifications...');
+      
+      // Query notifications with type 'admin'
       const { data, error } = await supabase
         .from('notifications')
         .select(`
@@ -69,6 +71,7 @@ const NotificationsHistory: React.FC = () => {
           type,
           sent_by
         `)
+        .eq('type', 'admin') // Only admin notifications
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -77,38 +80,58 @@ const NotificationsHistory: React.FC = () => {
         return;
       }
 
-      console.log('Fetched all notifications:', data);
+      console.log('Fetched admin notifications:', data);
+
+      if (!data || data.length === 0) {
+        console.log('No admin notifications found');
+        setNotifications([]);
+        setFilteredNotifications([]);
+        return;
+      }
 
       // Fetch user and admin details for each notification
       const notificationsWithUserData = await Promise.all(
-        (data || []).map(async (notification) => {
-          // Get user details
-          const { data: userProfile } = await supabase
-            .from('profiles')
-            .select('email, first_name, last_name')
-            .eq('id', notification.user_id)
-            .single();
-
-          // Get admin details if sent_by exists
-          let adminProfile = null;
-          if (notification.sent_by) {
-            const { data: adminData } = await supabase
+        data.map(async (notification) => {
+          try {
+            // Get user details
+            const { data: userProfile } = await supabase
               .from('profiles')
               .select('email, first_name, last_name')
-              .eq('id', notification.sent_by)
+              .eq('id', notification.user_id)
               .single();
-            adminProfile = adminData;
-          }
 
-          return {
-            ...notification,
-            user_email: userProfile?.email || '',
-            user_first_name: userProfile?.first_name || null,
-            user_last_name: userProfile?.last_name || null,
-            admin_email: adminProfile?.email || '',
-            admin_first_name: adminProfile?.first_name || null,
-            admin_last_name: adminProfile?.last_name || null,
-          };
+            // Get admin details if sent_by exists
+            let adminProfile = null;
+            if (notification.sent_by) {
+              const { data: adminData } = await supabase
+                .from('profiles')
+                .select('email, first_name, last_name')
+                .eq('id', notification.sent_by)
+                .single();
+              adminProfile = adminData;
+            }
+
+            return {
+              ...notification,
+              user_email: userProfile?.email || 'Email no encontrado',
+              user_first_name: userProfile?.first_name || null,
+              user_last_name: userProfile?.last_name || null,
+              admin_email: adminProfile?.email || '',
+              admin_first_name: adminProfile?.first_name || null,
+              admin_last_name: adminProfile?.last_name || null,
+            };
+          } catch (profileError) {
+            console.error('Error fetching profile data for notification:', notification.id, profileError);
+            return {
+              ...notification,
+              user_email: 'Error al cargar datos',
+              user_first_name: null,
+              user_last_name: null,
+              admin_email: '',
+              admin_first_name: null,
+              admin_last_name: null,
+            };
+          }
         })
       );
 

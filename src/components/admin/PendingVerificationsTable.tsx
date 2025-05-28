@@ -22,7 +22,7 @@ import { MoreHorizontal, CheckCircle, FileText, Check } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import SendMessageDialog from './SendMessageDialog';
 import LastMessageDialog from './LastMessageDialog';
-import { getUsersWithNotificationStatus, UserLastNotification } from '@/services/admin/notificationService';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PendingVerificationsTableProps {
   pendingUsers: AdminUser[];
@@ -30,12 +30,22 @@ interface PendingVerificationsTableProps {
   onVerifyUser: (userId: string) => Promise<void>;
 }
 
+interface UserNotification {
+  id: string;
+  title: string;
+  message: string;
+  created_at: string;
+  is_read: boolean;
+  user_id: string;
+}
+
 const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
   pendingUsers,
   onViewDocuments,
   onVerifyUser
 }) => {
-  const [userNotifications, setUserNotifications] = useState<Record<string, UserLastNotification>>({});
+  const [userNotifications, setUserNotifications] = useState<Record<string, UserNotification>>({});
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
 
   useEffect(() => {
     if (pendingUsers.length > 0) {
@@ -44,14 +54,47 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
   }, [pendingUsers]);
 
   const fetchUserNotifications = async () => {
-    const userIds = pendingUsers.map(user => user.id);
-    console.log('Fetching notifications for users:', userIds);
-    const notifications = await getUsersWithNotificationStatus(userIds);
-    console.log('Received notifications:', notifications);
-    setUserNotifications(notifications);
+    if (pendingUsers.length === 0) return;
+    
+    setLoadingNotifications(true);
+    try {
+      const userIds = pendingUsers.map(user => user.id);
+      console.log('Fetching notifications for pending users:', userIds);
+      
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('id, title, message, created_at, is_read, user_id')
+        .in('user_id', userIds)
+        .eq('type', 'admin')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching user notifications:', error);
+        return;
+      }
+
+      console.log('Fetched notifications data:', data);
+
+      // Group by user_id and get the latest notification for each user
+      const latestNotifications: Record<string, UserNotification> = {};
+      
+      data?.forEach(notification => {
+        if (!latestNotifications[notification.user_id]) {
+          latestNotifications[notification.user_id] = notification;
+        }
+      });
+
+      console.log('Latest notifications by user:', latestNotifications);
+      setUserNotifications(latestNotifications);
+    } catch (error) {
+      console.error('Unexpected error fetching notifications:', error);
+    } finally {
+      setLoadingNotifications(false);
+    }
   };
 
   const handleMessageSent = () => {
+    console.log('Message sent, refreshing notifications...');
     // Refresh notifications after sending a message
     fetchUserNotifications();
   };
@@ -116,7 +159,9 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
                       </div>
                     </TableCell>
                     <TableCell>
-                      {lastNotification ? (
+                      {loadingNotifications ? (
+                        <span className="text-sm text-muted-foreground">Cargando...</span>
+                      ) : lastNotification ? (
                         <div className="flex items-center gap-2">
                           <Tooltip>
                             <TooltipTrigger>
@@ -127,6 +172,9 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
                                 <div className="font-medium">{lastNotification.title}</div>
                                 <div className="text-xs text-muted-foreground">
                                   {format(new Date(lastNotification.created_at), 'dd/MM/yyyy HH:mm')}
+                                </div>
+                                <div className="text-xs">
+                                  Estado: {lastNotification.is_read ? 'Leído' : 'No leído'}
                                 </div>
                               </div>
                             </TooltipContent>

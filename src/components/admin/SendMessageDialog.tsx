@@ -69,13 +69,14 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
       const success = await createNotification(userId, title, message, 'admin');
       
       if (success) {
-        toast.success('Mensaje enviado correctamente');
+        toast.success('Mensaje enviado y registrado correctamente');
         setTitle('');
         setMessage('');
         setOpen(false);
         
         // Call the callback to refresh parent components
         if (onMessageSent) {
+          console.log('Calling onMessageSent callback to refresh UI');
           onMessageSent();
         }
       } else {

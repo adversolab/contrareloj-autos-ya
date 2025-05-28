@@ -53,10 +53,13 @@ const SentMessagesSection: React.FC = () => {
       const currentUser = await getCurrentUser();
       if (!currentUser) {
         console.error('No authenticated user found');
+        toast.error('Error: Usuario no autenticado');
         return;
       }
 
       console.log('Fetching sent messages for admin:', currentUser.id);
+      
+      // Query notifications sent by current admin
       const { data, error } = await supabase
         .from('notifications')
         .select(`
@@ -81,21 +84,38 @@ const SentMessagesSection: React.FC = () => {
 
       console.log('Fetched notifications for current admin:', data);
 
+      if (!data || data.length === 0) {
+        console.log('No sent messages found for current admin');
+        setSentMessages([]);
+        setFilteredMessages([]);
+        return;
+      }
+
       // Fetch user details for each message
       const messagesWithUserData = await Promise.all(
-        (data || []).map(async (notification) => {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('email, first_name, last_name')
-            .eq('id', notification.user_id)
-            .single();
+        data.map(async (notification) => {
+          try {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('email, first_name, last_name')
+              .eq('id', notification.user_id)
+              .single();
 
-          return {
-            ...notification,
-            user_email: profile?.email || '',
-            user_first_name: profile?.first_name || null,
-            user_last_name: profile?.last_name || null,
-          };
+            return {
+              ...notification,
+              user_email: profile?.email || 'Email no encontrado',
+              user_first_name: profile?.first_name || null,
+              user_last_name: profile?.last_name || null,
+            };
+          } catch (profileError) {
+            console.error('Error fetching profile for user:', notification.user_id, profileError);
+            return {
+              ...notification,
+              user_email: 'Error al cargar email',
+              user_first_name: null,
+              user_last_name: null,
+            };
+          }
         })
       );
 
