@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { getCurrentUser } from '@/services/authService';
 import { toast } from 'sonner';
-import { Search, Mail, Clock, RefreshCw, AlertCircle } from 'lucide-react';
+import { Search, Mail, Clock, RefreshCw, AlertCircle, User } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface SentMessage {
@@ -30,6 +30,7 @@ const SentMessagesSection: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [currentAdminId, setCurrentAdminId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSentMessages();
@@ -53,22 +54,43 @@ const SentMessagesSection: React.FC = () => {
     setError(null);
     
     try {
+      console.log('SentMessagesSection: Starting fetchSentMessages...');
+      
       const currentUser = await getCurrentUser();
+      console.log('SentMessagesSection: Current user from auth:', currentUser);
+      
       if (!currentUser) {
-        setError('Usuario no autenticado');
+        const errorMsg = 'Usuario no autenticado';
+        console.error('SentMessagesSection: No authenticated user');
+        setError(errorMsg);
+        setCurrentAdminId(null);
         toast.error('Error: Usuario no autenticado');
         return;
       }
 
-      console.log('SentMessagesSection: Fetching messages for admin:', currentUser.id);
+      const adminId = currentUser.id;
+      console.log('SentMessagesSection: Admin ID to query:', adminId);
+      setCurrentAdminId(adminId);
+
+      if (!adminId || adminId.trim() === '') {
+        const errorMsg = 'ID de administrador no válido';
+        console.error('SentMessagesSection: Invalid admin ID:', adminId);
+        setError(errorMsg);
+        toast.error('Error: ID de administrador no válido');
+        return;
+      }
+
+      console.log('SentMessagesSection: Querying notifications with sent_by =', adminId);
       
       // Direct Supabase query - no dependency on Lovable endpoints
       const { data, error } = await supabase
         .from('notifications')
         .select('id, title, message, created_at, is_read, user_id, type, sent_by')
         .eq('type', 'admin')
-        .eq('sent_by', currentUser.id)
+        .eq('sent_by', adminId)
         .order('created_at', { ascending: false });
+
+      console.log('SentMessagesSection: Supabase query result:', { data, error });
 
       if (error) {
         console.error('SentMessagesSection: Supabase error:', error);
@@ -87,9 +109,11 @@ const SentMessagesSection: React.FC = () => {
       }
 
       // Fetch user details for each message
+      console.log('SentMessagesSection: Fetching user details for messages...');
       const messagesWithUserData = await Promise.all(
         data.map(async (notification) => {
           try {
+            console.log('SentMessagesSection: Fetching profile for user_id:', notification.user_id);
             const { data: profile, error: profileError } = await supabase
               .from('profiles')
               .select('email, first_name, last_name')
@@ -100,12 +124,14 @@ const SentMessagesSection: React.FC = () => {
               console.error('SentMessagesSection: Error fetching profile for user:', notification.user_id, profileError);
             }
 
-            return {
+            const result = {
               ...notification,
               user_email: profile?.email || 'Email no encontrado',
               user_first_name: profile?.first_name || null,
               user_last_name: profile?.last_name || null,
             };
+            console.log('SentMessagesSection: Message with user data:', result);
+            return result;
           } catch (profileError) {
             console.error('SentMessagesSection: Profile fetch error for user:', notification.user_id, profileError);
             return {
@@ -118,7 +144,7 @@ const SentMessagesSection: React.FC = () => {
         })
       );
 
-      console.log('SentMessagesSection: Messages with user data loaded successfully');
+      console.log('SentMessagesSection: Final messages with user data:', messagesWithUserData);
       setSentMessages(messagesWithUserData);
       setFilteredMessages(messagesWithUserData);
     } catch (error) {
@@ -148,6 +174,15 @@ const SentMessagesSection: React.FC = () => {
             Actualizar
           </Button>
         </div>
+        
+        {/* Debug info - visible admin ID */}
+        <div className="flex items-center gap-2 p-2 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+          <User className="h-4 w-4 text-blue-600" />
+          <span className="text-blue-800">
+            Admin actual: {currentAdminId ? currentAdminId : 'No identificado'}
+          </span>
+        </div>
+        
         <div className="relative">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
@@ -163,6 +198,13 @@ const SentMessagesSection: React.FC = () => {
           <div className="flex items-center gap-2 p-4 bg-red-50 border border-red-200 rounded-lg mb-4">
             <AlertCircle className="h-5 w-5 text-red-600" />
             <span className="text-red-800">{error}</span>
+          </div>
+        )}
+
+        {!currentAdminId && !loading && (
+          <div className="flex items-center gap-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg mb-4">
+            <AlertCircle className="h-5 w-5 text-yellow-600" />
+            <span className="text-yellow-800">No se pudo identificar al administrador actual</span>
           </div>
         )}
         
@@ -195,7 +237,8 @@ const SentMessagesSection: React.FC = () => {
           </div>
         ) : (
           <div className="text-center py-8 text-muted-foreground">
-            {searchTerm ? 'No se encontraron mensajes que coincidan con la búsqueda' : 'No has enviado mensajes aún'}
+            {searchTerm ? 'No se encontraron mensajes que coincidan con la búsqueda' : 
+             currentAdminId ? 'No has enviado mensajes aún' : 'No se puede cargar mensajes sin identificar al admin'}
           </div>
         )}
       </CardContent>
