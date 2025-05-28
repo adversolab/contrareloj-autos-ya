@@ -85,7 +85,7 @@ export async function markAllNotificationsAsRead() {
 // Create a notification for a specific user (for admin use)
 export async function createNotification(userId: string, title: string, message: string, type: string = 'info', relatedId?: string) {
   try {
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('notifications')
       .insert({
         user_id: userId,
@@ -97,13 +97,13 @@ export async function createNotification(userId: string, title: string, message:
 
     if (error) {
       console.error('Error creating notification:', error);
-      return { success: false };
+      return false;
     }
 
-    return { success: true };
+    return true;
   } catch (error) {
     console.error('Unexpected error:', error);
-    return { success: false };
+    return false;
   }
 }
 
@@ -158,3 +158,6 @@ export async function getUnreadNotificationsCount() {
     return { count: 0 };
   }
 }
+
+// Utility function for automatic notifications (imported from autoNotificationService)
+export { enviarNotificacion, autoNotifications } from './autoNotificationService';
