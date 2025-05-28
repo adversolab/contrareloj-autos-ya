@@ -1,121 +1,150 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { processCreditsMovement } from '@/services/creditService';
 import { toast } from 'sonner';
-import { processCreditsMovement } from './creditService';
-import { getCurrentUser } from './authService';
 
-export async function highlightVehicle(vehicleId: string): Promise<{ success: boolean; error?: string }> {
+export interface FeaturedVehicle {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl: string;
+  currentBid: number;
+  endTime: Date;
+  bidCount: number;
+  featured: boolean;
+}
+
+export const getFeaturedVehicles = async (): Promise<{ vehicles: FeaturedVehicle[] }> => {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return { success: false, error: 'Usuario no autenticado' };
-    }
-
-    // Verificar que el vehículo pertenece al usuario
-    const { data: vehicle, error: vehicleError } = await supabase
+    const { data: vehicles, error } = await supabase
       .from('vehicles')
-      .select('*')
-      .eq('id', vehicleId)
-      .eq('user_id', user.id)
-      .single();
+      .select(`
+        id,
+        brand,
+        model,
+        year,
+        description,
+        destacado,
+        auctions!inner(
+          id,
+          start_price,
+          end_date,
+          status
+        )
+      `)
+      .eq('destacado', true)
+      .eq('auctions.status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(6);
 
-    if (vehicleError || !vehicle) {
-      return { success: false, error: 'Vehículo no encontrado o no tienes permisos' };
+    if (error) {
+      console.error('Error fetching featured vehicles:', error);
+      return { vehicles: [] };
     }
 
-    // Verificar que no esté ya destacado
-    if (vehicle.destacado) {
-      return { success: false, error: 'Este vehículo ya está destacado' };
-    }
+    // Transform the data and get photos for each vehicle
+    const vehiclesWithPhotos = await Promise.all(
+      (vehicles || []).map(async (vehicle) => {
+        // Get the primary photo
+        const { data: photos } = await supabase
+          .from('vehicle_photos')
+          .select('url')
+          .eq('vehicle_id', vehicle.id)
+          .eq('is_primary', true)
+          .limit(1);
 
-    // Descontar créditos
-    const creditResult = await processCreditsMovement(
-      'destacar',
-      -25,
-      `Destacó publicación del ${vehicle.brand} ${vehicle.model} ${vehicle.year}`
+        const auction = Array.isArray(vehicle.auctions) ? vehicle.auctions[0] : vehicle.auctions;
+
+        return {
+          id: vehicle.id,
+          title: `${vehicle.brand} ${vehicle.model} ${vehicle.year}`,
+          description: vehicle.description || '',
+          imageUrl: photos && photos.length > 0 ? photos[0].url : '/placeholder.svg',
+          currentBid: auction?.start_price || 0,
+          endTime: auction?.end_date ? new Date(auction.end_date) : new Date(),
+          bidCount: 0, // Default value since we don't track this yet
+          featured: vehicle.destacado
+        };
+      })
     );
 
-    if (!creditResult.success) {
-      if (creditResult.error?.includes('Saldo insuficiente')) {
-        toast.error('No tienes créditos suficientes para destacar esta publicación. Compra créditos aquí.');
-        return { success: false, error: 'insufficient_credits' };
+    return { vehicles: vehiclesWithPhotos };
+  } catch (error) {
+    console.error('Error in getFeaturedVehicles:', error);
+    return { vehicles: [] };
+  }
+};
+
+export const highlightVehicle = async (
+  vehicleId: string, 
+  deductCredits: boolean = true
+): Promise<{ success: boolean; error?: string }> => {
+  try {
+    // Only deduct credits if explicitly requested (when highlighting separately)
+    if (deductCredits) {
+      // Get vehicle info for the credit movement description
+      const { data: vehicle } = await supabase
+        .from('vehicles')
+        .select('brand, model, year')
+        .eq('id', vehicleId)
+        .single();
+
+      const vehicleTitle = vehicle ? `${vehicle.brand} ${vehicle.model} ${vehicle.year}` : 'vehículo';
+      
+      const creditResult = await processCreditsMovement(
+        'destacar',
+        -25,
+        `Destacar publicación de ${vehicleTitle}`
+      );
+
+      if (!creditResult.success) {
+        if (creditResult.error?.includes('Saldo insuficiente')) {
+          toast.error('No tienes créditos suficientes para destacar este vehículo');
+          return { success: false, error: 'insufficient_credits' };
+        }
+        toast.error('Error al procesar los créditos');
+        return { success: false, error: creditResult.error };
       }
-      return { success: false, error: creditResult.error };
     }
 
-    // Marcar vehículo como destacado
-    const { error: updateError } = await supabase
+    // Mark vehicle as highlighted
+    const { error } = await supabase
       .from('vehicles')
       .update({ destacado: true })
       .eq('id', vehicleId);
 
-    if (updateError) {
-      console.error('Error al destacar vehículo:', updateError);
-      return { success: false, error: 'Error al destacar el vehículo' };
+    if (error) {
+      console.error('Error highlighting vehicle:', error);
+      return { success: false, error: error.message };
     }
 
-    toast.success('¡Vehículo destacado exitosamente!');
+    if (deductCredits) {
+      toast.success('Vehículo destacado exitosamente');
+    }
+    
     return { success: true };
   } catch (error) {
-    console.error('Error inesperado:', error);
+    console.error('Error in highlightVehicle:', error);
     return { success: false, error: 'Error inesperado' };
   }
-}
+};
 
-export async function getFeaturedVehicles() {
+export const removeHighlight = async (vehicleId: string): Promise<{ success: boolean; error?: string }> => {
   try {
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('vehicles')
-      .select(`
-        *,
-        auctions(
-          id,
-          start_price,
-          status,
-          start_date,
-          end_date
-        )
-      `)
-      .eq('destacado', true)
-      .eq('is_approved', true)
-      .order('created_at', { ascending: false });
+      .update({ destacado: false })
+      .eq('id', vehicleId);
 
     if (error) {
-      console.error('Error al obtener vehículos destacados:', error);
-      return { vehicles: [], error: error.message };
+      console.error('Error removing highlight:', error);
+      return { success: false, error: error.message };
     }
 
-    // Get primary photos for each vehicle
-    const vehicleIds = data.map(vehicle => vehicle.id);
-    const { data: photosData } = await supabase
-      .from('vehicle_photos')
-      .select('*')
-      .in('vehicle_id', vehicleIds)
-      .eq('is_primary', true);
-
-    // Create a map of photos by vehicle
-    const photoMap = new Map();
-    if (photosData) {
-      photosData.forEach(photo => {
-        photoMap.set(photo.vehicle_id, photo.url);
-      });
-    }
-
-    // Format data
-    const formattedVehicles = data.map(vehicle => ({
-      id: vehicle.id,
-      title: `${vehicle.brand} ${vehicle.model} ${vehicle.year}`,
-      description: vehicle.description || '',
-      imageUrl: photoMap.get(vehicle.id) || '/placeholder.svg',
-      currentBid: vehicle.auctions?.[0]?.start_price || 0,
-      endTime: vehicle.auctions?.[0]?.end_date ? new Date(vehicle.auctions[0].end_date) : new Date(),
-      bidCount: 0, // Default value
-      featured: true
-    }));
-
-    return { vehicles: formattedVehicles, error: null };
+    toast.success('Destacado removido exitosamente');
+    return { success: true };
   } catch (error) {
-    console.error('Error inesperado:', error);
-    return { vehicles: [], error: 'Error al cargar vehículos destacados' };
+    console.error('Error in removeHighlight:', error);
+    return { success: false, error: 'Error inesperado' };
   }
-}
+};

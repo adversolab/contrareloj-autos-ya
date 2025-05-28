@@ -234,7 +234,7 @@ export const useSellCarSteps = () => {
       
       const serviceDescription = `Publicación de ${carInfo.brand} ${carInfo.model} ${carInfo.year} - Servicios: ${selectedServices.join(', ')}`;
       
-      // Deduct all credits at once
+      // Deduct all credits at once (including highlight service if selected)
       const creditResult = await processCreditsMovement(
         'publicacion',
         -totalCredits,
@@ -251,9 +251,10 @@ export const useSellCarSteps = () => {
       }
 
       // If highlight service is selected, mark the vehicle as highlighted
+      // But DON'T create another credit movement since it's already included above
       if (auctionInfo.services.includes('highlight')) {
         const { highlightVehicle } = await import('@/services/highlightService');
-        const highlightResult = await highlightVehicle(vehicleId);
+        const highlightResult = await highlightVehicle(vehicleId, false); // Pass false to skip credit deduction
         
         if (!highlightResult.success) {
           console.error('Error highlighting vehicle:', highlightResult.error);
