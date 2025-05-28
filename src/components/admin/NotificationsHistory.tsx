@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/table";
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Search, Bell, Calendar, User, Filter, RefreshCw, UserCheck } from 'lucide-react';
+import { Search, Bell, Calendar, User, Filter, RefreshCw, UserCheck, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface NotificationHistory {
@@ -44,6 +44,7 @@ const NotificationsHistory: React.FC = () => {
   const [dateFilter, setDateFilter] = useState('');
   const [readStatusFilter, setReadStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchNotifications();
@@ -55,35 +56,29 @@ const NotificationsHistory: React.FC = () => {
 
   const fetchNotifications = async () => {
     setLoading(true);
+    setError(null);
+    
     try {
-      console.log('Fetching all admin notifications...');
+      console.log('NotificationsHistory: Fetching all admin notifications');
       
-      // Query notifications with type 'admin'
+      // Direct Supabase query - no dependency on Lovable endpoints
       const { data, error } = await supabase
         .from('notifications')
-        .select(`
-          id,
-          title,
-          message,
-          created_at,
-          is_read,
-          user_id,
-          type,
-          sent_by
-        `)
-        .eq('type', 'admin') // Only admin notifications
+        .select('id, title, message, created_at, is_read, user_id, type, sent_by')
+        .eq('type', 'admin')
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching notifications:', error);
+        console.error('NotificationsHistory: Supabase error:', error);
+        setError('Error al cargar notificaciones desde la base de datos');
         toast.error('Error al cargar notificaciones');
         return;
       }
 
-      console.log('Fetched admin notifications:', data);
+      console.log('NotificationsHistory: Successfully fetched', data?.length || 0, 'notifications');
 
       if (!data || data.length === 0) {
-        console.log('No admin notifications found');
+        console.log('NotificationsHistory: No admin notifications found');
         setNotifications([]);
         setFilteredNotifications([]);
         return;
@@ -94,21 +89,30 @@ const NotificationsHistory: React.FC = () => {
         data.map(async (notification) => {
           try {
             // Get user details
-            const { data: userProfile } = await supabase
+            const { data: userProfile, error: userError } = await supabase
               .from('profiles')
               .select('email, first_name, last_name')
               .eq('id', notification.user_id)
               .single();
 
+            if (userError) {
+              console.error('NotificationsHistory: Error fetching user profile:', notification.user_id, userError);
+            }
+
             // Get admin details if sent_by exists
             let adminProfile = null;
             if (notification.sent_by) {
-              const { data: adminData } = await supabase
+              const { data: adminData, error: adminError } = await supabase
                 .from('profiles')
                 .select('email, first_name, last_name')
                 .eq('id', notification.sent_by)
                 .single();
-              adminProfile = adminData;
+              
+              if (adminError) {
+                console.error('NotificationsHistory: Error fetching admin profile:', notification.sent_by, adminError);
+              } else {
+                adminProfile = adminData;
+              }
             }
 
             return {
@@ -121,7 +125,7 @@ const NotificationsHistory: React.FC = () => {
               admin_last_name: adminProfile?.last_name || null,
             };
           } catch (profileError) {
-            console.error('Error fetching profile data for notification:', notification.id, profileError);
+            console.error('NotificationsHistory: Profile fetch error for notification:', notification.id, profileError);
             return {
               ...notification,
               user_email: 'Error al cargar datos',
@@ -135,10 +139,11 @@ const NotificationsHistory: React.FC = () => {
         })
       );
 
-      console.log('Notifications with user and admin data:', notificationsWithUserData);
+      console.log('NotificationsHistory: Notifications with user data loaded successfully');
       setNotifications(notificationsWithUserData);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('NotificationsHistory: Unexpected error:', error);
+      setError('Error inesperado al cargar notificaciones');
       toast.error('Error al cargar notificaciones');
     } finally {
       setLoading(false);
@@ -291,6 +296,13 @@ const NotificationsHistory: React.FC = () => {
       </CardHeader>
       
       <CardContent>
+        {error && (
+          <div className="flex items-center gap-2 p-4 bg-red-50 border border-red-200 rounded-lg mb-4">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <span className="text-red-800">{error}</span>
+          </div>
+        )}
+
         {loading ? (
           <div className="text-center py-8">Cargando notificaciones...</div>
         ) : filteredNotifications.length > 0 ? (

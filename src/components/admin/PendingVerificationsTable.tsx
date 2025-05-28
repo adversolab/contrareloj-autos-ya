@@ -48,31 +48,28 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
   const [loadingNotifications, setLoadingNotifications] = useState(false);
 
   useEffect(() => {
-    console.log('PendingVerificationsTable: useEffect triggered');
-    console.log('PendingVerificationsTable: pendingUsers length:', pendingUsers.length);
-    console.log('PendingVerificationsTable: pendingUsers:', pendingUsers.map(u => ({ id: u.id, email: u.email })));
-    
+    console.log('PendingVerificationsTable: Fetching notifications for pending users');
     if (pendingUsers.length > 0) {
       fetchUserNotifications();
     } else {
-      console.log('PendingVerificationsTable: No pending users, clearing notifications');
       setUserNotifications({});
     }
   }, [pendingUsers]);
 
   const fetchUserNotifications = async () => {
     if (pendingUsers.length === 0) {
-      console.log('PendingVerificationsTable: fetchUserNotifications aborted - no pending users');
+      console.log('PendingVerificationsTable: No pending users to fetch notifications for');
       return;
     }
     
     setLoadingNotifications(true);
-    console.log('PendingVerificationsTable: Starting fetchUserNotifications');
+    console.log('PendingVerificationsTable: Starting direct Supabase query');
     
     try {
       const userIds = pendingUsers.map(user => user.id);
-      console.log('PendingVerificationsTable: Fetching notifications for user IDs:', userIds);
+      console.log('PendingVerificationsTable: Querying notifications for user IDs:', userIds);
       
+      // Direct Supabase query - no dependency on Lovable endpoints
       const { data, error } = await supabase
         .from('notifications')
         .select('id, title, message, created_at, is_read, user_id')
@@ -81,45 +78,40 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('PendingVerificationsTable: Error fetching notifications:', error);
+        console.error('PendingVerificationsTable: Supabase error:', error);
+        // Show visible error instead of failing silently
+        setUserNotifications({});
         return;
       }
 
-      console.log('PendingVerificationsTable: Raw notifications data:', data);
-      console.log('PendingVerificationsTable: Notifications count:', data?.length || 0);
+      console.log('PendingVerificationsTable: Successfully fetched notifications:', data?.length || 0);
 
       // Group by user_id and get the latest notification for each user
       const latestNotifications: Record<string, UserNotification> = {};
       
       if (data && data.length > 0) {
         data.forEach(notification => {
-          console.log('PendingVerificationsTable: Processing notification for user:', notification.user_id);
           if (!latestNotifications[notification.user_id]) {
             latestNotifications[notification.user_id] = notification;
-            console.log('PendingVerificationsTable: Added latest notification for user:', notification.user_id, notification.title);
+            console.log('PendingVerificationsTable: Found notification for user:', notification.user_id);
           }
         });
-      } else {
-        console.log('PendingVerificationsTable: No notifications found in database');
       }
 
-      console.log('PendingVerificationsTable: Final latest notifications by user:', latestNotifications);
-      console.log('PendingVerificationsTable: Setting userNotifications state...');
-      
+      console.log('PendingVerificationsTable: Setting state with notifications for users:', Object.keys(latestNotifications));
       setUserNotifications(latestNotifications);
       
-      console.log('PendingVerificationsTable: State updated successfully');
     } catch (error) {
-      console.error('PendingVerificationsTable: Unexpected error fetching notifications:', error);
+      console.error('PendingVerificationsTable: Unexpected error:', error);
+      // Ensure we don't leave the UI in a broken state
+      setUserNotifications({});
     } finally {
       setLoadingNotifications(false);
-      console.log('PendingVerificationsTable: fetchUserNotifications completed');
     }
   };
 
   const handleMessageSent = () => {
-    console.log('PendingVerificationsTable: Message sent callback triggered, refreshing notifications...');
-    // Refresh notifications after sending a message
+    console.log('PendingVerificationsTable: Message sent, refreshing notifications');
     fetchUserNotifications();
   };
 
@@ -131,8 +123,6 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
   if (pendingUsers.length === 0) {
     return null;
   }
-
-  console.log('PendingVerificationsTable: Rendering with userNotifications:', userNotifications);
 
   return (
     <TooltipProvider>
@@ -152,7 +142,6 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
             <TableBody>
               {pendingUsers.map((user) => {
                 const lastNotification = userNotifications[user.id];
-                console.log(`PendingVerificationsTable: Rendering user ${user.id} (${user.email}), notification:`, lastNotification);
                 
                 return (
                   <TableRow key={user.id}>
@@ -220,7 +209,6 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
-                        {/* Botón directo para enviar mensaje */}
                         <SendMessageDialog
                           userId={user.id}
                           userName={getUserDisplayName(user)}
@@ -228,7 +216,6 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
                           onMessageSent={handleMessageSent}
                         />
                         
-                        {/* Menú desplegable con otras acciones */}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon">

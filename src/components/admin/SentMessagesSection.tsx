@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { getCurrentUser } from '@/services/authService';
 import { toast } from 'sonner';
-import { Search, Mail, Clock, RefreshCw } from 'lucide-react';
+import { Search, Mail, Clock, RefreshCw, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface SentMessage {
@@ -29,6 +29,7 @@ const SentMessagesSection: React.FC = () => {
   const [filteredMessages, setFilteredMessages] = useState<SentMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSentMessages();
@@ -49,43 +50,37 @@ const SentMessagesSection: React.FC = () => {
 
   const fetchSentMessages = async () => {
     setLoading(true);
+    setError(null);
+    
     try {
       const currentUser = await getCurrentUser();
       if (!currentUser) {
-        console.error('No authenticated user found');
+        setError('Usuario no autenticado');
         toast.error('Error: Usuario no autenticado');
         return;
       }
 
-      console.log('Fetching sent messages for admin:', currentUser.id);
+      console.log('SentMessagesSection: Fetching messages for admin:', currentUser.id);
       
-      // Query notifications sent by current admin
+      // Direct Supabase query - no dependency on Lovable endpoints
       const { data, error } = await supabase
         .from('notifications')
-        .select(`
-          id,
-          title,
-          message,
-          created_at,
-          is_read,
-          user_id,
-          type,
-          sent_by
-        `)
+        .select('id, title, message, created_at, is_read, user_id, type, sent_by')
         .eq('type', 'admin')
-        .eq('sent_by', currentUser.id) // Only messages sent by current admin
+        .eq('sent_by', currentUser.id)
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching sent messages:', error);
+        console.error('SentMessagesSection: Supabase error:', error);
+        setError('Error al cargar mensajes desde la base de datos');
         toast.error('Error al cargar mensajes enviados');
         return;
       }
 
-      console.log('Fetched notifications for current admin:', data);
+      console.log('SentMessagesSection: Successfully fetched', data?.length || 0, 'messages');
 
       if (!data || data.length === 0) {
-        console.log('No sent messages found for current admin');
+        console.log('SentMessagesSection: No messages found for current admin');
         setSentMessages([]);
         setFilteredMessages([]);
         return;
@@ -95,11 +90,15 @@ const SentMessagesSection: React.FC = () => {
       const messagesWithUserData = await Promise.all(
         data.map(async (notification) => {
           try {
-            const { data: profile } = await supabase
+            const { data: profile, error: profileError } = await supabase
               .from('profiles')
               .select('email, first_name, last_name')
               .eq('id', notification.user_id)
               .single();
+
+            if (profileError) {
+              console.error('SentMessagesSection: Error fetching profile for user:', notification.user_id, profileError);
+            }
 
             return {
               ...notification,
@@ -108,7 +107,7 @@ const SentMessagesSection: React.FC = () => {
               user_last_name: profile?.last_name || null,
             };
           } catch (profileError) {
-            console.error('Error fetching profile for user:', notification.user_id, profileError);
+            console.error('SentMessagesSection: Profile fetch error for user:', notification.user_id, profileError);
             return {
               ...notification,
               user_email: 'Error al cargar email',
@@ -119,11 +118,12 @@ const SentMessagesSection: React.FC = () => {
         })
       );
 
-      console.log('Messages with user data:', messagesWithUserData);
+      console.log('SentMessagesSection: Messages with user data loaded successfully');
       setSentMessages(messagesWithUserData);
       setFilteredMessages(messagesWithUserData);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('SentMessagesSection: Unexpected error:', error);
+      setError('Error inesperado al cargar mensajes');
       toast.error('Error al cargar mensajes enviados');
     } finally {
       setLoading(false);
@@ -159,6 +159,13 @@ const SentMessagesSection: React.FC = () => {
         </div>
       </CardHeader>
       <CardContent>
+        {error && (
+          <div className="flex items-center gap-2 p-4 bg-red-50 border border-red-200 rounded-lg mb-4">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <span className="text-red-800">{error}</span>
+          </div>
+        )}
+        
         {loading ? (
           <div className="text-center py-8">Cargando mensajes enviados...</div>
         ) : filteredMessages.length > 0 ? (
