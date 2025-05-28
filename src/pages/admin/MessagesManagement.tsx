@@ -29,7 +29,7 @@ interface SentMessage {
   is_read: boolean;
   user_id: string;
   type: string;
-  user?: {
+  profiles?: {
     email: string;
     first_name: string | null;
     last_name: string | null;
@@ -101,7 +101,11 @@ const MessagesManagement = () => {
           is_read,
           user_id,
           type,
-          user:profiles!user_id(email, first_name, last_name)
+          profiles (
+            email,
+            first_name,
+            last_name
+          )
         `)
         .eq('type', 'admin')
         .order('created_at', { ascending: false });
@@ -157,9 +161,9 @@ const MessagesManagement = () => {
   };
 
   const getMessageDisplayName = (message: SentMessage) => {
-    if (message.user) {
-      const name = `${message.user.first_name || ''} ${message.user.last_name || ''}`.trim();
-      return name || message.user.email;
+    if (message.profiles) {
+      const name = `${message.profiles.first_name || ''} ${message.profiles.last_name || ''}`.trim();
+      return name || message.profiles.email;
     }
     return 'Usuario desconocido';
   };
