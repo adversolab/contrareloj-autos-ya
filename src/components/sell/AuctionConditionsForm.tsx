@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
   Select, 
@@ -11,6 +11,8 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Star, Coins } from 'lucide-react';
 import { AuctionInfo } from '@/services/vehicleService';
+import { PublicationService, getServiceCost } from '@/services/publicationService';
+import { useSellContext } from '@/contexts/SellContext';
 import { toast } from 'sonner';
 
 interface AuctionConditionsFormProps {
@@ -30,6 +32,8 @@ const AuctionConditionsForm: React.FC<AuctionConditionsFormProps> = ({
   onSubmit,
   isProcessing
 }) => {
+  const { publicationServices } = useSellContext();
+
   const handleDurationChange = (value: string) => {
     const days = parseInt(value);
     if (days < 7) {
@@ -38,6 +42,15 @@ const AuctionConditionsForm: React.FC<AuctionConditionsFormProps> = ({
     } else {
       onAuctionInfoChange('durationDays', days);
     }
+  };
+
+  const getServiceCredits = (serviceName: string) => {
+    return getServiceCost(publicationServices, serviceName);
+  };
+
+  const getServiceDescription = (serviceName: string) => {
+    const service = publicationServices.find(s => s.servicio === serviceName);
+    return service?.descripcion || '';
   };
 
   return (
@@ -138,11 +151,11 @@ const AuctionConditionsForm: React.FC<AuctionConditionsFormProps> = ({
               Destacar mi publicación
               <div className="bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1">
                 <Coins className="w-3 h-3" />
-                25 créditos
+                {getServiceCredits('destacar_anuncio')} créditos
               </div>
             </label>
             <p className="text-sm text-gray-600 mt-1">
-              Tu vehículo aparecerá en la sección "Destacados" de la página principal y tendrá mayor visibilidad para los compradores.
+              {getServiceDescription('destacar_anuncio')}
             </p>
           </div>
         </div>
@@ -160,9 +173,15 @@ const AuctionConditionsForm: React.FC<AuctionConditionsFormProps> = ({
               onChange={(e) => onServiceChange('verification', e.target.checked)}
             />
             <div>
-              <span className="font-medium">Verificación mecánica</span>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-medium">Verificación mecánica</span>
+                <div className="bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+                  <Coins className="w-3 h-3" />
+                  {getServiceCredits('verificacion_mecanica')} créditos
+                </div>
+              </div>
               <p className="text-sm text-gray-500">
-                Un mecánico certificado realizará una inspección completa de tu vehículo para generar más confianza en los compradores. Costo: $80.000
+                {getServiceDescription('verificacion_mecanica')}
               </p>
             </div>
           </label>
@@ -175,9 +194,15 @@ const AuctionConditionsForm: React.FC<AuctionConditionsFormProps> = ({
               onChange={(e) => onServiceChange('photography', e.target.checked)}
             />
             <div>
-              <span className="font-medium">Servicio de fotografía profesional</span>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-medium">Servicio de fotografía profesional</span>
+                <div className="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+                  <Coins className="w-3 h-3" />
+                  {getServiceCredits('fotografia_profesional')} créditos
+                </div>
+              </div>
               <p className="text-sm text-gray-500">
-                Un fotógrafo profesional tomará fotos de alta calidad de tu vehículo. Costo: $50.000
+                {getServiceDescription('fotografia_profesional')}
               </p>
             </div>
           </label>

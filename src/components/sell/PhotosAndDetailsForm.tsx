@@ -2,18 +2,17 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import PhotoUploader from './PhotoUploader';
-import AutofactUploader from './AutofactUploader';
 import FeaturesSelector from './FeaturesSelector';
-
-interface PhotoPreview {
-  id: number;
-  file: File | null;
-  preview: string | null;
-  isMain: boolean;
-}
+import AutofactUploader from './AutofactUploader';
+import { Info } from 'lucide-react';
 
 interface PhotosAndDetailsFormProps {
-  uploadedPhotos: PhotoPreview[];
+  uploadedPhotos: Array<{
+    id: number;
+    file: File | null;
+    preview: string | null;
+    isMain: boolean;
+  }>;
   features: {[key: string]: string[]};
   additionalDetails: string;
   autofactReport: File | null;
@@ -43,39 +42,58 @@ const PhotosAndDetailsForm: React.FC<PhotosAndDetailsFormProps> = ({
 }) => {
   return (
     <div className="space-y-6">
+      {/* Nota informativa sobre fotos */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-start gap-3">
+          <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+          <div>
+            <h4 className="font-medium text-blue-900 mb-1">Fotos gratuitas</h4>
+            <p className="text-sm text-blue-700">
+              Subir las fotos no tiene costo en créditos. Mientras más fotos incluyas, mayor será la probabilidad de venta.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Subida de fotos */}
       <div>
-        <PhotoUploader 
+        <h3 className="text-lg font-semibold mb-4">Fotos del vehículo *</h3>
+        <PhotoUploader
           uploadedPhotos={uploadedPhotos}
           onImageUpload={onImageUpload}
           onDeletePhoto={onDeletePhoto}
         />
       </div>
-      
-      {/* Nuevo campo para Autofact Report */}
-      <div className="border-t border-gray-200 pt-6">
-        <AutofactUploader
-          autofactReport={autofactReport}
-          onAutofactReportChange={onAutofactReportChange}
-        />
-      </div>
-      
-      <div className="border-t border-gray-200 pt-6">
+
+      {/* Características del vehículo */}
+      <div>
+        <h3 className="text-lg font-semibold mb-4">Características del vehículo</h3>
         <FeaturesSelector
           features={features}
           onFeatureChange={onFeatureChange}
         />
       </div>
-      
-      <div className="border-t border-gray-200 pt-6">
-        <h3 className="font-medium mb-4">Detalles adicionales</h3>
-        <textarea 
-          placeholder="Agrega información relevante sobre el historial del vehículo, mantenciones, documentos, etc."
-          className="w-full border border-gray-300 rounded-md p-2 h-32"
+
+      {/* Detalles adicionales */}
+      <div>
+        <h3 className="text-lg font-semibold mb-4">Información adicional</h3>
+        <textarea
+          placeholder="Describe detalles adicionales, estado del vehículo, historial de mantenimiento, etc."
+          className="w-full border border-gray-300 rounded-md p-3 h-32 resize-none"
           value={additionalDetails}
           onChange={onAdditionalDetailsChange}
         />
       </div>
-      
+
+      {/* Informe Autofact */}
+      <div>
+        <h3 className="text-lg font-semibold mb-4">Informe Autofact *</h3>
+        <AutofactUploader
+          autofactReport={autofactReport}
+          onAutofactReportChange={onAutofactReportChange}
+        />
+      </div>
+
       <div className="flex justify-between">
         <Button 
           variant="outline"
@@ -87,7 +105,7 @@ const PhotosAndDetailsForm: React.FC<PhotosAndDetailsFormProps> = ({
         <Button 
           className="bg-contrareloj hover:bg-contrareloj-dark text-white"
           onClick={onSubmit}
-          disabled={isProcessing || !autofactReport}
+          disabled={isProcessing}
         >
           {isProcessing ? "Guardando..." : "Continuar"}
         </Button>

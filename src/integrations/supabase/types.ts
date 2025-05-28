@@ -480,6 +480,36 @@ export type Database = {
           },
         ]
       }
+      servicios_publicacion: {
+        Row: {
+          activo: boolean
+          costo_creditos: number
+          created_at: string
+          descripcion: string | null
+          id: string
+          servicio: string
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          costo_creditos: number
+          created_at?: string
+          descripcion?: string | null
+          id?: string
+          servicio: string
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          costo_creditos?: number
+          created_at?: string
+          descripcion?: string | null
+          id?: string
+          servicio?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       valoraciones_usuario: {
         Row: {
           comentario: string | null

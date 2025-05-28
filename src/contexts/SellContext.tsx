@@ -1,9 +1,10 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { getCurrentUser } from '@/services/authService';
 import { supabase } from '@/integrations/supabase/client';
+import { getUserCredits } from '@/services/creditService';
+import { getPublicationServices, PublicationService } from '@/services/publicationService';
 import { 
   VehicleBasicInfo, 
   VehicleFeature,
@@ -34,6 +35,10 @@ type SellContextType = {
   setIsProcessing: React.Dispatch<React.SetStateAction<boolean>>;
   userProfile: {first_name: string | null, last_name: string | null, phone: string | null} | null;
   setUserProfile: React.Dispatch<React.SetStateAction<{first_name: string | null, last_name: string | null, phone: string | null} | null>>;
+  userCredits: number;
+  setUserCredits: React.Dispatch<React.SetStateAction<number>>;
+  publicationServices: PublicationService[];
+  setPublicationServices: React.Dispatch<React.SetStateAction<PublicationService[]>>;
   carInfo: VehicleBasicInfo;
   setCarInfo: React.Dispatch<React.SetStateAction<VehicleBasicInfo>>;
   features: {[key: string]: string[]};
@@ -58,6 +63,8 @@ type SellContextType = {
   handleDeletePhoto: (index: number) => void;
   handleServiceChange: (service: string, checked: boolean) => void;
   handleAuctionInfoChange: (name: string, value: string | number) => void;
+  refreshCredits: () => Promise<void>;
+  getTotalCostInCredits: () => number;
 };
 
 export const SellContext = createContext<SellContextType | undefined>(undefined);
@@ -80,6 +87,8 @@ export const SellProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [userProfile, setUserProfile] = useState<{first_name: string | null, last_name: string | null, phone: string | null} | null>(null);
+  const [userCredits, setUserCredits] = useState(0);
+  const [publicationServices, setPublicationServices] = useState<PublicationService[]>([]);
   
   const [carInfo, setCarInfo] = useState<VehicleBasicInfo>({
     brand: '',
@@ -118,6 +127,70 @@ export const SellProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     services: []
   });
 
+  // Load user data, credits, and publication services on mount
+  useEffect(() => {
+    const loadUserData = async () => {
+      const user = await getCurrentUser();
+      setIsLoggedIn(!!user);
+      
+      if (user) {
+        // Load user profile
+        const { data } = await supabase
+          .from('profiles')
+          .select('first_name, last_name, phone')
+          .eq('id', user.id)
+          .single();
+          
+        setUserProfile(data);
+        
+        // Load user credits
+        await refreshCredits();
+      }
+      
+      // Load publication services
+      const { services } = await getPublicationServices();
+      setPublicationServices(services);
+      
+      setIsCheckingAuth(false);
+    };
+
+    loadUserData();
+  }, []);
+
+  const refreshCredits = async () => {
+    const { credits } = await getUserCredits();
+    setUserCredits(credits);
+  };
+
+  const getTotalCostInCredits = () => {
+    let total = 0;
+    
+    // Base publication cost
+    const baseService = publicationServices.find(s => s.servicio === 'publicacion_basica');
+    if (baseService) total += baseService.costo_creditos;
+    
+    // Additional services
+    auctionInfo.services.forEach(service => {
+      let serviceName = '';
+      switch (service) {
+        case 'verification':
+          serviceName = 'verificacion_mecanica';
+          break;
+        case 'photography':
+          serviceName = 'fotografia_profesional';
+          break;
+        case 'highlight':
+          serviceName = 'destacar_anuncio';
+          break;
+      }
+      
+      const serviceData = publicationServices.find(s => s.servicio === serviceName);
+      if (serviceData) total += serviceData.costo_creditos;
+    });
+    
+    return total;
+  };
+
   // Verificar autenticación y perfil del usuario al cargar
   useEffect(() => {
     const checkAuth = async () => {
@@ -149,14 +222,12 @@ export const SellProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       reader.onloadend = () => {
         setUploadedPhotos(prev => {
-          // Si el índice es mayor que la longitud actual, agregamos un nuevo elemento
           if (index >= prev.length) {
             return [
               ...prev,
               { id: prev.length, file, preview: reader.result as string, isMain: prev.length === 0 }
             ];
           } else {
-            // Si no, actualizamos el elemento existente
             return prev.map(photo => 
               photo.id === index 
                 ? { ...photo, file, preview: reader.result as string } 
@@ -168,7 +239,6 @@ export const SellProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       reader.readAsDataURL(file);
     } else if (!e.target.files && index >= uploadedPhotos.length) {
-      // Agregar un nuevo espacio para foto
       setUploadedPhotos(prev => [
         ...prev, 
         { 
@@ -190,7 +260,7 @@ export const SellProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return;
       }
       
-      if (file.size > 10 * 1024 * 1024) { // 10MB max
+      if (file.size > 10 * 1024 * 1024) {
         toast.error('El archivo es demasiado grande. El tamaño máximo es de 10MB');
         return;
       }
@@ -202,10 +272,8 @@ export const SellProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Manejar eliminación de fotos
   const handleDeletePhoto = (index: number) => {
     setUploadedPhotos(prev => {
-      // No permitir eliminar la foto principal
       if (index === 0) return prev;
       
-      // Filtrar la foto a eliminar
       return prev.filter(photo => photo.id !== index).map((photo, i) => ({
         ...photo,
         id: i
@@ -265,7 +333,6 @@ export const SellProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const handleAuctionInfoChange = (name: string, value: string | number) => {
-    // Asegurar que la duración mínima es de 7 días
     if (name === 'durationDays' && typeof value === 'number' && value < 7) {
       value = 7;
       toast.info("La duración mínima de la subasta es de 7 días");
@@ -309,6 +376,8 @@ export const SellProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     isAuthDialogOpen, setIsAuthDialogOpen,
     isProcessing, setIsProcessing,
     userProfile, setUserProfile,
+    userCredits, setUserCredits,
+    publicationServices, setPublicationServices,
     carInfo, setCarInfo,
     features, setFeatures,
     uploadedPhotos, setUploadedPhotos,
@@ -325,7 +394,9 @@ export const SellProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     handleAutofactReportChange,
     handleDeletePhoto,
     handleServiceChange,
-    handleAuctionInfoChange
+    handleAuctionInfoChange,
+    refreshCredits,
+    getTotalCostInCredits
   };
 
   return (

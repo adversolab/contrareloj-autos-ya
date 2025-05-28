@@ -3,6 +3,10 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { VehicleBasicInfo, AuctionInfo } from '@/services/vehicleService';
 import { Checkbox } from "@/components/ui/checkbox";
+import { PublicationService, getServiceCost } from '@/services/publicationService';
+import { useSellContext } from '@/contexts/SellContext';
+import CreditsSummary from './CreditsSummary';
+import { Coins } from 'lucide-react';
 
 interface ReviewAndPaymentFormProps {
   carInfo: VehicleBasicInfo;
@@ -22,16 +26,35 @@ const ReviewAndPaymentForm: React.FC<ReviewAndPaymentFormProps> = ({
   isProcessing
 }) => {
   const [accepted, setAccepted] = useState(false);
+  const { userCredits, publicationServices, refreshCredits, getTotalCostInCredits } = useSellContext();
 
-  // Calculate total
-  const basePrice = 25000;
-  const verificationPrice = auctionInfo.services.includes('verification') ? 80000 : 0;
-  const photographyPrice = auctionInfo.services.includes('photography') ? 50000 : 0;
-  const highlightPrice = auctionInfo.services.includes('highlight') ? 30000 : 0;
-  const totalPrice = basePrice + verificationPrice + photographyPrice + highlightPrice;
+  const getServiceCredits = (serviceName: string) => {
+    return getServiceCost(publicationServices, serviceName);
+  };
+
+  const getServiceDescription = (serviceName: string) => {
+    const service = publicationServices.find(s => s.servicio === serviceName);
+    return service?.descripcion || '';
+  };
+
+  // Calculate total credits needed
+  const baseCredits = getServiceCredits('publicacion_basica');
+  const verificationCredits = auctionInfo.services.includes('verification') ? getServiceCredits('verificacion_mecanica') : 0;
+  const photographyCredits = auctionInfo.services.includes('photography') ? getServiceCredits('fotografia_profesional') : 0;
+  const highlightCredits = auctionInfo.services.includes('highlight') ? getServiceCredits('destacar_anuncio') : 0;
+  const totalCredits = baseCredits + verificationCredits + photographyCredits + highlightCredits;
+
+  const hasEnoughCredits = userCredits >= totalCredits;
 
   return (
     <div className="space-y-6">
+      {/* Resumen de créditos */}
+      <CreditsSummary
+        availableCredits={userCredits}
+        requiredCredits={totalCredits}
+        onRefreshCredits={refreshCredits}
+      />
+
       <div className="border rounded-lg overflow-hidden">
         <div className="p-4 bg-gray-50 border-b">
           <h3 className="font-semibold">Resumen de tu subasta</h3>
@@ -86,87 +109,75 @@ const ReviewAndPaymentForm: React.FC<ReviewAndPaymentFormProps> = ({
       
       <div className="border rounded-lg overflow-hidden">
         <div className="p-4 bg-gray-50 border-b">
-          <h3 className="font-semibold">Detalle de costos</h3>
+          <h3 className="font-semibold flex items-center gap-2">
+            <Coins className="w-5 h-5 text-yellow-600" />
+            Costo en créditos
+          </h3>
         </div>
         
         <div className="p-4">
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <span>Tarifa básica de publicación</span>
-              <span>${basePrice.toLocaleString()}</span>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <div>
+                <span className="font-medium">Tarifa básica de publicación</span>
+                <p className="text-xs text-gray-500">{getServiceDescription('publicacion_basica')}</p>
+              </div>
+              <span className="flex items-center gap-1 font-semibold">
+                <Coins className="w-4 h-4 text-yellow-600" />
+                {baseCredits}
+              </span>
             </div>
-            <div className="flex justify-between">
-              <span>Verificación mecánica</span>
-              <span>{auctionInfo.services.includes('verification') ? `$${verificationPrice.toLocaleString()}` : '$0'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Servicio de fotografía</span>
-              <span>{auctionInfo.services.includes('photography') ? `$${photographyPrice.toLocaleString()}` : '$0'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Destacar anuncio</span>
-              <span>{auctionInfo.services.includes('highlight') ? `$${highlightPrice.toLocaleString()}` : '$0'}</span>
-            </div>
+
+            {auctionInfo.services.includes('verification') && (
+              <div className="flex justify-between items-center">
+                <div>
+                  <span className="font-medium">Verificación mecánica</span>
+                  <p className="text-xs text-gray-500">{getServiceDescription('verificacion_mecanica')}</p>
+                </div>
+                <span className="flex items-center gap-1 font-semibold">
+                  <Coins className="w-4 h-4 text-yellow-600" />
+                  {verificationCredits}
+                </span>
+              </div>
+            )}
+
+            {auctionInfo.services.includes('photography') && (
+              <div className="flex justify-between items-center">
+                <div>
+                  <span className="font-medium">Servicio de fotografía</span>
+                  <p className="text-xs text-gray-500">{getServiceDescription('fotografia_profesional')}</p>
+                </div>
+                <span className="flex items-center gap-1 font-semibold">
+                  <Coins className="w-4 h-4 text-yellow-600" />
+                  {photographyCredits}
+                </span>
+              </div>
+            )}
+
+            {auctionInfo.services.includes('highlight') && (
+              <div className="flex justify-between items-center">
+                <div>
+                  <span className="font-medium">Destacar anuncio</span>
+                  <p className="text-xs text-gray-500">{getServiceDescription('destacar_anuncio')}</p>
+                </div>
+                <span className="flex items-center gap-1 font-semibold">
+                  <Coins className="w-4 h-4 text-yellow-600" />
+                  {highlightCredits}
+                </span>
+              </div>
+            )}
             
-            <div className="border-t pt-2 mt-2">
-              <div className="flex justify-between font-bold">
-                <span>Total</span>
-                <span>${totalPrice.toLocaleString()}</span>
+            <div className="border-t pt-3 mt-3">
+              <div className="flex justify-between items-center">
+                <span className="text-lg font-bold">Total</span>
+                <span className="text-lg font-bold flex items-center gap-1">
+                  <Coins className="w-5 h-5 text-yellow-600" />
+                  {totalCredits} créditos
+                </span>
               </div>
               <p className="text-xs text-gray-500 mt-1">
                 Cobraremos una comisión del 5% sobre el valor final de venta solo si se concreta la transacción.
               </p>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <div className="border rounded-lg overflow-hidden">
-        <div className="p-4 bg-gray-50 border-b">
-          <h3 className="font-semibold">Método de pago</h3>
-        </div>
-        
-        <div className="p-4">
-          <div className="mb-4">
-            <div className="flex gap-4 mb-4">
-              <label className="flex items-center">
-                <input type="radio" name="payment" className="mr-2" defaultChecked />
-                <span>Tarjeta de crédito/débito</span>
-              </label>
-              <label className="flex items-center">
-                <input type="radio" name="payment" className="mr-2" />
-                <span>Transferencia</span>
-              </label>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Número de tarjeta</label>
-                <input 
-                  type="text"
-                  placeholder="0000 0000 0000 0000"
-                  className="w-full border border-gray-300 rounded-md p-2"
-                />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Fecha expiración</label>
-                  <input 
-                    type="text"
-                    placeholder="MM/AA"
-                    className="w-full border border-gray-300 rounded-md p-2"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">CVC</label>
-                  <input 
-                    type="text"
-                    placeholder="123"
-                    className="w-full border border-gray-300 rounded-md p-2"
-                  />
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -192,13 +203,38 @@ const ReviewAndPaymentForm: React.FC<ReviewAndPaymentFormProps> = ({
         >
           Atrás
         </Button>
-        <Button 
-          className="bg-contrareloj hover:bg-contrareloj-dark text-white"
-          onClick={onSubmit}
-          disabled={isProcessing || !accepted}
-        >
-          {isProcessing ? "Procesando..." : "Pagar y publicar"}
-        </Button>
+
+        {hasEnoughCredits ? (
+          <Button 
+            className="bg-contrareloj hover:bg-contrareloj-dark text-white"
+            onClick={onSubmit}
+            disabled={isProcessing || !accepted}
+          >
+            {isProcessing ? "Procesando..." : `Publicar usando ${totalCredits} créditos`}
+          </Button>
+        ) : (
+          <div className="flex flex-col items-end gap-2">
+            <p className="text-sm text-red-600 font-medium">
+              No tienes suficientes créditos para completar esta publicación.
+            </p>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline"
+                onClick={onEditInfo}
+                disabled={isProcessing}
+              >
+                Desactivar servicios
+              </Button>
+              <Button 
+                className="bg-contrareloj hover:bg-contrareloj-dark text-white"
+                onClick={() => window.open('/creditos', '_blank')}
+                disabled={isProcessing}
+              >
+                Comprar créditos
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
