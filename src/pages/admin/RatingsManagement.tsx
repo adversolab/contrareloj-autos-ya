@@ -14,6 +14,8 @@ interface Rating {
   comentario?: string;
   fecha: string;
   visible: boolean;
+  evaluador_id: string;
+  evaluado_id: string;
   evaluador?: {
     first_name: string;
     last_name: string;
@@ -38,13 +40,10 @@ const RatingsManagement = () => {
     try {
       setLoading(true);
       
+      // Load ratings without relations first
       const { data: ratingsData, error } = await supabase
         .from('valoraciones_usuario')
-        .select(`
-          *,
-          evaluador:evaluador_id(first_name, last_name, email),
-          evaluado:evaluado_id(first_name, last_name, email)
-        `)
+        .select('*')
         .order('fecha', { ascending: false });
 
       if (error) {
@@ -53,7 +52,39 @@ const RatingsManagement = () => {
         return;
       }
 
-      setRatings(ratingsData || []);
+      // Get user profiles for evaluators and evaluated users
+      const userIds = new Set<string>();
+      ratingsData?.forEach(rating => {
+        userIds.add(rating.evaluador_id);
+        userIds.add(rating.evaluado_id);
+      });
+
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, email')
+        .in('id', Array.from(userIds));
+
+      // Combine the data manually
+      const enrichedRatings = ratingsData?.map(rating => {
+        const evaluador = profilesData?.find(p => p.id === rating.evaluador_id);
+        const evaluado = profilesData?.find(p => p.id === rating.evaluado_id);
+        
+        return {
+          ...rating,
+          evaluador: evaluador ? {
+            first_name: evaluador.first_name || '',
+            last_name: evaluador.last_name || '',
+            email: evaluador.email || ''
+          } : undefined,
+          evaluado: evaluado ? {
+            first_name: evaluado.first_name || '',
+            last_name: evaluado.last_name || '',
+            email: evaluado.email || ''
+          } : undefined
+        };
+      }) || [];
+
+      setRatings(enrichedRatings);
     } catch (error) {
       console.error('Error:', error);
       toast.error('Error inesperado');

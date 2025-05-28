@@ -52,13 +52,10 @@ const CreditsManagement = () => {
     try {
       setLoading(true);
       
-      // Load credit movements
+      // Load credit movements without relation
       const { data: movementsData, error: movementsError } = await supabase
         .from('movimientos_credito')
-        .select(`
-          *,
-          usuario:usuario_id(first_name, last_name, email)
-        `)
+        .select('*')
         .order('fecha', { ascending: false })
         .limit(100);
 
@@ -68,7 +65,27 @@ const CreditsManagement = () => {
         return;
       }
 
-      setMovements(movementsData || []);
+      // Load user profiles separately
+      const userIds = movementsData?.map(m => m.usuario_id) || [];
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, email')
+        .in('id', userIds);
+
+      // Combine the data manually
+      const enrichedMovements = movementsData?.map(movement => {
+        const usuario = profilesData?.find(p => p.id === movement.usuario_id);
+        return {
+          ...movement,
+          usuario: usuario ? {
+            first_name: usuario.first_name || '',
+            last_name: usuario.last_name || '',
+            email: usuario.email || ''
+          } : undefined
+        };
+      }) || [];
+
+      setMovements(enrichedMovements);
 
       // Load users for credit assignment
       const { data: usersData, error: usersError } = await supabase
@@ -86,7 +103,7 @@ const CreditsManagement = () => {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      const chartMovements = movementsData?.filter(m => 
+      const chartMovements = enrichedMovements?.filter(m => 
         new Date(m.fecha) >= thirtyDaysAgo
       ) || [];
 
@@ -146,8 +163,11 @@ const CreditsManagement = () => {
         return;
       }
 
-      if (data && !data.success) {
-        toast.error(data.error || 'Error al procesar créditos');
+      // Type cast the response since we know the structure
+      const result = data as { success: boolean; error?: string };
+      
+      if (result && !result.success) {
+        toast.error(result.error || 'Error al procesar créditos');
         return;
       }
 

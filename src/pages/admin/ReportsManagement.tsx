@@ -15,6 +15,8 @@ interface Report {
   detalle: string;
   estado: string;
   fecha: string;
+  usuario_reportado_id?: string;
+  usuario_que_reporta_id: string;
   usuario_reportado?: {
     first_name: string;
     last_name: string;
@@ -41,13 +43,10 @@ const ReportsManagement = () => {
     try {
       setLoading(true);
       
+      // Load reports without relations first
       const { data: reportsData, error } = await supabase
         .from('reportes')
-        .select(`
-          *,
-          usuario_reportado:usuario_reportado_id(first_name, last_name, email),
-          usuario_que_reporta:usuario_que_reporta_id(first_name, last_name, email)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -56,7 +55,42 @@ const ReportsManagement = () => {
         return;
       }
 
-      setReports(reportsData || []);
+      // Get user profiles for reporters and reported users
+      const userIds = new Set<string>();
+      reportsData?.forEach(report => {
+        userIds.add(report.usuario_que_reporta_id);
+        if (report.usuario_reportado_id) {
+          userIds.add(report.usuario_reportado_id);
+        }
+      });
+
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, email')
+        .in('id', Array.from(userIds));
+
+      // Combine the data manually
+      const enrichedReports = reportsData?.map(report => {
+        const usuario_que_reporta = profilesData?.find(p => p.id === report.usuario_que_reporta_id);
+        const usuario_reportado = report.usuario_reportado_id ? 
+          profilesData?.find(p => p.id === report.usuario_reportado_id) : undefined;
+        
+        return {
+          ...report,
+          usuario_que_reporta: usuario_que_reporta ? {
+            first_name: usuario_que_reporta.first_name || '',
+            last_name: usuario_que_reporta.last_name || '',
+            email: usuario_que_reporta.email || ''
+          } : undefined,
+          usuario_reportado: usuario_reportado ? {
+            first_name: usuario_reportado.first_name || '',
+            last_name: usuario_reportado.last_name || '',
+            email: usuario_reportado.email || ''
+          } : undefined
+        };
+      }) || [];
+
+      setReports(enrichedReports);
     } catch (error) {
       console.error('Error:', error);
       toast.error('Error inesperado');
@@ -231,13 +265,13 @@ const ReportsManagement = () => {
                             <CheckCircle className="w-4 h-4" />
                           </Button>
                         )}
-                        {report.usuario_reportado && (
+                        {report.usuario_reportado_id && (
                           <Button 
                             size="sm" 
                             variant="destructive"
                             onClick={() => blockUser(
                               report.usuario_reportado_id!, 
-                              `${report.usuario_reportado.first_name} ${report.usuario_reportado.last_name}`
+                              `${report.usuario_reportado?.first_name} ${report.usuario_reportado?.last_name}`
                             )}
                           >
                             <UserX className="w-4 h-4" />
