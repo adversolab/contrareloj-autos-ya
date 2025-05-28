@@ -33,6 +33,12 @@ interface ChartData {
   penalizaciones: number;
 }
 
+const CREDIT_TYPES = [
+  { value: 'bono', label: 'Bono', description: 'Créditos por invitación o promoción' },
+  { value: 'ajuste', label: 'Ajuste manual', description: 'Créditos añadidos manualmente por el admin' },
+  { value: 'correccion', label: 'Corrección', description: 'Ajuste por error previo' }
+];
+
 const CreditsManagement = () => {
   const [movements, setMovements] = useState<CreditMovement[]>([]);
   const [chartData, setChartData] = useState<ChartData[]>([]);
@@ -41,6 +47,7 @@ const CreditsManagement = () => {
   const [isAddingCredit, setIsAddingCredit] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState('');
   const [creditAmount, setCreditAmount] = useState('');
+  const [creditType, setCreditType] = useState('');
   const [creditDescription, setCreditDescription] = useState('');
   const [users, setUsers] = useState<any[]>([]);
 
@@ -107,7 +114,6 @@ const CreditsManagement = () => {
         new Date(m.fecha) >= thirtyDaysAgo
       ) || [];
 
-      // Group by date and type
       const groupedData: Record<string, ChartData> = {};
       
       chartMovements.forEach(movement => {
@@ -138,7 +144,7 @@ const CreditsManagement = () => {
   };
 
   const addCredits = async () => {
-    if (!selectedUserId || !creditAmount || !creditDescription) {
+    if (!selectedUserId || !creditAmount || !creditType || !creditDescription) {
       toast.error('Todos los campos son obligatorios');
       return;
     }
@@ -152,7 +158,7 @@ const CreditsManagement = () => {
     try {
       const { data, error } = await supabase.rpc('procesar_movimiento_credito', {
         p_usuario_id: selectedUserId,
-        p_tipo: 'administracion',
+        p_tipo: creditType,
         p_cantidad: amount,
         p_descripcion: creditDescription
       });
@@ -163,7 +169,6 @@ const CreditsManagement = () => {
         return;
       }
 
-      // Type cast the response since we know the structure
       const result = data as { success: boolean; error?: string };
       
       if (result && !result.success) {
@@ -177,7 +182,7 @@ const CreditsManagement = () => {
         await supabase.rpc('log_admin_action', {
           p_admin_id: user.id,
           p_accion: 'agregar_creditos',
-          p_detalle: `Agregó ${amount} créditos: ${creditDescription}`,
+          p_detalle: `Agregó ${amount} créditos (${creditType}): ${creditDescription}`,
           p_tabla_afectada: 'movimientos_credito',
           p_registro_afectado_id: selectedUserId
         });
@@ -187,6 +192,7 @@ const CreditsManagement = () => {
       setIsAddingCredit(false);
       setSelectedUserId('');
       setCreditAmount('');
+      setCreditType('');
       setCreditDescription('');
       loadData();
     } catch (error) {
@@ -207,11 +213,22 @@ const CreditsManagement = () => {
         return 'text-blue-600';
       case 'penalizacion':
         return 'text-red-600';
+      case 'bono':
+        return 'text-purple-600';
+      case 'ajuste':
+        return 'text-orange-600';
+      case 'correccion':
+        return 'text-yellow-600';
       case 'administracion':
         return 'text-purple-600';
       default:
         return 'text-gray-600';
     }
+  };
+
+  const getTypeLabel = (type: string) => {
+    const creditType = CREDIT_TYPES.find(ct => ct.value === type);
+    return creditType ? creditType.label : type;
   };
 
   return (
@@ -228,6 +245,9 @@ const CreditsManagement = () => {
               <SelectItem value="compra">Compras</SelectItem>
               <SelectItem value="puja">Pujas</SelectItem>
               <SelectItem value="penalizacion">Penalizaciones</SelectItem>
+              <SelectItem value="bono">Bonos</SelectItem>
+              <SelectItem value="ajuste">Ajustes</SelectItem>
+              <SelectItem value="correccion">Correcciones</SelectItem>
               <SelectItem value="administracion">Administración</SelectItem>
             </SelectContent>
           </Select>
@@ -260,6 +280,24 @@ const CreditsManagement = () => {
                   </Select>
                 </div>
                 <div>
+                  <Label htmlFor="type">Tipo de Movimiento</Label>
+                  <Select value={creditType} onValueChange={setCreditType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CREDIT_TYPES.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          <div>
+                            <div className="font-medium">{type.label}</div>
+                            <div className="text-sm text-gray-500">{type.description}</div>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
                   <Label htmlFor="amount">Cantidad de Créditos</Label>
                   <Input
                     id="amount"
@@ -275,7 +313,7 @@ const CreditsManagement = () => {
                     id="description"
                     value={creditDescription}
                     onChange={(e) => setCreditDescription(e.target.value)}
-                    placeholder="Motivo del ajuste"
+                    placeholder="Motivo detallado del ajuste"
                   />
                 </div>
                 <div className="flex gap-2 pt-4">
@@ -353,7 +391,7 @@ const CreditsManagement = () => {
                       }
                     </TableCell>
                     <TableCell className={getTypeColor(movement.tipo)}>
-                      {movement.tipo}
+                      {getTypeLabel(movement.tipo)}
                     </TableCell>
                     <TableCell className={movement.cantidad > 0 ? 'text-green-600' : 'text-red-600'}>
                       {movement.cantidad > 0 ? '+' : ''}{movement.cantidad}
