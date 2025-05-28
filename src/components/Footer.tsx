@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Car, Mail, Phone, MapPin } from 'lucide-react';
+import { Mail, Phone, MapPin } from 'lucide-react';
 
 const Footer = () => {
   const quickLinks = [
@@ -33,10 +33,11 @@ const Footer = () => {
             {/* Brand section */}
             <div className="lg:col-span-1">
               <div className="flex items-center gap-3 mb-6">
-                <div className="bg-contrareloj p-2 rounded-lg">
-                  <Car className="w-8 h-8 text-white" />
-                </div>
-                <h3 className="text-2xl font-bold">CONTRARELOJ</h3>
+                <img 
+                  src="https://qwtevsnsivmpmikhtdmh.supabase.co/storage/v1/object/public/logos//contrareloj1.PNG" 
+                  alt="Contrareloj" 
+                  className="h-12 w-auto"
+                />
               </div>
               <p className="text-gray-300 mb-6 leading-relaxed">
                 Subastas rápidas, confiables y transparentes para comprar o vender cualquier vehículo en Chile.

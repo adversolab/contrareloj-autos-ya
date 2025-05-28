@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -63,10 +64,11 @@ const Navbar = () => {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
-            <div className="bg-contrareloj text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm">
-              C
-            </div>
-            <span className="font-bold text-xl text-contrareloj">Contrareloj</span>
+            <img 
+              src="https://qwtevsnsivmpmikhtdmh.supabase.co/storage/v1/object/public/logos//contrareloj1.PNG" 
+              alt="Contrareloj" 
+              className="h-10 w-auto"
+            />
           </Link>
 
           {/* Desktop Navigation */}
