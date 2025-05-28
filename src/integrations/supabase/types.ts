@@ -9,6 +9,56 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      admin_logs: {
+        Row: {
+          accion: string
+          admin_id: string
+          created_at: string
+          datos_anteriores: Json | null
+          datos_nuevos: Json | null
+          detalle: string | null
+          id: string
+          ip_address: unknown | null
+          registro_afectado_id: string | null
+          tabla_afectada: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          accion: string
+          admin_id: string
+          created_at?: string
+          datos_anteriores?: Json | null
+          datos_nuevos?: Json | null
+          detalle?: string | null
+          id?: string
+          ip_address?: unknown | null
+          registro_afectado_id?: string | null
+          tabla_afectada?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          accion?: string
+          admin_id?: string
+          created_at?: string
+          datos_anteriores?: Json | null
+          datos_nuevos?: Json | null
+          detalle?: string | null
+          id?: string
+          ip_address?: unknown | null
+          registro_afectado_id?: string | null
+          tabla_afectada?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_logs_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       auction_questions: {
         Row: {
           answer: string | null
@@ -346,6 +396,60 @@ export type Database = {
         }
         Relationships: []
       }
+      reportes: {
+        Row: {
+          created_at: string
+          detalle: string
+          estado: string
+          fecha: string
+          id: string
+          referencia_id: string | null
+          tipo: string
+          updated_at: string
+          usuario_que_reporta_id: string
+          usuario_reportado_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          detalle: string
+          estado?: string
+          fecha?: string
+          id?: string
+          referencia_id?: string | null
+          tipo: string
+          updated_at?: string
+          usuario_que_reporta_id: string
+          usuario_reportado_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          detalle?: string
+          estado?: string
+          fecha?: string
+          id?: string
+          referencia_id?: string | null
+          tipo?: string
+          updated_at?: string
+          usuario_que_reporta_id?: string
+          usuario_reportado_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reportes_usuario_que_reporta_id_fkey"
+            columns: ["usuario_que_reporta_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reportes_usuario_reportado_id_fkey"
+            columns: ["usuario_reportado_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       valoraciones_usuario: {
         Row: {
           comentario: string | null
@@ -356,6 +460,7 @@ export type Database = {
           id: string
           puntuacion: number
           remate_id: string
+          visible: boolean
         }
         Insert: {
           comentario?: string | null
@@ -366,6 +471,7 @@ export type Database = {
           id?: string
           puntuacion: number
           remate_id: string
+          visible?: boolean
         }
         Update: {
           comentario?: string | null
@@ -376,6 +482,7 @@ export type Database = {
           id?: string
           puntuacion?: number
           remate_id?: string
+          visible?: boolean
         }
         Relationships: [
           {
@@ -517,6 +624,18 @@ export type Database = {
       is_admin: {
         Args: { user_id: string }
         Returns: boolean
+      }
+      log_admin_action: {
+        Args: {
+          p_admin_id: string
+          p_accion: string
+          p_detalle?: string
+          p_tabla_afectada?: string
+          p_registro_afectado_id?: string
+          p_datos_anteriores?: Json
+          p_datos_nuevos?: Json
+        }
+        Returns: undefined
       }
       penalize_auction_abandonment: {
         Args: Record<PropertyKey, never>

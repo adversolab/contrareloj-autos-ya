@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -20,6 +19,10 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AuctionsManagement from "./pages/admin/AuctionsManagement";
 import UsersManagement from "./pages/admin/UsersManagement";
 import VehiclesManagement from "./pages/admin/VehiclesManagement";
+import Dashboard from "./pages/admin/Dashboard";
+import ReportsManagement from "./pages/admin/ReportsManagement";
+import RatingsManagement from "./pages/admin/RatingsManagement";
+import CreditsManagement from "./pages/admin/CreditsManagement";
 import "./App.css";
 
 const queryClient = new QueryClient();
@@ -45,10 +48,14 @@ function App() {
                 
                 {/* Admin routes */}
                 <Route path="/admin" element={<AdminLayout />}>
-                  <Route index element={<AdminDashboard />} />
+                  <Route index element={<Dashboard />} />
+                  <Route path="dashboard" element={<Dashboard />} />
                   <Route path="subastas" element={<AuctionsManagement />} />
                   <Route path="usuarios" element={<UsersManagement />} />
                   <Route path="vehiculos" element={<VehiclesManagement />} />
+                  <Route path="reportes" element={<ReportsManagement />} />
+                  <Route path="valoraciones" element={<RatingsManagement />} />
+                  <Route path="creditos" element={<CreditsManagement />} />
                 </Route>
                 
                 <Route path="*" element={<NotFound />} />

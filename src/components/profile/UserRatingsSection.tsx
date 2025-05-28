@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Star } from 'lucide-react';
@@ -23,15 +22,17 @@ const UserRatingsSection: React.FC<UserRatingsSectionProps> = ({
 
   const loadUserRatings = async () => {
     try {
-      // First, get the basic ratings data with explicit typing
+      // First, get the basic ratings data with proper error handling
       const { data: ratingsData, error: ratingsError } = await supabase
-        .from('valoraciones_usuario' as any)
+        .from('valoraciones_usuario')
         .select('*')
         .eq('evaluado_id', userId)
+        .eq('visible', true)
         .order('fecha', { ascending: false });
 
       if (ratingsError) {
         console.error('Error al cargar valoraciones:', ratingsError);
+        setRatings([]);
         return;
       }
 
@@ -40,26 +41,15 @@ const UserRatingsSection: React.FC<UserRatingsSectionProps> = ({
         return;
       }
 
-      // Type cast the data to ensure TypeScript recognizes the structure
-      const typedRatingsData = ratingsData as Array<{
-        id: string;
-        evaluador_id: string;
-        evaluado_id: string;
-        remate_id: string;
-        puntuacion: number;
-        comentario?: string;
-        fecha: string;
-      }>;
-
       // Get evaluator profiles for each rating
-      const evaluatorIds = typedRatingsData.map(rating => rating.evaluador_id);
+      const evaluatorIds = ratingsData.map(rating => rating.evaluador_id);
       const { data: profilesData } = await supabase
         .from('profiles')
         .select('id, first_name, last_name')
         .in('id', evaluatorIds);
 
       // Get auction/vehicle data for each rating
-      const auctionIds = typedRatingsData.map(rating => rating.remate_id);
+      const auctionIds = ratingsData.map(rating => rating.remate_id);
       const { data: auctionsData } = await supabase
         .from('auctions')
         .select(`
@@ -69,7 +59,7 @@ const UserRatingsSection: React.FC<UserRatingsSectionProps> = ({
         .in('id', auctionIds);
 
       // Combine the data
-      const enrichedRatings = typedRatingsData.map(rating => {
+      const enrichedRatings = ratingsData.map(rating => {
         const evaluator = profilesData?.find(p => p.id === rating.evaluador_id);
         const auction = auctionsData?.find(a => a.id === rating.remate_id);
         
@@ -94,6 +84,7 @@ const UserRatingsSection: React.FC<UserRatingsSectionProps> = ({
       setRatings(enrichedRatings);
     } catch (error) {
       console.error('Error inesperado:', error);
+      setRatings([]);
     } finally {
       setIsLoading(false);
     }
