@@ -14,7 +14,11 @@ const CreditHistory = () => {
     const loadMovements = async () => {
       setIsLoading(true);
       const { movements: userMovements } = await getCreditMovements();
-      setMovements(userMovements);
+      // Filter out any undefined or invalid movements
+      const validMovements = (userMovements || []).filter(movement => 
+        movement && typeof movement === 'object' && movement.id && movement.tipo
+      );
+      setMovements(validMovements);
       setIsLoading(false);
     };
 
@@ -49,7 +53,9 @@ const CreditHistory = () => {
       bono: { label: 'Bono', color: 'bg-green-500' }
     };
 
-    const badge = badges[tipo];
+    // Safe access with fallback for unknown movement types
+    const badge = badges[tipo] || { label: 'Movimiento', color: 'bg-gray-500' };
+    
     return (
       <Badge className={`${badge.color} text-white text-xs`}>
         {badge.label}
@@ -58,14 +64,20 @@ const CreditHistory = () => {
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-CL', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    if (!dateString) return 'Fecha no disponible';
+    
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('es-CL', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return 'Fecha inválida';
+    }
   };
 
   if (isLoading) {
@@ -118,27 +130,34 @@ const CreditHistory = () => {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {movements.map((movement) => (
-            <div key={movement.id} className="flex items-center justify-between p-4 border rounded-lg">
-              <div className="flex items-center space-x-3">
-                {getMovementIcon(movement.tipo)}
-                <div>
-                  <div className="flex items-center space-x-2 mb-1">
-                    {getMovementBadge(movement.tipo)}
-                    <span className="text-sm text-gray-500">
-                      {formatDate(movement.fecha)}
-                    </span>
+          {movements.map((movement) => {
+            // Additional safety check for each movement
+            if (!movement || !movement.id) {
+              return null;
+            }
+
+            return (
+              <div key={movement.id} className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="flex items-center space-x-3">
+                  {getMovementIcon(movement.tipo)}
+                  <div>
+                    <div className="flex items-center space-x-2 mb-1">
+                      {getMovementBadge(movement.tipo)}
+                      <span className="text-sm text-gray-500">
+                        {formatDate(movement.fecha)}
+                      </span>
+                    </div>
+                    <p className="font-medium">{movement.descripcion || 'Sin descripción'}</p>
                   </div>
-                  <p className="font-medium">{movement.descripcion}</p>
+                </div>
+                <div className="text-right">
+                  <div className={`font-bold ${getMovementColor(movement.cantidad || 0)}`}>
+                    {(movement.cantidad || 0) > 0 ? '+' : ''}{movement.cantidad || 0} créditos
+                  </div>
                 </div>
               </div>
-              <div className="text-right">
-                <div className={`font-bold ${getMovementColor(movement.cantidad)}`}>
-                  {movement.cantidad > 0 ? '+' : ''}{movement.cantidad} créditos
-                </div>
-              </div>
-            </div>
-          ))}
+            );
+          }).filter(Boolean)} {/* Remove any null entries */}
         </div>
       </CardContent>
     </Card>
