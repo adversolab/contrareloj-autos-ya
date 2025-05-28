@@ -13,6 +13,7 @@ import { createNotification } from '@/services/notificationService';
 import { getMessageTemplates, MessageTemplate } from '@/services/messageTemplateService';
 import { Send, Search } from 'lucide-react';
 import SentMessagesSection from '@/components/admin/SentMessagesSection';
+import NotificationsHistory from '@/components/admin/NotificationsHistory';
 
 interface User {
   id: string;
@@ -143,6 +144,7 @@ const MessagesManagement = () => {
         <TabsList>
           <TabsTrigger value="send">Enviar Mensaje</TabsTrigger>
           <TabsTrigger value="sent">Mensajes Enviados</TabsTrigger>
+          <TabsTrigger value="history">Historial Completo</TabsTrigger>
         </TabsList>
 
         <TabsContent value="send">
@@ -188,7 +190,6 @@ const MessagesManagement = () => {
                 </Select>
               </div>
 
-              {/* Plantillas de mensajes */}
               <div className="space-y-2">
                 <Label htmlFor="template-select">Plantillas de mensaje</Label>
                 {loadingTemplates ? (
@@ -209,7 +210,6 @@ const MessagesManagement = () => {
                 )}
               </div>
 
-              {/* Campos del mensaje */}
               <div className="space-y-2">
                 <Label htmlFor="title">Título del Mensaje</Label>
                 <Input
@@ -231,7 +231,6 @@ const MessagesManagement = () => {
                 />
               </div>
 
-              {/* Botón de envío */}
               <Button 
                 onClick={handleSendMessage} 
                 disabled={loading || !selectedUserId || !title.trim() || !message.trim()}
@@ -252,6 +251,10 @@ const MessagesManagement = () => {
 
         <TabsContent value="sent">
           <SentMessagesSection />
+        </TabsContent>
+
+        <TabsContent value="history">
+          <NotificationsHistory />
         </TabsContent>
       </Tabs>
     </div>
