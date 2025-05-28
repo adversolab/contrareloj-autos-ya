@@ -12,6 +12,7 @@ import {
   activateAuction
 } from '@/services/vehicleService';
 import { VehicleFeature } from '@/services/vehicles/types';
+import { processCreditsMovement } from '@/services/creditService';
 
 export const useSellCarSteps = () => {
   const {
@@ -25,7 +26,9 @@ export const useSellCarSteps = () => {
     auctionInfo,
     checkProfileComplete,
     nextStep,
-    setIsProcessing
+    setIsProcessing,
+    getTotalCostInCredits,
+    publicationServices
   } = useSellContext();
   
   const saveStep1 = async () => {
@@ -184,24 +187,6 @@ export const useSellCarSteps = () => {
     setIsProcessing(true);
 
     try {
-      // Verificar si se quiere destacar la publicación
-      const wantsHighlight = auctionInfo.services.includes('highlight');
-      
-      if (wantsHighlight) {
-        // Importar y usar el servicio de destacar
-        const { highlightVehicle } = await import('@/services/highlightService');
-        const highlightResult = await highlightVehicle(vehicleId);
-        
-        if (!highlightResult.success) {
-          if (highlightResult.error === 'insufficient_credits') {
-            toast.error('No tienes créditos suficientes para destacar esta publicación');
-            return;
-          }
-          toast.error(`Error al destacar: ${highlightResult.error}`);
-          return;
-        }
-      }
-
       const result = await saveAuctionInfo(vehicleId, auctionInfo);
       
       if (result.success && result.auctionId) {
@@ -227,6 +212,55 @@ export const useSellCarSteps = () => {
     setIsProcessing(true);
 
     try {
+      // Calculate total credits needed
+      const totalCredits = getTotalCostInCredits();
+      
+      // Build service description for the credit movement
+      const selectedServices = [];
+      
+      // Base publication
+      selectedServices.push('Publicación básica');
+      
+      // Additional services
+      if (auctionInfo.services.includes('verification')) {
+        selectedServices.push('Verificación mecánica');
+      }
+      if (auctionInfo.services.includes('photography')) {
+        selectedServices.push('Fotografía profesional');
+      }
+      if (auctionInfo.services.includes('highlight')) {
+        selectedServices.push('Destacar anuncio');
+      }
+      
+      const serviceDescription = `Publicación de ${carInfo.brand} ${carInfo.model} ${carInfo.year} - Servicios: ${selectedServices.join(', ')}`;
+      
+      // Deduct all credits at once
+      const creditResult = await processCreditsMovement(
+        'publicacion',
+        -totalCredits,
+        serviceDescription
+      );
+      
+      if (!creditResult.success) {
+        if (creditResult.error?.includes('Saldo insuficiente')) {
+          toast.error('No tienes créditos suficientes para completar esta publicación');
+          return false;
+        }
+        toast.error(`Error al procesar los créditos: ${creditResult.error}`);
+        return false;
+      }
+
+      // If highlight service is selected, mark the vehicle as highlighted
+      if (auctionInfo.services.includes('highlight')) {
+        const { highlightVehicle } = await import('@/services/highlightService');
+        const highlightResult = await highlightVehicle(vehicleId);
+        
+        if (!highlightResult.success) {
+          console.error('Error highlighting vehicle:', highlightResult.error);
+          // Don't fail the whole process if highlighting fails, just log it
+        }
+      }
+
       // Activar la subasta (quedará en draft hasta aprobación por admin)
       const result = await activateAuction(auctionId);
       
