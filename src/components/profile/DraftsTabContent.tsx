@@ -101,6 +101,7 @@ const DraftsTabContent = ({ draftAuctions, isLoading, onDelete }: DraftsTabConte
             isDraft={true}
             vehicleId={draft.vehicleId}
             onDelete={onDelete}
+            onEdit={() => handleEditDraft(draft.vehicleId || draft.id.toString())}
           />
         ))}
       </div>
