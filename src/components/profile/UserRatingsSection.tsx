@@ -23,25 +23,64 @@ const UserRatingsSection: React.FC<UserRatingsSectionProps> = ({
 
   const loadUserRatings = async () => {
     try {
-      // Usar query directo para evitar problemas de tipos temporales
-      const { data, error } = await supabase
+      // First, get the basic ratings data
+      const { data: ratingsData, error: ratingsError } = await supabase
         .from('valoraciones_usuario' as any)
-        .select(`
-          *,
-          evaluador:profiles!valoraciones_usuario_evaluador_id_fkey(first_name, last_name),
-          remate:auctions!valoraciones_usuario_remate_id_fkey(
-            vehicle:vehicles(brand, model, year)
-          )
-        `)
+        .select('*')
         .eq('evaluado_id', userId)
         .order('fecha', { ascending: false });
 
-      if (error) {
-        console.error('Error al cargar valoraciones:', error);
+      if (ratingsError) {
+        console.error('Error al cargar valoraciones:', ratingsError);
         return;
       }
 
-      setRatings(data || []);
+      if (!ratingsData || ratingsData.length === 0) {
+        setRatings([]);
+        return;
+      }
+
+      // Get evaluator profiles for each rating
+      const evaluatorIds = ratingsData.map(rating => rating.evaluador_id);
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name')
+        .in('id', evaluatorIds);
+
+      // Get auction/vehicle data for each rating
+      const auctionIds = ratingsData.map(rating => rating.remate_id);
+      const { data: auctionsData } = await supabase
+        .from('auctions')
+        .select(`
+          id,
+          vehicle:vehicles(brand, model, year)
+        `)
+        .in('id', auctionIds);
+
+      // Combine the data
+      const enrichedRatings = ratingsData.map(rating => {
+        const evaluator = profilesData?.find(p => p.id === rating.evaluador_id);
+        const auction = auctionsData?.find(a => a.id === rating.remate_id);
+        
+        return {
+          id: rating.id,
+          evaluador_id: rating.evaluador_id,
+          evaluado_id: rating.evaluado_id,
+          remate_id: rating.remate_id,
+          puntuacion: rating.puntuacion,
+          comentario: rating.comentario,
+          fecha: rating.fecha,
+          evaluador: evaluator ? {
+            first_name: evaluator.first_name,
+            last_name: evaluator.last_name
+          } : undefined,
+          remate: auction?.vehicle ? {
+            vehicle: auction.vehicle
+          } : undefined
+        };
+      });
+
+      setRatings(enrichedRatings);
     } catch (error) {
       console.error('Error inesperado:', error);
     } finally {
