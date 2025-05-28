@@ -65,7 +65,7 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
 
     setLoading(true);
     try {
-      console.log('Sending message to user:', { userId, title, message });
+      console.log('SendMessageDialog: Sending message to user:', { userId, title, message });
       const success = await createNotification(userId, title, message, 'admin');
       
       if (success) {
@@ -74,10 +74,13 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
         setMessage('');
         setOpen(false);
         
-        // Call the callback to refresh parent components
+        // Call the callback to refresh parent components with a longer delay
         if (onMessageSent) {
-          console.log('Calling onMessageSent callback to refresh UI');
-          onMessageSent();
+          console.log('SendMessageDialog: Calling onMessageSent callback to refresh UI');
+          // Wait longer to ensure the database has been updated
+          setTimeout(() => {
+            onMessageSent();
+          }, 1500); // Increased from 1000ms to 1500ms
         }
       } else {
         toast.error('Error al enviar el mensaje');

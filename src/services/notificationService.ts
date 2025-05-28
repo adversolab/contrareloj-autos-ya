@@ -85,35 +85,53 @@ export async function markAllNotificationsAsRead() {
 // Create a notification for a specific user (for admin use)
 export async function createNotification(userId: string, title: string, message: string, type: string = 'admin', relatedId?: string) {
   try {
+    console.log('createNotification: Starting to create notification...');
+    
     const currentUser = await getCurrentUser();
     if (!currentUser) {
-      console.error('No authenticated user found');
+      console.error('createNotification: No authenticated user found');
       return false;
     }
 
-    console.log('Creating notification:', { userId, title, message, type, currentUser: currentUser.id });
+    const adminId = currentUser.id;
+    console.log('createNotification: Current admin ID:', adminId);
+    console.log('createNotification: Target user ID:', userId);
+    console.log('createNotification: Message details:', { title, message, type });
 
-    const { error } = await supabase
+    // Prepare notification data with explicit sent_by field
+    const notificationData = {
+      user_id: userId,
+      title: title,
+      message: message,
+      type: type,
+      related_id: relatedId || null,
+      is_read: false,
+      sent_by: adminId // Explicitly set the admin ID who sent the message
+    };
+
+    console.log('createNotification: Inserting notification data:', notificationData);
+
+    const { data, error } = await supabase
       .from('notifications')
-      .insert({
-        user_id: userId,
-        title,
-        message,
-        type,
-        related_id: relatedId,
-        is_read: false,
-        sent_by: currentUser.id // Add the admin who sent the message
-      });
+      .insert([notificationData])
+      .select('*'); // Select to get the inserted data back
 
     if (error) {
-      console.error('Error creating notification:', error);
+      console.error('createNotification: Supabase error:', error);
+      console.error('createNotification: Error details:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
       return false;
     }
 
-    console.log('Notification created successfully');
+    console.log('createNotification: Successfully inserted notification:', data);
+    console.log('createNotification: Notification created with sent_by =', adminId);
     return true;
   } catch (error) {
-    console.error('Unexpected error creating notification:', error);
+    console.error('createNotification: Unexpected error:', error);
     return false;
   }
 }
