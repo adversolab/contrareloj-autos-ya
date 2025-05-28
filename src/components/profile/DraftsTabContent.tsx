@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuctionCard from '@/components/AuctionCard';
@@ -73,6 +72,10 @@ const DraftsTabContent = ({ draftAuctions, isLoading, onDelete }: DraftsTabConte
     loadVehicleImages();
   }, [draftAuctions]);
   
+  const handleEditDraft = (vehicleId: string) => {
+    navigate(`/vender?draft=${vehicleId}`);
+  };
+  
   if (isLoading) {
     return <div className="flex justify-center py-10">
       <p>Cargando tus borradores...</p>
@@ -98,6 +101,7 @@ const DraftsTabContent = ({ draftAuctions, isLoading, onDelete }: DraftsTabConte
             isDraft={true}
             vehicleId={draft.vehicleId}
             onDelete={onDelete}
+            onEdit={() => handleEditDraft(draft.vehicleId || draft.id.toString())}
           />
         ))}
       </div>

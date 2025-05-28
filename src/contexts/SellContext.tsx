@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { getCurrentUser } from '@/services/authService';
@@ -65,6 +65,7 @@ type SellContextType = {
   handleAuctionInfoChange: (name: string, value: string | number) => void;
   refreshCredits: () => Promise<void>;
   getTotalCostInCredits: () => number;
+  loadDraftData: (draftId: string) => Promise<void>;
 };
 
 export const SellContext = createContext<SellContextType | undefined>(undefined);
@@ -367,6 +368,114 @@ export const SellProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     window.scrollTo(0, 0);
   };
 
+  const loadDraftData = useCallback(async (draftId: string) => {
+    try {
+      console.log('Loading draft data for vehicle ID:', draftId);
+      
+      // Load vehicle basic info
+      const { data: vehicleData, error: vehicleError } = await supabase
+        .from('vehicles')
+        .select('*')
+        .eq('id', draftId)
+        .single();
+
+      if (vehicleError) {
+        console.error('Error loading vehicle data:', vehicleError);
+        toast.error('Error al cargar el borrador');
+        return;
+      }
+
+      if (vehicleData) {
+        setVehicleId(draftId);
+        setCarInfo({
+          brand: vehicleData.brand || '',
+          model: vehicleData.model || '',
+          year: vehicleData.year?.toString() || '',
+          kilometers: vehicleData.kilometers?.toString() || '',
+          fuel: vehicleData.fuel || '',
+          transmission: vehicleData.transmission || '',
+          description: vehicleData.description || ''
+        });
+        setAdditionalDetails(vehicleData.description || '');
+      }
+
+      // Load vehicle features
+      const { data: featuresData, error: featuresError } = await supabase
+        .from('vehicle_features')
+        .select('category, feature')
+        .eq('vehicle_id', draftId);
+
+      if (!featuresError && featuresData) {
+        const loadedFeatures: {[key: string]: string[]} = {
+          exterior: [],
+          interior: [],
+          seguridad: [],
+          confort: []
+        };
+        
+        featuresData.forEach(item => {
+          if (loadedFeatures[item.category]) {
+            loadedFeatures[item.category].push(item.feature);
+          }
+        });
+        
+        setFeatures(loadedFeatures);
+      }
+
+      // Load vehicle photos
+      const { data: photosData, error: photosError } = await supabase
+        .from('vehicle_photos')
+        .select('url, position, is_primary')
+        .eq('vehicle_id', draftId)
+        .order('position');
+
+      if (!photosError && photosData && photosData.length > 0) {
+        const loadedPhotos = Array.from({ length: 6 }, (_, i) => ({ 
+          id: i, 
+          file: null, 
+          preview: null,
+          isMain: i === 0
+        }));
+
+        photosData.forEach((photo, index) => {
+          if (index < 6) {
+            loadedPhotos[index] = {
+              id: index,
+              file: null,
+              preview: photo.url,
+              isMain: photo.is_primary || index === 0
+            };
+          }
+        });
+
+        setUploadedPhotos(loadedPhotos);
+      }
+
+      // Load auction info if exists
+      const { data: auctionData, error: auctionError } = await supabase
+        .from('auctions')
+        .select('*')
+        .eq('vehicle_id', draftId)
+        .single();
+
+      if (!auctionError && auctionData) {
+        setAuctionId(auctionData.id);
+        setAuctionInfo({
+          reservePrice: Number(auctionData.reserve_price) || 0,
+          startPrice: Number(auctionData.start_price) || 0,
+          durationDays: auctionData.duration_days || 7,
+          minIncrement: Number(auctionData.min_increment) || 100000,
+          services: [] // We'll load services separately if needed
+        });
+      }
+
+      toast.success('Borrador cargado exitosamente');
+    } catch (error) {
+      console.error('Error loading draft:', error);
+      toast.error('Error al cargar el borrador');
+    }
+  }, []);
+
   const value = {
     step, setStep,
     vehicleId, setVehicleId,
@@ -396,7 +505,8 @@ export const SellProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     handleServiceChange,
     handleAuctionInfoChange,
     refreshCredits,
-    getTotalCostInCredits
+    getTotalCostInCredits,
+    loadDraftData
   };
 
   return (

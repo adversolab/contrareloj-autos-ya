@@ -1,22 +1,22 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Star, Coins } from 'lucide-react';
-import { AuctionInfo } from '@/services/vehicleService';
-import { PublicationService, getServiceCost } from '@/services/publicationService';
+import { formatCurrency } from '@/utils/formatters';
 import { useSellContext } from '@/contexts/SellContext';
-import { toast } from 'sonner';
+import { getServiceCost } from '@/services/publicationService';
+import CreditsSummary from './CreditsSummary';
 
 interface AuctionConditionsFormProps {
-  auctionInfo: AuctionInfo;
+  auctionInfo: {
+    reservePrice: number;
+    startPrice: number;
+    durationDays: number;
+    minIncrement: number;
+    services: string[];
+  };
   onAuctionInfoChange: (name: string, value: string | number) => void;
   onServiceChange: (service: string, checked: boolean) => void;
   onPrevStep: () => void;
@@ -32,183 +32,135 @@ const AuctionConditionsForm: React.FC<AuctionConditionsFormProps> = ({
   onSubmit,
   isProcessing
 }) => {
-  const { publicationServices } = useSellContext();
+  const { userCredits, publicationServices, refreshCredits, getTotalCostInCredits } = useSellContext();
 
-  const handleDurationChange = (value: string) => {
-    const days = parseInt(value);
-    if (days < 7) {
-      toast.info("La duración mínima de la subasta es de 7 días");
-      onAuctionInfoChange('durationDays', 7);
-    } else {
-      onAuctionInfoChange('durationDays', days);
-    }
-  };
-
-  const getServiceCredits = (serviceName: string) => {
-    return getServiceCost(publicationServices, serviceName);
-  };
-
-  const getServiceDescription = (serviceName: string) => {
-    const service = publicationServices.find(s => s.servicio === serviceName);
-    return service?.descripcion || '';
-  };
+  const totalCostInCredits = getTotalCostInCredits();
 
   return (
     <div className="space-y-6">
+      <CreditsSummary 
+        availableCredits={userCredits}
+        requiredCredits={totalCostInCredits}
+        onRefreshCredits={refreshCredits}
+      />
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label className="block text-sm font-medium mb-2">Precio de reserva*</label>
-          <div className="relative">
-            <span className="absolute left-3 top-2.5 text-gray-500">$</span>
-            <input 
-              type="text"
-              placeholder="Precio mínimo que aceptarás"
-              className="w-full border border-gray-300 rounded-md p-2 pl-7"
-              value={auctionInfo.reservePrice > 0 ? auctionInfo.reservePrice.toString() : ''}
-              onChange={(e) => onAuctionInfoChange('reservePrice', e.target.value)}
-            />
-          </div>
-          <p className="text-xs text-gray-500 mt-1">
-            Este precio no será visible para los compradores
-          </p>
-        </div>
-        
-        <div>
-          <label className="block text-sm font-medium mb-2">Precio de inicio*</label>
-          <div className="relative">
-            <span className="absolute left-3 top-2.5 text-gray-500">$</span>
-            <input 
-              type="text"
-              placeholder="Precio de apertura de la subasta"
-              className="w-full border border-gray-300 rounded-md p-2 pl-7"
-              value={auctionInfo.startPrice > 0 ? auctionInfo.startPrice.toString() : ''}
-              onChange={(e) => onAuctionInfoChange('startPrice', e.target.value)}
-            />
-          </div>
-          <p className="text-xs text-gray-500 mt-1">
-            Sugerimos un precio atractivo para generar interés
-          </p>
-        </div>
-        
-        <div>
-          <label className="block text-sm font-medium mb-2">Duración de la subasta* (mínimo 7 días)</label>
-          <Select
-            value={auctionInfo.durationDays.toString()}
-            onValueChange={handleDurationChange}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Selecciona duración" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7">7 días</SelectItem>
-              <SelectItem value="10">10 días</SelectItem>
-              <SelectItem value="14">14 días</SelectItem>
-              <SelectItem value="21">21 días</SelectItem>
-              <SelectItem value="30">30 días</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <div>
-          <label className="block text-sm font-medium mb-2">Incremento mínimo*</label>
-          <Select
-            value={auctionInfo.minIncrement.toString()}
-            onValueChange={(value) => onAuctionInfoChange('minIncrement', parseInt(value))}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Selecciona incremento" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="50000">$50.000</SelectItem>
-              <SelectItem value="100000">$100.000</SelectItem>
-              <SelectItem value="200000">$200.000</SelectItem>
-              <SelectItem value="500000">$500.000</SelectItem>
-              <SelectItem value="1000000">$1.000.000</SelectItem>
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-gray-500 mt-1">
-            Monto mínimo para cada nueva oferta
-          </p>
-        </div>
-      </div>
-      
-      {/* Sección de destacar publicación */}
-      <div className="border p-4 rounded-lg bg-gradient-to-r from-yellow-50 to-orange-50">
-        <h4 className="font-medium mb-3 flex items-center gap-2">
-          <Star className="w-5 h-5 text-yellow-500" />
-          Destacar Publicación
-        </h4>
-        
-        <div className="flex items-start space-x-3">
-          <Checkbox 
-            id="highlight"
-            checked={auctionInfo.services.includes('highlight')}
-            onCheckedChange={(checked) => onServiceChange('highlight', !!checked)}
+          <Label htmlFor="reservePrice">Precio de reserva *</Label>
+          <Input
+            id="reservePrice"
+            type="number"
+            value={auctionInfo.reservePrice || ''}
+            onChange={(e) => onAuctionInfoChange('reservePrice', e.target.value)}
+            placeholder="Precio mínimo de venta"
           />
-          <div className="flex-1">
-            <label htmlFor="highlight" className="font-medium cursor-pointer flex items-center gap-2">
-              <Star className="w-4 h-4 text-yellow-500" />
-              Destacar mi publicación
-              <div className="bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1">
-                <Coins className="w-3 h-3" />
-                {getServiceCredits('destacar_anuncio')} créditos
-              </div>
-            </label>
-            <p className="text-sm text-gray-600 mt-1">
-              {getServiceDescription('destacar_anuncio')}
-            </p>
+          <p className="text-sm text-gray-500 mt-1">
+            Si no se alcanza este monto, el vehículo no se vende
+          </p>
+        </div>
+
+        <div>
+          <Label htmlFor="startPrice">Precio inicial *</Label>
+          <Input
+            id="startPrice"
+            type="number"
+            value={auctionInfo.startPrice || ''}
+            onChange={(e) => onAuctionInfoChange('startPrice', e.target.value)}
+            placeholder="Precio de inicio de la subasta"
+          />
+          <p className="text-sm text-gray-500 mt-1">
+            Precio desde el cual comenzará la subasta
+          </p>
+        </div>
+
+        <div>
+          <Label htmlFor="durationDays">Duración (días) *</Label>
+          <Input
+            id="durationDays"
+            type="number"
+            min="7"
+            value={auctionInfo.durationDays || 7}
+            onChange={(e) => onAuctionInfoChange('durationDays', parseInt(e.target.value) || 7)}
+            placeholder="7"
+          />
+          <p className="text-sm text-gray-500 mt-1">
+            Mínimo 7 días, máximo 30 días
+          </p>
+        </div>
+
+        <div>
+          <Label htmlFor="minIncrement">Incremento mínimo de puja 🪙</Label>
+          <select
+            id="minIncrement"
+            value={auctionInfo.minIncrement}
+            onChange={(e) => onAuctionInfoChange('minIncrement', parseInt(e.target.value))}
+            className="w-full border border-gray-300 rounded-md p-2"
+          >
+            <option value={50000}>50.000 (Recomendado)</option>
+            <option value={100000}>100.000</option>
+            <option value={200000}>200.000</option>
+            <option value={500000}>500.000</option>
+          </select>
+          <p className="text-sm text-gray-500 mt-1">
+            Monto mínimo que debe incrementar cada puja
+          </p>
+        </div>
+      </div>
+
+      {/* Servicios adicionales */}
+      <div>
+        <h3 className="text-lg font-semibold mb-4">Servicios adicionales 🪙</h3>
+        <div className="space-y-4">
+          <div className="flex items-center space-x-3">
+            <Checkbox
+              id="verification"
+              checked={auctionInfo.services.includes('verification')}
+              onCheckedChange={(checked) => onServiceChange('verification', !!checked)}
+            />
+            <div className="flex-1">
+              <Label htmlFor="verification" className="text-base font-medium">
+                Verificación mecánica - {getServiceCost(publicationServices, 'verificacion_mecanica')} 🪙
+              </Label>
+              <p className="text-sm text-gray-500">
+                Inspección profesional del estado mecánico del vehículo
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-3">
+            <Checkbox
+              id="photography"
+              checked={auctionInfo.services.includes('photography')}
+              onCheckedChange={(checked) => onServiceChange('photography', !!checked)}
+            />
+            <div className="flex-1">
+              <Label htmlFor="photography" className="text-base font-medium">
+                Fotografía profesional - {getServiceCost(publicationServices, 'fotografia_profesional')} 🪙
+              </Label>
+              <p className="text-sm text-gray-500">
+                Sesión fotográfica profesional de tu vehículo
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-3">
+            <Checkbox
+              id="highlight"
+              checked={auctionInfo.services.includes('highlight')}
+              onCheckedChange={(checked) => onServiceChange('highlight', !!checked)}
+            />
+            <div className="flex-1">
+              <Label htmlFor="highlight" className="text-base font-medium">
+                Destacar anuncio - {getServiceCost(publicationServices, 'destacar_anuncio')} 🪙
+              </Label>
+              <p className="text-sm text-gray-500">
+                Tu anuncio aparecerá destacado en los primeros lugares
+              </p>
+            </div>
           </div>
         </div>
       </div>
-      
-      <div className="border p-4 rounded-lg bg-gray-50">
-        <h4 className="font-medium mb-3">Servicios adicionales</h4>
-        
-        <div className="space-y-4">
-          <label className="flex items-start">
-            <input 
-              type="checkbox" 
-              className="mt-1 mr-3"
-              checked={auctionInfo.services.includes('verification')}
-              onChange={(e) => onServiceChange('verification', e.target.checked)}
-            />
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="font-medium">Verificación mecánica</span>
-                <div className="bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1">
-                  <Coins className="w-3 h-3" />
-                  {getServiceCredits('verificacion_mecanica')} créditos
-                </div>
-              </div>
-              <p className="text-sm text-gray-500">
-                {getServiceDescription('verificacion_mecanica')}
-              </p>
-            </div>
-          </label>
-          
-          <label className="flex items-start">
-            <input 
-              type="checkbox" 
-              className="mt-1 mr-3"
-              checked={auctionInfo.services.includes('photography')}
-              onChange={(e) => onServiceChange('photography', e.target.checked)}
-            />
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="font-medium">Servicio de fotografía profesional</span>
-                <div className="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1">
-                  <Coins className="w-3 h-3" />
-                  {getServiceCredits('fotografia_profesional')} créditos
-                </div>
-              </div>
-              <p className="text-sm text-gray-500">
-                {getServiceDescription('fotografia_profesional')}
-              </p>
-            </div>
-          </label>
-        </div>
-      </div>
-      
+
       <div className="flex justify-between">
         <Button 
           variant="outline"

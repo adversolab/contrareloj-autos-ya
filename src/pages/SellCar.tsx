@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,7 +18,10 @@ import AuthRequiredScreen from '@/components/sell/AuthRequiredScreen';
 import ProfileRequiredScreen from '@/components/sell/ProfileRequiredScreen';
 
 const SellCarContent = () => {
-  const navigate = useNavigate(); // Re-added the useNavigate hook
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const draftId = searchParams.get('draft');
+  
   const {
     step,
     setStep,
@@ -43,7 +46,8 @@ const SellCarContent = () => {
     handleDeletePhoto,
     handleServiceChange,
     handleAuctionInfoChange,
-    prevStep
+    prevStep,
+    loadDraftData
   } = useSellContext();
 
   const {
@@ -52,6 +56,13 @@ const SellCarContent = () => {
     saveStep3,
     finishProcess
   } = useSellCarSteps();
+
+  // Load draft data if draftId is present
+  useEffect(() => {
+    if (draftId && isLoggedIn && !isCheckingAuth) {
+      loadDraftData(draftId);
+    }
+  }, [draftId, isLoggedIn, isCheckingAuth, loadDraftData]);
 
   // Handle finish process with redirect
   const handleFinish = async () => {
