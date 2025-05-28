@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -23,6 +24,7 @@ import Dashboard from "./pages/admin/Dashboard";
 import ReportsManagement from "./pages/admin/ReportsManagement";
 import RatingsManagement from "./pages/admin/RatingsManagement";
 import CreditsManagement from "./pages/admin/CreditsManagement";
+import MessagesManagement from "./pages/admin/MessagesManagement";
 import "./App.css";
 
 const queryClient = new QueryClient();
@@ -56,6 +58,7 @@ function App() {
                   <Route path="reportes" element={<ReportsManagement />} />
                   <Route path="valoraciones" element={<RatingsManagement />} />
                   <Route path="creditos" element={<CreditsManagement />} />
+                  <Route path="mensajes" element={<MessagesManagement />} />
                 </Route>
                 
                 <Route path="*" element={<NotFound />} />

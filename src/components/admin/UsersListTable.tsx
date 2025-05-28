@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, CheckCircle, UserCog, Shield, FileText } from 'lucide-react';
+import SendMessageDialog from './SendMessageDialog';
 
 interface UsersListTableProps {
   users: AdminUser[];
@@ -39,9 +40,13 @@ const UsersListTable: React.FC<UsersListTableProps> = ({
     return <div className="text-center py-8">Loading users...</div>;
   }
 
-  // Log to verify that we're receiving all users
   console.log("Rendering UsersListTable with users:", users);
   console.log("Number of users in table:", users.length);
+
+  const getUserDisplayName = (user: AdminUser) => {
+    const name = `${user.first_name || ''} ${user.last_name || ''}`.trim();
+    return name || 'User';
+  };
 
   return (
     <div className="rounded-md border">
@@ -68,8 +73,7 @@ const UsersListTable: React.FC<UsersListTableProps> = ({
                 <TableCell>
                   <div>
                     <div className="font-medium">
-                      {user.first_name || ''} {user.last_name || ''}
-                      {!user.first_name && !user.last_name && 'User'}
+                      {getUserDisplayName(user)}
                     </div>
                     <div className="text-sm text-muted-foreground">
                       {user.email}
@@ -96,33 +100,43 @@ const UsersListTable: React.FC<UsersListTableProps> = ({
                   {user.created_at ? format(new Date(user.created_at), 'dd/MM/yyyy') : ''}
                 </TableCell>
                 <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onViewDocuments(user.id)}>
-                        <FileText className="mr-2 h-4 w-4" />
-                        <span>View documents</span>
-                      </DropdownMenuItem>
-                      {!user.identity_verified && (
-                        <DropdownMenuItem onClick={() => onVerifyUser(user.id)}>
-                          <CheckCircle className="mr-2 h-4 w-4" />
-                          <span>Verify user</span>
+                  <div className="flex items-center justify-end gap-2">
+                    {/* Botón directo para enviar mensaje */}
+                    <SendMessageDialog
+                      userId={user.id}
+                      userName={getUserDisplayName(user)}
+                      userEmail={user.email}
+                    />
+                    
+                    {/* Menú desplegable con otras acciones */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onViewDocuments(user.id)}>
+                          <FileText className="mr-2 h-4 w-4" />
+                          <span>View documents</span>
                         </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem onClick={() => onUpdateRole(user.id, "user")}>
-                        <UserCog className="mr-2 h-4 w-4" />
-                        <span>Set as User</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onUpdateRole(user.id, "admin")}>
-                        <Shield className="mr-2 h-4 w-4" />
-                        <span>Set as Admin</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                        {!user.identity_verified && (
+                          <DropdownMenuItem onClick={() => onVerifyUser(user.id)}>
+                            <CheckCircle className="mr-2 h-4 w-4" />
+                            <span>Verify user</span>
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem onClick={() => onUpdateRole(user.id, "user")}>
+                          <UserCog className="mr-2 h-4 w-4" />
+                          <span>Set as User</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onUpdateRole(user.id, "admin")}>
+                          <Shield className="mr-2 h-4 w-4" />
+                          <span>Set as Admin</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </TableCell>
               </TableRow>
             ))
