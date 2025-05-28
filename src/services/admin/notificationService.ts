@@ -15,6 +15,7 @@ export const getLastNotificationForUser = async (userId: string): Promise<UserLa
       .from('notifications')
       .select('user_id, title, message, created_at, is_read')
       .eq('user_id', userId)
+      .eq('type', 'admin') // Only admin notifications
       .order('created_at', { ascending: false })
       .limit(1)
       .single();
@@ -37,6 +38,7 @@ export const getUsersWithNotificationStatus = async (userIds: string[]) => {
       .from('notifications')
       .select('user_id, title, message, created_at, is_read')
       .in('user_id', userIds)
+      .eq('type', 'admin') // Only admin notifications
       .order('created_at', { ascending: false });
 
     if (error) {

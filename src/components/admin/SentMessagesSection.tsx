@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
+import { getCurrentUser } from '@/services/authService';
 import { toast } from 'sonner';
 import { Search, Mail, Clock, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
@@ -17,6 +18,7 @@ interface SentMessage {
   is_read: boolean;
   user_id: string;
   type: string;
+  sent_by: string;
   user_email?: string;
   user_first_name?: string | null;
   user_last_name?: string | null;
@@ -48,7 +50,13 @@ const SentMessagesSection: React.FC = () => {
   const fetchSentMessages = async () => {
     setLoading(true);
     try {
-      console.log('Fetching sent messages...');
+      const currentUser = await getCurrentUser();
+      if (!currentUser) {
+        console.error('No authenticated user found');
+        return;
+      }
+
+      console.log('Fetching sent messages for admin:', currentUser.id);
       const { data, error } = await supabase
         .from('notifications')
         .select(`
@@ -58,9 +66,11 @@ const SentMessagesSection: React.FC = () => {
           created_at,
           is_read,
           user_id,
-          type
+          type,
+          sent_by
         `)
         .eq('type', 'admin')
+        .eq('sent_by', currentUser.id) // Only messages sent by current admin
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -69,7 +79,7 @@ const SentMessagesSection: React.FC = () => {
         return;
       }
 
-      console.log('Fetched notifications:', data);
+      console.log('Fetched notifications for current admin:', data);
 
       // Fetch user details for each message
       const messagesWithUserData = await Promise.all(
@@ -111,7 +121,7 @@ const SentMessagesSection: React.FC = () => {
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <Mail className="h-5 w-5" />
-            Mensajes Enviados
+            Mis Mensajes Enviados
           </CardTitle>
           <Button onClick={fetchSentMessages} variant="outline" size="sm" disabled={loading}>
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -158,7 +168,7 @@ const SentMessagesSection: React.FC = () => {
           </div>
         ) : (
           <div className="text-center py-8 text-muted-foreground">
-            {searchTerm ? 'No se encontraron mensajes que coincidan con la búsqueda' : 'No se han enviado mensajes aún'}
+            {searchTerm ? 'No se encontraron mensajes que coincidan con la búsqueda' : 'No has enviado mensajes aún'}
           </div>
         )}
       </CardContent>

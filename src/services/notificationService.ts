@@ -101,7 +101,8 @@ export async function createNotification(userId: string, title: string, message:
         message,
         type,
         related_id: relatedId,
-        is_read: false
+        is_read: false,
+        sent_by: currentUser.id // Add the admin who sent the message
       });
 
     if (error) {

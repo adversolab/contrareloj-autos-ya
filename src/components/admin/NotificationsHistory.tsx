@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/table";
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Search, Bell, Calendar, User, Filter, RefreshCw } from 'lucide-react';
+import { Search, Bell, Calendar, User, Filter, RefreshCw, UserCheck } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface NotificationHistory {
@@ -27,9 +27,13 @@ interface NotificationHistory {
   is_read: boolean;
   user_id: string;
   type: string;
+  sent_by?: string;
   user_email?: string;
   user_first_name?: string | null;
   user_last_name?: string | null;
+  admin_email?: string;
+  admin_first_name?: string | null;
+  admin_last_name?: string | null;
 }
 
 const NotificationsHistory: React.FC = () => {
@@ -62,7 +66,8 @@ const NotificationsHistory: React.FC = () => {
           created_at,
           is_read,
           user_id,
-          type
+          type,
+          sent_by
         `)
         .order('created_at', { ascending: false });
 
@@ -74,25 +79,40 @@ const NotificationsHistory: React.FC = () => {
 
       console.log('Fetched all notifications:', data);
 
-      // Fetch user details for each notification
+      // Fetch user and admin details for each notification
       const notificationsWithUserData = await Promise.all(
         (data || []).map(async (notification) => {
-          const { data: profile } = await supabase
+          // Get user details
+          const { data: userProfile } = await supabase
             .from('profiles')
             .select('email, first_name, last_name')
             .eq('id', notification.user_id)
             .single();
 
+          // Get admin details if sent_by exists
+          let adminProfile = null;
+          if (notification.sent_by) {
+            const { data: adminData } = await supabase
+              .from('profiles')
+              .select('email, first_name, last_name')
+              .eq('id', notification.sent_by)
+              .single();
+            adminProfile = adminData;
+          }
+
           return {
             ...notification,
-            user_email: profile?.email || '',
-            user_first_name: profile?.first_name || null,
-            user_last_name: profile?.last_name || null,
+            user_email: userProfile?.email || '',
+            user_first_name: userProfile?.first_name || null,
+            user_last_name: userProfile?.last_name || null,
+            admin_email: adminProfile?.email || '',
+            admin_first_name: adminProfile?.first_name || null,
+            admin_last_name: adminProfile?.last_name || null,
           };
         })
       );
 
-      console.log('Notifications with user data:', notificationsWithUserData);
+      console.log('Notifications with user and admin data:', notificationsWithUserData);
       setNotifications(notificationsWithUserData);
     } catch (error) {
       console.error('Error:', error);
@@ -111,7 +131,9 @@ const NotificationsHistory: React.FC = () => {
         notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         notification.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (notification.user_email?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (`${notification.user_first_name || ''} ${notification.user_last_name || ''}`.toLowerCase().includes(searchTerm.toLowerCase()))
+        (`${notification.user_first_name || ''} ${notification.user_last_name || ''}`.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (notification.admin_email?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (`${notification.admin_first_name || ''} ${notification.admin_last_name || ''}`.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
 
@@ -151,6 +173,12 @@ const NotificationsHistory: React.FC = () => {
     return name || notification.user_email || 'Usuario desconocido';
   };
 
+  const getAdminDisplayName = (notification: NotificationHistory) => {
+    if (!notification.sent_by) return 'Sistema';
+    const name = `${notification.admin_first_name || ''} ${notification.admin_last_name || ''}`.trim();
+    return name || notification.admin_email || 'Admin desconocido';
+  };
+
   const getTypeLabel = (type: string) => {
     switch (type) {
       case 'admin':
@@ -184,7 +212,7 @@ const NotificationsHistory: React.FC = () => {
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
                 id="search"
-                placeholder="Buscar por título, usuario..."
+                placeholder="Buscar por título, usuario, admin..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -250,6 +278,7 @@ const NotificationsHistory: React.FC = () => {
                   <TableHead>Fecha</TableHead>
                   <TableHead>Usuario</TableHead>
                   <TableHead>Título</TableHead>
+                  <TableHead>Enviado por</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Mensaje</TableHead>
@@ -279,6 +308,21 @@ const NotificationsHistory: React.FC = () => {
                     </TableCell>
                     <TableCell className="font-medium">
                       {notification.title}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center">
+                        <UserCheck className="mr-2 h-4 w-4" />
+                        <div>
+                          <div className="font-medium text-sm">
+                            {getAdminDisplayName(notification)}
+                          </div>
+                          {notification.admin_email && (
+                            <div className="text-xs text-muted-foreground">
+                              {notification.admin_email}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Badge variant={notification.type === 'admin' ? 'default' : 'secondary'}>
