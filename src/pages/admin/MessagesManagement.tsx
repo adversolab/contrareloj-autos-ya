@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,31 +7,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { createNotification } from '@/services/notificationService';
-import { Send, Search, Mail, Clock } from 'lucide-react';
-import { format } from 'date-fns';
+import { Send, Search } from 'lucide-react';
+import SentMessagesSection from '@/components/admin/SentMessagesSection';
 
 interface User {
   id: string;
   email: string;
   first_name: string | null;
   last_name: string | null;
-}
-
-interface SentMessage {
-  id: string;
-  title: string;
-  message: string;
-  created_at: string;
-  is_read: boolean;
-  user_id: string;
-  type: string;
-  user_email?: string;
-  user_first_name?: string | null;
-  user_last_name?: string | null;
 }
 
 const MessagesManagement = () => {
@@ -42,12 +29,9 @@ const MessagesManagement = () => {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(true);
-  const [sentMessages, setSentMessages] = useState<SentMessage[]>([]);
-  const [loadingSentMessages, setLoadingSentMessages] = useState(false);
 
   useEffect(() => {
     fetchUsers();
-    fetchSentMessages();
   }, []);
 
   useEffect(() => {
@@ -85,56 +69,6 @@ const MessagesManagement = () => {
     }
   };
 
-  const fetchSentMessages = async () => {
-    setLoadingSentMessages(true);
-    try {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select(`
-          id,
-          title,
-          message,
-          created_at,
-          is_read,
-          user_id,
-          type
-        `)
-        .eq('type', 'admin')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching sent messages:', error);
-        toast.error('Error al cargar mensajes enviados');
-        return;
-      }
-
-      // Fetch user details for each message
-      const messagesWithUserData = await Promise.all(
-        (data || []).map(async (notification) => {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('email, first_name, last_name')
-            .eq('id', notification.user_id)
-            .single();
-
-          return {
-            ...notification,
-            user_email: profile?.email || '',
-            user_first_name: profile?.first_name || null,
-            user_last_name: profile?.last_name || null,
-          };
-        })
-      );
-
-      setSentMessages(messagesWithUserData);
-    } catch (error) {
-      console.error('Error:', error);
-      toast.error('Error al cargar mensajes enviados');
-    } finally {
-      setLoadingSentMessages(false);
-    }
-  };
-
   const handleSendMessage = async () => {
     if (!selectedUserId || !title.trim() || !message.trim()) {
       toast.error('Por favor completa todos los campos');
@@ -152,8 +86,6 @@ const MessagesManagement = () => {
         setTitle('');
         setMessage('');
         setSearchTerm('');
-        // Refresh sent messages
-        fetchSentMessages();
       } else {
         toast.error('Error al enviar el mensaje');
       }
@@ -168,11 +100,6 @@ const MessagesManagement = () => {
   const getDisplayName = (user: User) => {
     const name = `${user.first_name || ''} ${user.last_name || ''}`.trim();
     return name || user.email;
-  };
-
-  const getMessageDisplayName = (message: SentMessage) => {
-    const name = `${message.user_first_name || ''} ${message.user_last_name || ''}`.trim();
-    return name || message.user_email || 'Usuario desconocido';
   };
 
   if (loadingUsers) {
@@ -279,48 +206,7 @@ const MessagesManagement = () => {
         </TabsContent>
 
         <TabsContent value="sent">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Mail className="h-5 w-5" />
-                Mensajes Enviados
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {loadingSentMessages ? (
-                <div className="text-center py-8">Cargando mensajes enviados...</div>
-              ) : sentMessages.length > 0 ? (
-                <div className="space-y-4">
-                  {sentMessages.map((sentMessage) => (
-                    <div key={sentMessage.id} className="p-4 border rounded-lg">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <h3 className="font-semibold">{sentMessage.title}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            Para: {getMessageDisplayName(sentMessage)}
-                          </p>
-                        </div>
-                        <div className="flex flex-col items-end gap-2">
-                          <Badge variant={sentMessage.is_read ? "default" : "secondary"}>
-                            {sentMessage.is_read ? "Leído" : "No leído"}
-                          </Badge>
-                          <div className="flex items-center text-xs text-muted-foreground">
-                            <Clock className="mr-1 h-3 w-3" />
-                            {format(new Date(sentMessage.created_at), 'dd/MM/yyyy HH:mm')}
-                          </div>
-                        </div>
-                      </div>
-                      <p className="text-sm">{sentMessage.message}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  No se han enviado mensajes aún
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <SentMessagesSection />
         </TabsContent>
       </Tabs>
     </div>
