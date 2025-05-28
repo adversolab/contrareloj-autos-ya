@@ -2,7 +2,7 @@
 import React from 'react';
 import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { LayoutDashboard, Users, Car, Trophy, AlertTriangle, Star, CreditCard, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Car, Trophy, AlertTriangle, Star, CreditCard, LogOut, MessageSquare, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -31,6 +31,8 @@ const AdminLayout = () => {
     { path: '/admin/creditos', icon: CreditCard, label: 'Créditos' },
     { path: '/admin/valoraciones', icon: Star, label: 'Valoraciones' },
     { path: '/admin/reportes', icon: AlertTriangle, label: 'Reportes' },
+    { path: '/admin/mensajes', icon: MessageSquare, label: 'Mensajes' },
+    { path: '/admin/plantillas', icon: FileText, label: 'Plantillas' },
   ];
 
   if (!user || !profile || profile.role !== 'admin') {

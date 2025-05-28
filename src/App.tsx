@@ -25,6 +25,7 @@ import ReportsManagement from "./pages/admin/ReportsManagement";
 import RatingsManagement from "./pages/admin/RatingsManagement";
 import CreditsManagement from "./pages/admin/CreditsManagement";
 import MessagesManagement from "./pages/admin/MessagesManagement";
+import TemplatesManagement from "./pages/admin/TemplatesManagement";
 import "./App.css";
 
 const queryClient = new QueryClient();
@@ -59,6 +60,7 @@ function App() {
                   <Route path="valoraciones" element={<RatingsManagement />} />
                   <Route path="creditos" element={<CreditsManagement />} />
                   <Route path="mensajes" element={<MessagesManagement />} />
+                  <Route path="plantillas" element={<TemplatesManagement />} />
                 </Route>
                 
                 <Route path="*" element={<NotFound />} />

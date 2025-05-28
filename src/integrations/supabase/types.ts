@@ -264,6 +264,33 @@ export type Database = {
           },
         ]
       }
+      mensajes_template: {
+        Row: {
+          categoria: string | null
+          contenido: string
+          creado_por: string
+          fecha_creacion: string
+          id: string
+          titulo: string
+        }
+        Insert: {
+          categoria?: string | null
+          contenido: string
+          creado_por: string
+          fecha_creacion?: string
+          id?: string
+          titulo: string
+        }
+        Update: {
+          categoria?: string | null
+          contenido?: string
+          creado_por?: string
+          fecha_creacion?: string
+          id?: string
+          titulo?: string
+        }
+        Relationships: []
+      }
       movimientos_credito: {
         Row: {
           cantidad: number
