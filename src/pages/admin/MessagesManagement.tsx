@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,11 +28,9 @@ interface SentMessage {
   is_read: boolean;
   user_id: string;
   type: string;
-  profiles?: {
-    email: string;
-    first_name: string | null;
-    last_name: string | null;
-  };
+  user_email?: string;
+  user_first_name?: string | null;
+  user_last_name?: string | null;
 }
 
 const MessagesManagement = () => {
@@ -100,12 +97,7 @@ const MessagesManagement = () => {
           created_at,
           is_read,
           user_id,
-          type,
-          profiles (
-            email,
-            first_name,
-            last_name
-          )
+          type
         `)
         .eq('type', 'admin')
         .order('created_at', { ascending: false });
@@ -116,7 +108,25 @@ const MessagesManagement = () => {
         return;
       }
 
-      setSentMessages(data || []);
+      // Fetch user details for each message
+      const messagesWithUserData = await Promise.all(
+        (data || []).map(async (notification) => {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('email, first_name, last_name')
+            .eq('id', notification.user_id)
+            .single();
+
+          return {
+            ...notification,
+            user_email: profile?.email || '',
+            user_first_name: profile?.first_name || null,
+            user_last_name: profile?.last_name || null,
+          };
+        })
+      );
+
+      setSentMessages(messagesWithUserData);
     } catch (error) {
       console.error('Error:', error);
       toast.error('Error al cargar mensajes enviados');
@@ -161,11 +171,8 @@ const MessagesManagement = () => {
   };
 
   const getMessageDisplayName = (message: SentMessage) => {
-    if (message.profiles) {
-      const name = `${message.profiles.first_name || ''} ${message.profiles.last_name || ''}`.trim();
-      return name || message.profiles.email;
-    }
-    return 'Usuario desconocido';
+    const name = `${message.user_first_name || ''} ${message.user_last_name || ''}`.trim();
+    return name || message.user_email || 'Usuario desconocido';
   };
 
   if (loadingUsers) {
