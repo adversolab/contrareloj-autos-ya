@@ -32,7 +32,7 @@ const FeaturedVehiclesSection = () => {
 
   if (isLoading) {
     return (
-      <section className="container mx-auto px-4 py-12">
+      <section className="w-full px-4 sm:px-6 lg:px-8 py-12">
         <div className="flex items-center gap-2 mb-6">
           <Star className="w-6 h-6 text-yellow-500 fill-current" />
           <h2 className="text-2xl font-bold">Vehículos Destacados</h2>
@@ -49,8 +49,8 @@ const FeaturedVehiclesSection = () => {
   }
 
   return (
-    <section className="bg-gradient-to-r from-yellow-50 to-orange-50 py-12">
-      <div className="container mx-auto px-4">
+    <section className="bg-gradient-to-r from-yellow-50 to-orange-50 py-12 w-full">
+      <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-2 mb-6">
           <Star className="w-6 h-6 text-yellow-500 fill-current" />
           <h2 className="text-2xl font-bold">Vehículos Destacados</h2>

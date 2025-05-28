@@ -193,17 +193,17 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col w-full">
       <Navbar />
       
       <Hero />
       
-      <main className="flex-grow">
+      <main className="flex-grow w-full">
         {/* Featured/Highlighted Vehicles Section */}
         <FeaturedVehiclesSection />
         
         {/* Featured Auctions */}
-        <section className="container mx-auto px-4 py-12">
+        <section className="w-full px-4 sm:px-6 lg:px-8 py-12">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold">Subastas Destacadas</h2>
             <Link to="/explorar">
@@ -223,7 +223,7 @@ const Index = () => {
         </section>
         
         {/* Ending Soon */}
-        <section className="container mx-auto px-4 py-12">
+        <section className="w-full px-4 sm:px-6 lg:px-8 py-12">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold">Finalizando Pronto</h2>
             <Link to="/explorar?sort=endingSoon">
@@ -243,8 +243,8 @@ const Index = () => {
         </section>
         
         {/* How It Works */}
-        <section className="bg-gray-50 py-16">
-          <div className="container mx-auto px-4">
+        <section className="bg-gray-50 py-16 w-full">
+          <div className="w-full px-4 sm:px-6 lg:px-8">
             <h2 className="text-3xl font-bold text-center mb-12">¿Cómo funciona?</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -290,8 +290,8 @@ const Index = () => {
         </section>
         
         {/* CTA Section */}
-        <section className="bg-contrareloj py-16">
-          <div className="container mx-auto px-4 text-center">
+        <section className="bg-contrareloj py-16 w-full">
+          <div className="w-full px-4 sm:px-6 lg:px-8 text-center">
             <h2 className="text-3xl font-bold text-white mb-4">¿Tienes un auto para vender?</h2>
             <p className="text-xl text-white/80 mb-8 max-w-2xl mx-auto">
               Véndelo de forma rápida, segura y al mejor precio con nuestras subastas.

@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 
 const Hero = () => {
   return (
-    <div className="relative bg-black text-white">
+    <div className="relative bg-black text-white w-full">
       <div className="absolute inset-0 opacity-40 bg-gradient-to-r from-black to-transparent z-10"></div>
       <div 
         className="absolute inset-0 bg-cover bg-center"
@@ -15,7 +15,7 @@ const Hero = () => {
         }}
       ></div>
       
-      <div className="container mx-auto px-4 py-20 relative z-20">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-20 relative z-20">
         <div className="max-w-xl">
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
             El tiempo corre, encuentra tu auto ideal
