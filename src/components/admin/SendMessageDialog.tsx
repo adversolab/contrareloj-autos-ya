@@ -69,18 +69,17 @@ const SendMessageDialog: React.FC<SendMessageDialogProps> = ({
       const success = await createNotification(userId, title, message, 'admin');
       
       if (success) {
-        toast.success('Mensaje enviado y registrado correctamente');
+        toast.success('✅ Mensaje enviado y guardado correctamente');
         setTitle('');
         setMessage('');
         setOpen(false);
         
-        // Call the callback to refresh parent components with a longer delay
+        // Call the callback to refresh parent components
         if (onMessageSent) {
           console.log('SendMessageDialog: Calling onMessageSent callback to refresh UI');
-          // Wait longer to ensure the database has been updated
           setTimeout(() => {
             onMessageSent();
-          }, 1500); // Increased from 1000ms to 1500ms
+          }, 1000);
         }
       } else {
         toast.error('Error al enviar el mensaje');

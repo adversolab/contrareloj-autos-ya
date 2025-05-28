@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { AdminUser } from '@/services/admin/types';
 import { format } from 'date-fns';
@@ -22,7 +23,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import SendMessageDialog from './SendMessageDialog';
 import LastMessageDialog from './LastMessageDialog';
 import { supabase } from '@/integrations/supabase/client';
-import { getCurrentUser } from '@/services/authService';
 
 interface PendingVerificationsTableProps {
   pendingUsers: AdminUser[];
@@ -46,11 +46,10 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
 }) => {
   const [userNotifications, setUserNotifications] = useState<Record<string, UserNotification>>({});
   const [loadingNotifications, setLoadingNotifications] = useState(false);
-  const [currentAdminId, setCurrentAdminId] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<string>('');
 
   useEffect(() => {
-    console.log('🔵 PendingVerificationsTable: useEffect triggered, pendingUsers:', pendingUsers);
+    console.log('🔵 PendingVerificationsTable: useEffect triggered, pendingUsers:', pendingUsers.length);
     if (pendingUsers.length > 0) {
       fetchUserNotifications();
     } else {
@@ -70,37 +69,23 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
     console.log('🔵 PendingVerificationsTable: Starting fetchUserNotifications...');
     
     try {
-      // Get current admin for debugging
-      const currentUser = await getCurrentUser();
-      const adminId = currentUser?.id;
-      setCurrentAdminId(adminId || null);
-      console.log('🔵 PendingVerificationsTable: Current admin ID:', adminId);
-      
       const userIds = pendingUsers.map(user => user.id);
       console.log('🔵 PendingVerificationsTable: Querying notifications for user IDs:', userIds);
-      setDebugInfo(`🔵 Consultando ${userIds.length} usuarios con admin ID: ${adminId}`);
+      setDebugInfo(`🔵 Consultando notificaciones para ${userIds.length} usuarios`);
       
-      // Query ALL admin notifications for these users (not filtered by sent_by)
-      console.log('🔵 PendingVerificationsTable: Querying all admin notifications for users...');
+      // Simplified query: get ALL notifications for these users
+      console.log('🔵 PendingVerificationsTable: Querying ALL notifications for users...');
       const { data, error } = await supabase
         .from('notifications')
-        .select('id, title, message, created_at, is_read, user_id, sent_by')
+        .select('*')
         .in('user_id', userIds)
-        .eq('type', 'admin')
         .order('created_at', { ascending: false });
 
-      console.log('🔵 PendingVerificationsTable: Raw Supabase response:', { 
+      console.log('🔵 PendingVerificationsTable: Raw query result:', { 
         dataCount: data?.length || 0, 
         error,
         data: data
       });
-
-      if (data && data.length > 0) {
-        console.log('🔵 PendingVerificationsTable: Detailed notification analysis:');
-        data.forEach((notif, index) => {
-          console.log(`  ${index + 1}. user_id: ${notif.user_id}, sent_by: ${notif.sent_by}, title: ${notif.title}`);
-        });
-      }
 
       if (error) {
         console.error('🔴 PendingVerificationsTable: Supabase error:', error);
@@ -120,7 +105,7 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
             id: notification.id,
             user_id: notification.user_id,
             title: notification.title,
-            sent_by: notification.sent_by,
+            type: notification.type,
             created_at: notification.created_at
           });
           
@@ -133,7 +118,7 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
 
         console.log('🟢 PendingVerificationsTable: Final processed notifications:', latestNotifications);
         setUserNotifications(latestNotifications);
-        setDebugInfo(`🟢 Procesadas ${data.length} notificaciones, ${Object.keys(latestNotifications).length} usuarios notificados`);
+        setDebugInfo(`🟢 Procesadas ${data.length} notificaciones, ${Object.keys(latestNotifications).length} usuarios con notificaciones`);
       } else {
         console.log('🟡 PendingVerificationsTable: No notifications found');
         setDebugInfo(`🟡 No se encontraron notificaciones para estos usuarios`);
@@ -149,12 +134,11 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
   };
 
   const handleMessageSent = () => {
-    console.log('🔵 PendingVerificationsTable: Message sent, refreshing notifications in 2 seconds');
+    console.log('🔵 PendingVerificationsTable: Message sent, refreshing notifications in 1 second');
     setDebugInfo('🔵 Mensaje enviado, actualizando...');
-    // Wait a bit longer for the message to be stored before refreshing
     setTimeout(() => {
       fetchUserNotifications();
-    }, 2000); // Increased from 1000ms to 2000ms
+    }, 1000);
   };
 
   const getUserDisplayName = (user: AdminUser) => {
@@ -171,15 +155,13 @@ const PendingVerificationsTable: React.FC<PendingVerificationsTableProps> = ({
       <div className="mt-8">
         <h2 className="text-lg font-semibold mb-4">Usuarios Pendientes de Verificación</h2>
         
-        {/* Enhanced debug panel */}
-        <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm">
-          <div className="font-medium text-gray-700 mb-1">Debug Info:</div>
-          <div className="text-gray-600">Admin ID: {currentAdminId || 'No identificado'}</div>
-          <div className="text-gray-600">Estado: {debugInfo || 'Inicializando...'}</div>
-          <div className="text-gray-600">Usuarios pendientes: {pendingUsers.length}</div>
-          <div className="text-gray-600">Notificaciones en memoria: {Object.keys(userNotifications).length}</div>
-          <div className="text-gray-600">Cargando: {loadingNotifications ? 'Sí' : 'No'}</div>
-          <div className="text-blue-600">🔍 Revisa la consola del navegador para logs detallados</div>
+        {/* Debug panel */}
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+          <div className="font-medium text-blue-700 mb-1">Debug Info:</div>
+          <div className="text-blue-600">Estado: {debugInfo || 'Inicializando...'}</div>
+          <div className="text-blue-600">Usuarios pendientes: {pendingUsers.length}</div>
+          <div className="text-blue-600">Notificaciones en memoria: {Object.keys(userNotifications).length}</div>
+          <div className="text-blue-600">Cargando: {loadingNotifications ? 'Sí' : 'No'}</div>
         </div>
         
         <div className="rounded-md border">
